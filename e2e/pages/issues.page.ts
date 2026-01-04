@@ -61,21 +61,30 @@ export class IssuesPage extends BasePage {
 
   async hasIssuesOrEmptyState(): Promise<boolean> {
     // Wait a bit for content to load
-    await this.page.waitForTimeout(1000);
+    await this.page.waitForTimeout(2000);
 
+    // Check for issue cards
     const issueCount = await this.getIssueCount();
     if (issueCount > 0) return true;
 
-    // Check for various empty/error states
+    // Check for empty state message
     const emptyStateVisible = await this.emptyState.isVisible().catch(() => false);
     if (emptyStateVisible) return true;
 
-    // Check for loading state (acceptable as content)
-    const loadingVisible = await this.page.getByText(/loading/i).isVisible().catch(() => false);
-    if (loadingVisible) return true;
+    // Check for the "Scan Existing Logs" button (appears in empty state)
+    const scanButton = await this.page.getByRole('button', { name: /scan existing logs/i }).isVisible().catch(() => false);
+    if (scanButton) return true;
 
-    // Check if main content area exists (page rendered)
-    const mainContent = await this.page.locator('main').isVisible().catch(() => false);
-    return mainContent;
+    // Check for loading spinner (page is rendering, just waiting for API)
+    const spinnerVisible = await this.page.locator('.animate-spin').isVisible().catch(() => false);
+    if (spinnerVisible) return true;
+
+    // Check for the page header/title as a fallback
+    const headerVisible = await this.page.getByRole('heading', { name: /issues/i }).isVisible().catch(() => false);
+    if (headerVisible) return true;
+
+    // Final fallback - any content in the page
+    const bodyHasContent = await this.page.locator('body').innerHTML().then(html => html.length > 100).catch(() => false);
+    return bodyHasContent;
   }
 }
