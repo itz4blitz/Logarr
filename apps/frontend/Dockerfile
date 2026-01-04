@@ -43,7 +43,11 @@ RUN adduser --system --uid 1001 nextjs
 # Copy built application - standalone output preserves monorepo structure
 COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/.next/static ./apps/frontend/.next/static
-COPY --from=builder /app/apps/frontend/public ./apps/frontend/public
+COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/public ./apps/frontend/public
+
+# Copy entrypoint script
+COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/docker-entrypoint.sh ./apps/frontend/
+RUN chmod +x ./apps/frontend/docker-entrypoint.sh
 
 USER nextjs
 
@@ -53,4 +57,4 @@ ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
 WORKDIR /app/apps/frontend
-CMD ["node", "server.js"]
+CMD ["./docker-entrypoint.sh"]

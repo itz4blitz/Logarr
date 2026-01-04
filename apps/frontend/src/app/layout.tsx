@@ -29,6 +29,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className="h-full overflow-hidden">
+      <head>
+        {/* Runtime config injection for Docker deployments - must load before React hydration */}
+        <script src="/__config.js" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased h-full overflow-hidden`}
       >
