@@ -16,6 +16,10 @@ We take security vulnerabilities seriously. If you discover a security issue, pl
 
 Instead, use GitHub's private vulnerability reporting:
 
+**[Report a Security Vulnerability](https://github.com/itz4blitz/Logarr/security/advisories/new)**
+
+Or manually:
+
 1. Go to the repository's **Security** tab
 2. Click **Report a vulnerability**
 3. Fill out the form with details
