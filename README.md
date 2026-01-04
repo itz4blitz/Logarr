@@ -254,6 +254,38 @@ Guidelines: TypeScript strict mode, ESLint + Prettier, tests for new features.
 
 ---
 
+## Testing
+
+Logarr has comprehensive test coverage using [Vitest](https://vitest.dev/).
+
+| Package | Tests | Coverage |
+|---------|-------|----------|
+| **Backend** | 249 | 89.57% lines |
+| **Frontend** | 54 | 100% lines |
+
+### Running Tests
+
+```bash
+pnpm test              # Run all tests
+pnpm test:coverage     # Run with coverage report
+pnpm test:e2e          # Run Playwright E2E tests
+```
+
+### Coverage by Module (Backend)
+
+| Module | Statements | Branches | Functions | Lines |
+|--------|------------|----------|-----------|-------|
+| logs.service | 100% | 98% | 100% | 100% |
+| sessions.service | 100% | 92% | 100% | 100% |
+| settings.service | 100% | 100% | 100% | 100% |
+| dashboard.service | 98% | 95% | 100% | 99% |
+| servers.service | 87% | 78% | 87% | 88% |
+| issues.service | 79% | 80% | 74% | 82% |
+
+> Coverage thresholds are enforced at 80% for statements, branches, functions, and lines.
+
+---
+
 ## Roadmap
 
 This project is under active development and we're looking for contributors to help shape its direction.
