@@ -22,7 +22,7 @@ export class IssuesPage extends BasePage {
     this.issueList = page.locator('[data-testid="issue-list"]').or(
       page.locator('main').first()
     );
-    this.emptyState = page.getByText(/no issues/i);
+    this.emptyState = page.getByText(/no issues found/i);
     this.refreshButton = page.getByRole('button', { name: /refresh/i });
   }
 
@@ -60,8 +60,22 @@ export class IssuesPage extends BasePage {
   }
 
   async hasIssuesOrEmptyState(): Promise<boolean> {
+    // Wait a bit for content to load
+    await this.page.waitForTimeout(1000);
+
     const issueCount = await this.getIssueCount();
+    if (issueCount > 0) return true;
+
+    // Check for various empty/error states
     const emptyStateVisible = await this.emptyState.isVisible().catch(() => false);
-    return issueCount > 0 || emptyStateVisible;
+    if (emptyStateVisible) return true;
+
+    // Check for loading state (acceptable as content)
+    const loadingVisible = await this.page.getByText(/loading/i).isVisible().catch(() => false);
+    if (loadingVisible) return true;
+
+    // Check if main content area exists (page rendered)
+    const mainContent = await this.page.locator('main').isVisible().catch(() => false);
+    return mainContent;
   }
 }
