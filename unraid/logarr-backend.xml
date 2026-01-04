@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>logarr-backend</Name>
+  <Repository>ghcr.io/itz4blitz/logarr-backend:latest</Repository>
+  <Registry>https://ghcr.io/itz4blitz/logarr-backend</Registry>
+  <Branch>
+    <Tag>latest</Tag>
+    <TagDescription>Latest stable release</TagDescription>
+  </Branch>
+  <Network>bridge</Network>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/itz4blitz/logarr/issues</Support>
+  <Project>https://github.com/itz4blitz/logarr</Project>
+  <Overview>Logarr Backend API - A unified logging dashboard for media server stacks. This is the backend API service that handles log ingestion, storage, and real-time streaming via WebSockets. Requires PostgreSQL and Redis.</Overview>
+  <Category>Tools: Productivity:</Category>
+  <WebUI>http://[IP]:[PORT:4000]/api</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/itz4blitz/logarr/master/unraid/logarr-backend.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/itz4blitz/logarr/master/apps/frontend/public/icon.png</Icon>
+  <ExtraParams>--restart unless-stopped</ExtraParams>
+  <DateInstalled></DateInstalled>
+  <Description>Logarr Backend API - A unified logging dashboard for media server stacks. This is the backend API service that handles log ingestion, storage, and real-time streaming via WebSockets. Requires PostgreSQL and Redis.</Description>
+  <Config Name="Web UI Port" Target="4000" Default="4001" Mode="tcp" Description="Backend API port" Type="Port" Display="always" Required="true" Mask="false">4001</Config>
+  <Config Name="Database URL" Target="DATABASE_URL" Default="postgresql://postgres:postgres@logarr-db:5432/logarr" Mode="" Description="PostgreSQL connection string. Use container name 'logarr-db' if using the Logarr PostgreSQL container." Type="Variable" Display="always" Required="true" Mask="false">postgresql://postgres:postgres@logarr-db:5432/logarr</Config>
+  <Config Name="Redis URL" Target="REDIS_URL" Default="redis://logarr-redis:6379" Mode="" Description="Redis connection string. Use container name 'logarr-redis' if using the Logarr Redis container." Type="Variable" Display="always" Required="true" Mask="false">redis://logarr-redis:6379</Config>
+  <Config Name="CORS Origin" Target="CORS_ORIGIN" Default="http://[YOUR_UNRAID_IP]:3001" Mode="" Description="Frontend URL for CORS. Set to your Logarr frontend URL." Type="Variable" Display="always" Required="true" Mask="false">http://[YOUR_UNRAID_IP]:3001</Config>
+  <Config Name="Node Environment" Target="NODE_ENV" Default="production" Mode="" Description="Node.js environment" Type="Variable" Display="advanced" Required="false" Mask="false">production</Config>
+  <Config Name="Log Files Path" Target="/app/logs" Default="/mnt/user/appdata/logarr/logs" Mode="rw" Description="Path to log files you want to ingest. Mount your application log directories here." Type="Path" Display="always" Required="false" Mask="false">/mnt/user/appdata/logarr/logs</Config>
+</Container>

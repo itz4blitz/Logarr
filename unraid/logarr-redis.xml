@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>logarr-redis</Name>
+  <Repository>redis:7-alpine</Repository>
+  <Registry>https://hub.docker.com/_/redis</Registry>
+  <Branch>
+    <Tag>7-alpine</Tag>
+    <TagDescription>Redis 7 Alpine</TagDescription>
+  </Branch>
+  <Network>bridge</Network>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/itz4blitz/logarr/issues</Support>
+  <Project>https://github.com/itz4blitz/logarr</Project>
+  <Overview>Redis cache for Logarr. This container provides caching and pub/sub functionality for real-time log streaming.</Overview>
+  <Category>Tools: Productivity:</Category>
+  <TemplateURL>https://raw.githubusercontent.com/itz4blitz/logarr/master/unraid/logarr-redis.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/docker-library/docs/master/redis/logo.png</Icon>
+  <ExtraParams>--restart unless-stopped</ExtraParams>
+  <DateInstalled></DateInstalled>
+  <Description>Redis cache for Logarr. This container provides caching and pub/sub functionality for real-time log streaming.</Description>
+  <Config Name="Redis Port" Target="6379" Default="6380" Mode="tcp" Description="Redis port" Type="Port" Display="always" Required="true" Mask="false">6380</Config>
+  <Config Name="Data Path" Target="/data" Default="/mnt/user/appdata/logarr/redis" Mode="rw" Description="Redis data storage path" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/logarr/redis</Config>
+</Container>

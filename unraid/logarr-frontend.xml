@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>logarr-frontend</Name>
+  <Repository>ghcr.io/itz4blitz/logarr-frontend:latest</Repository>
+  <Registry>https://ghcr.io/itz4blitz/logarr-frontend</Registry>
+  <Branch>
+    <Tag>latest</Tag>
+    <TagDescription>Latest stable release</TagDescription>
+  </Branch>
+  <Network>bridge</Network>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/itz4blitz/logarr/issues</Support>
+  <Project>https://github.com/itz4blitz/logarr</Project>
+  <Overview>Logarr Frontend - A unified logging dashboard for media server stacks. Beautiful Next.js dashboard for viewing, filtering, and searching logs from all your media server applications in real-time.</Overview>
+  <Category>Tools: Productivity:</Category>
+  <WebUI>http://[IP]:[PORT:3000]</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/itz4blitz/logarr/master/unraid/logarr-frontend.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/itz4blitz/logarr/master/apps/frontend/public/icon.png</Icon>
+  <ExtraParams>--restart unless-stopped</ExtraParams>
+  <DateInstalled></DateInstalled>
+  <Description>Logarr Frontend - A unified logging dashboard for media server stacks. Beautiful Next.js dashboard for viewing, filtering, and searching logs from all your media server applications in real-time.</Description>
+  <Config Name="Web UI Port" Target="3000" Default="3001" Mode="tcp" Description="Frontend web UI port" Type="Port" Display="always" Required="true" Mask="false">3001</Config>
+  <Config Name="API URL" Target="NEXT_PUBLIC_API_URL" Default="http://[YOUR_UNRAID_IP]:4001/api" Mode="" Description="Backend API URL. Set to your Logarr backend URL with /api path." Type="Variable" Display="always" Required="true" Mask="false">http://[YOUR_UNRAID_IP]:4001/api</Config>
+  <Config Name="WebSocket URL" Target="NEXT_PUBLIC_WS_URL" Default="ws://[YOUR_UNRAID_IP]:4001" Mode="" Description="Backend WebSocket URL for real-time log streaming." Type="Variable" Display="always" Required="true" Mask="false">ws://[YOUR_UNRAID_IP]:4001</Config>
+</Container>

@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>logarr-db</Name>
+  <Repository>postgres:16-alpine</Repository>
+  <Registry>https://hub.docker.com/_/postgres</Registry>
+  <Branch>
+    <Tag>16-alpine</Tag>
+    <TagDescription>PostgreSQL 16 Alpine</TagDescription>
+  </Branch>
+  <Network>bridge</Network>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/itz4blitz/logarr/issues</Support>
+  <Project>https://github.com/itz4blitz/logarr</Project>
+  <Overview>PostgreSQL database for Logarr. This container provides the database backend for storing log entries and application data.</Overview>
+  <Category>Tools: Productivity:</Category>
+  <TemplateURL>https://raw.githubusercontent.com/itz4blitz/logarr/master/unraid/logarr-db.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/docker-library/docs/master/postgres/logo.png</Icon>
+  <ExtraParams>--restart unless-stopped</ExtraParams>
+  <DateInstalled></DateInstalled>
+  <Description>PostgreSQL database for Logarr. This container provides the database backend for storing log entries and application data.</Description>
+  <Config Name="Database Port" Target="5432" Default="5433" Mode="tcp" Description="PostgreSQL port" Type="Port" Display="always" Required="true" Mask="false">5433</Config>
+  <Config Name="Database User" Target="POSTGRES_USER" Default="postgres" Mode="" Description="PostgreSQL username" Type="Variable" Display="always" Required="true" Mask="false">postgres</Config>
+  <Config Name="Database Password" Target="POSTGRES_PASSWORD" Default="postgres" Mode="" Description="PostgreSQL password. Change this for production!" Type="Variable" Display="always" Required="true" Mask="true">postgres</Config>
+  <Config Name="Database Name" Target="POSTGRES_DB" Default="logarr" Mode="" Description="PostgreSQL database name" Type="Variable" Display="always" Required="true" Mask="false">logarr</Config>
+  <Config Name="Data Path" Target="/var/lib/postgresql/data" Default="/mnt/user/appdata/logarr/postgres" Mode="rw" Description="PostgreSQL data storage path" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/logarr/postgres</Config>
+</Container>
