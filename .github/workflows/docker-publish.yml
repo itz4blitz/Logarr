@@ -53,6 +53,9 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     needs: test
+    env:
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api
+      NEXT_PUBLIC_WS_URL: http://localhost:4000
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
