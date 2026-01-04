@@ -1,6 +1,6 @@
 # Logarr Unraid Templates
 
-These templates allow you to install Logarr on Unraid via Community Applications.
+These templates allow you to install Logarr on Unraid.
 
 ## Installation Order
 
@@ -10,6 +10,20 @@ Install the containers in this order:
 2. **logarr-redis** - Redis cache
 3. **logarr-backend** - API server (depends on db and redis)
 4. **logarr-frontend** - Web UI (depends on backend)
+
+## Installing Templates (Unraid 7)
+
+SSH into your Unraid server and download the templates:
+
+```bash
+cd /boot/config/plugins/dockerMan/templates-user/
+wget https://raw.githubusercontent.com/itz4blitz/logarr/master/unraid/logarr-db.xml
+wget https://raw.githubusercontent.com/itz4blitz/logarr/master/unraid/logarr-redis.xml
+wget https://raw.githubusercontent.com/itz4blitz/logarr/master/unraid/logarr-backend.xml
+wget https://raw.githubusercontent.com/itz4blitz/logarr/master/unraid/logarr-frontend.xml
+```
+
+Then go to **Docker** > **Add Container** and the templates will appear in the dropdown.
 
 ## Quick Setup
 
@@ -38,25 +52,43 @@ All containers use bridge networking by default. The containers communicate via 
 - `logarr-backend` - API on port 4000 (exposed as 4001)
 - `logarr-frontend` - Web UI on port 3000 (exposed as 3001)
 
-## Adding Template Repository
+## Manual Installation (No Templates)
 
-To add these templates to Community Applications:
+If you prefer to set up containers manually without templates:
 
-1. Go to **Apps** > **Settings** (gear icon)
-2. Add this URL to **Template repositories**:
-   ```
-   https://github.com/itz4blitz/logarr
-   ```
-3. Click **Save** and force update
+### logarr-db
 
-## Manual Installation
+- **Repository:** `postgres:16-alpine`
+- **Port:** `5433` -> `5432`
+- **Variables:**
+  - `POSTGRES_USER` = `postgres`
+  - `POSTGRES_PASSWORD` = `postgres`
+  - `POSTGRES_DB` = `logarr`
+- **Path:** `/mnt/user/appdata/logarr/postgres` -> `/var/lib/postgresql/data`
 
-If templates don't appear in CA, you can manually add them:
+### logarr-redis
 
-1. Go to **Docker** tab
-2. Click **Add Container**
-3. Click **Template repositories** dropdown
-4. Select **Add template** and paste the raw XML URL
+- **Repository:** `redis:7-alpine`
+- **Port:** `6380` -> `6379`
+- **Path:** `/mnt/user/appdata/logarr/redis` -> `/data`
+
+### logarr-backend
+
+- **Repository:** `ghcr.io/itz4blitz/logarr-backend:latest`
+- **Port:** `4001` -> `4000`
+- **Variables:**
+  - `DATABASE_URL` = `postgresql://postgres:postgres@logarr-db:5432/logarr`
+  - `REDIS_URL` = `redis://logarr-redis:6379`
+  - `CORS_ORIGIN` = `http://YOUR_UNRAID_IP:3001`
+  - `NODE_ENV` = `production`
+
+### logarr-frontend
+
+- **Repository:** `ghcr.io/itz4blitz/logarr-frontend:latest`
+- **Port:** `3001` -> `3000`
+- **Variables:**
+  - `NEXT_PUBLIC_API_URL` = `http://YOUR_UNRAID_IP:4001/api`
+  - `NEXT_PUBLIC_WS_URL` = `ws://YOUR_UNRAID_IP:4001`
 
 ## Troubleshooting
 
