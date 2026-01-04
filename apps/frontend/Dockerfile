@@ -21,7 +21,9 @@ RUN pnpm --filter @loggerr/core build || true
 
 # Set build-time environment variables
 ARG NEXT_PUBLIC_API_URL=http://localhost:4001/api
+ARG NEXT_PUBLIC_WS_URL=ws://localhost:4001
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
 
 # Build frontend
 WORKDIR /app/apps/frontend
