@@ -96,7 +96,7 @@ export const handlers = [
   }),
 
   http.post(`${API_URL}/servers`, async ({ request }) => {
-    const body = await request.json();
+    const body = await request.json() as Record<string, unknown>;
     return HttpResponse.json({ id: '3', ...body, createdAt: new Date().toISOString() }, { status: 201 });
   }),
 
