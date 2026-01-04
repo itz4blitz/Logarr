@@ -16,7 +16,7 @@
   <Category>Tools: Productivity:</Category>
   <WebUI>http://[IP]:[PORT:4000]/api</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/itz4blitz/logarr/master/unraid/logarr-backend.xml</TemplateURL>
-  <Icon>https://raw.githubusercontent.com/itz4blitz/logarr/master/apps/frontend/public/icon.svg</Icon>
+  <Icon>https://raw.githubusercontent.com/itz4blitz/Logarr/master/apps/frontend/public/icon.png</Icon>
   <ExtraParams>--restart unless-stopped</ExtraParams>
   <DateInstalled></DateInstalled>
   <Description>Logarr Backend API - A unified logging dashboard for media server stacks. This is the backend API service that handles log ingestion, storage, and real-time streaming via WebSockets. Requires PostgreSQL and Redis.</Description>

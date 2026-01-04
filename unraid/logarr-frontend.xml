@@ -16,7 +16,7 @@
   <Category>Tools: Productivity:</Category>
   <WebUI>http://[IP]:[PORT:3000]</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/itz4blitz/logarr/master/unraid/logarr-frontend.xml</TemplateURL>
-  <Icon>https://raw.githubusercontent.com/itz4blitz/logarr/master/apps/frontend/public/icon.svg</Icon>
+  <Icon>https://raw.githubusercontent.com/itz4blitz/Logarr/master/apps/frontend/public/icon.png</Icon>
   <ExtraParams>--restart unless-stopped</ExtraParams>
   <DateInstalled></DateInstalled>
   <Description>Logarr Frontend - A unified logging dashboard for media server stacks. Beautiful Next.js dashboard for viewing, filtering, and searching logs from all your media server applications in real-time.</Description>
