@@ -48,6 +48,8 @@ COPY --from=builder /app/packages/provider-radarr/package.json ./packages/provid
 COPY --from=builder /app/packages/provider-radarr/dist ./packages/provider-radarr/dist
 COPY --from=builder /app/packages/provider-prowlarr/package.json ./packages/provider-prowlarr/
 COPY --from=builder /app/packages/provider-prowlarr/dist ./packages/provider-prowlarr/dist
+COPY --from=builder /app/packages/provider-plex/package.json ./packages/provider-plex/
+COPY --from=builder /app/packages/provider-plex/dist ./packages/provider-plex/dist
 
 # Copy backend
 COPY --from=builder /app/apps/backend/package.json ./apps/backend/
