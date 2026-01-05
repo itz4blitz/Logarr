@@ -8,19 +8,8 @@ import { FileIngestionService } from './file-ingestion.service';
 import { FileStateService } from './file-state.service';
 
 @Module({
-  imports: [
-    forwardRef(() => LogsModule),
-    forwardRef(() => IssuesModule),
-  ],
-  providers: [
-    FileIngestionService,
-    FileStateService,
-    FileDiscoveryService,
-  ],
-  exports: [
-    FileIngestionService,
-    FileStateService,
-    FileDiscoveryService,
-  ],
+  imports: [forwardRef(() => LogsModule), forwardRef(() => IssuesModule)],
+  providers: [FileIngestionService, FileStateService, FileDiscoveryService],
+  exports: [FileIngestionService, FileStateService, FileDiscoveryService],
 })
 export class FileIngestionModule {}

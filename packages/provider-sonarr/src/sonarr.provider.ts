@@ -2,7 +2,13 @@
  * Sonarr provider implementation
  */
 
-import { ArrBaseProvider, ArrClient, SONARR_LOG_FILE_CONFIG, type ArrHistoryRecordBase, type ArrPaginatedResponse } from '@logarr/provider-arr';
+import {
+  ArrBaseProvider,
+  ArrClient,
+  SONARR_LOG_FILE_CONFIG,
+  type ArrHistoryRecordBase,
+  type ArrPaginatedResponse,
+} from '@logarr/provider-arr';
 
 import { SonarrEventTypeNames } from './sonarr.types.js';
 
@@ -98,7 +104,9 @@ export class SonarrProvider extends ArrBaseProvider {
     return SONARR_LOG_FILE_CONFIG;
   }
 
-  protected override async getHistoryRecords(since?: Date): Promise<readonly ArrHistoryRecordBase[]> {
+  protected override async getHistoryRecords(
+    since?: Date
+  ): Promise<readonly ArrHistoryRecordBase[]> {
     const client = this.getClient();
 
     if (since) {
@@ -112,7 +120,8 @@ export class SonarrProvider extends ArrBaseProvider {
 
   protected override normalizeHistoryRecord(record: ArrHistoryRecordBase): NormalizedActivity {
     const sonarrRecord = record as SonarrHistoryRecord;
-    const eventTypeName = SonarrEventTypeNames[this.parseEventType(sonarrRecord.eventType)] ?? sonarrRecord.eventType;
+    const eventTypeName =
+      SonarrEventTypeNames[this.parseEventType(sonarrRecord.eventType)] ?? sonarrRecord.eventType;
     const activityType = this.mapEventTypeToActivityType(eventTypeName);
     const severity = this.mapActivityTypeToSeverity(activityType);
 
@@ -133,23 +142,32 @@ export class SonarrProvider extends ArrBaseProvider {
         break;
       case 'import_complete':
         title = `Imported: ${seriesTitle} ${episodeInfo}`;
-        description = episodeTitle !== '' ? `"${episodeTitle}" imported successfully` : 'Episode imported successfully';
+        description =
+          episodeTitle !== ''
+            ? `"${episodeTitle}" imported successfully`
+            : 'Episode imported successfully';
         break;
       case 'download_failed':
         title = `Download Failed: ${seriesTitle} ${episodeInfo}`;
-        description = sonarrRecord.data?.['message']?.toString() ?? `Failed to download: ${sonarrRecord.sourceTitle}`;
+        description =
+          sonarrRecord.data?.['message']?.toString() ??
+          `Failed to download: ${sonarrRecord.sourceTitle}`;
         break;
       case 'import_failed':
         title = `Import Failed: ${seriesTitle} ${episodeInfo}`;
-        description = sonarrRecord.data?.['message']?.toString() ?? `Failed to import: ${sonarrRecord.sourceTitle}`;
+        description =
+          sonarrRecord.data?.['message']?.toString() ??
+          `Failed to import: ${sonarrRecord.sourceTitle}`;
         break;
       case 'deleted':
         title = `Deleted: ${seriesTitle} ${episodeInfo}`;
-        description = episodeTitle !== '' ? `"${episodeTitle}" was deleted` : 'Episode file was deleted';
+        description =
+          episodeTitle !== '' ? `"${episodeTitle}" was deleted` : 'Episode file was deleted';
         break;
       case 'renamed':
         title = `Renamed: ${seriesTitle} ${episodeInfo}`;
-        description = episodeTitle !== '' ? `"${episodeTitle}" was renamed` : 'Episode file was renamed';
+        description =
+          episodeTitle !== '' ? `"${episodeTitle}" was renamed` : 'Episode file was renamed';
         break;
       default:
         title = `${eventTypeName}: ${seriesTitle} ${episodeInfo}`;

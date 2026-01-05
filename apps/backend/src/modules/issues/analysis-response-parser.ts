@@ -120,8 +120,8 @@ function normalizeImpact(raw: unknown): StructuredAnalysis['impact'] {
   const data = raw as Record<string, unknown>;
   const validSeverities = ['critical', 'high', 'medium', 'low'] as const;
   const rawSeverity = toString(data['severity'], 'medium').toLowerCase();
-  const severity = validSeverities.includes(rawSeverity as typeof validSeverities[number])
-    ? (rawSeverity as typeof validSeverities[number])
+  const severity = validSeverities.includes(rawSeverity as (typeof validSeverities)[number])
+    ? (rawSeverity as (typeof validSeverities)[number])
     : 'medium';
 
   return {
@@ -143,11 +143,14 @@ function normalizeRecommendations(raw: unknown): Recommendation[] {
     .sort((a, b) => a.priority - b.priority);
 }
 
-function normalizeRecommendation(raw: Record<string, unknown>, defaultPriority: number): Recommendation {
+function normalizeRecommendation(
+  raw: Record<string, unknown>,
+  defaultPriority: number
+): Recommendation {
   const validEfforts = ['low', 'medium', 'high'] as const;
   const rawEffort = toString(raw['effort'], 'medium').toLowerCase();
-  const effort = validEfforts.includes(rawEffort as typeof validEfforts[number])
-    ? (rawEffort as typeof validEfforts[number])
+  const effort = validEfforts.includes(rawEffort as (typeof validEfforts)[number])
+    ? (rawEffort as (typeof validEfforts)[number])
     : 'medium';
 
   const result: Recommendation = {
@@ -172,7 +175,7 @@ function normalizeInvestigation(raw: unknown): string[] {
 
   return raw
     .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
-    .map(item => item.trim());
+    .map((item) => item.trim());
 }
 
 /**
@@ -183,7 +186,7 @@ function createFallbackAnalysis(raw: string): StructuredAnalysis {
   logger.warn('Creating fallback analysis from raw text');
 
   // Try to extract some meaning from the raw text
-  const lines = raw.split('\n').filter(l => l.trim());
+  const lines = raw.split('\n').filter((l) => l.trim());
 
   // Look for common patterns
   const hasCritical = /critical|urgent|immediate/i.test(raw);
@@ -207,14 +210,17 @@ function createFallbackAnalysis(raw: string): StructuredAnalysis {
       usersAffected: 0,
       sessionsAffected: 0,
     },
-    recommendations: [{
-      priority: 1,
-      action: 'Review the raw analysis output',
-      rationale: 'The AI response could not be parsed into structured recommendations',
-      effort: 'low',
-    }],
-    investigation: lines.slice(0, 5).map(l => l.substring(0, 200)),
-    additionalNotes: 'This analysis was created from an unstructured AI response. Please review the explanation field for the raw output.',
+    recommendations: [
+      {
+        priority: 1,
+        action: 'Review the raw analysis output',
+        rationale: 'The AI response could not be parsed into structured recommendations',
+        effort: 'low',
+      },
+    ],
+    investigation: lines.slice(0, 5).map((l) => l.substring(0, 200)),
+    additionalNotes:
+      'This analysis was created from an unstructured AI response. Please review the explanation field for the raw output.',
   };
 }
 
@@ -249,5 +255,5 @@ function toStringArray(value: unknown): string[] {
   }
   return value
     .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
-    .map(item => item.trim());
+    .map((item) => item.trim());
 }

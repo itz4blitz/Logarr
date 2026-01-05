@@ -1,4 +1,11 @@
-import type { CorrelationPattern, LogLevel, ParsedLogEntry, LogFileConfig, LogParseContext, LogParseResult } from '@logarr/core';
+import type {
+  CorrelationPattern,
+  LogLevel,
+  ParsedLogEntry,
+  LogFileConfig,
+  LogParseContext,
+  LogParseResult,
+} from '@logarr/core';
 
 /**
  * Jellyfin log file configuration
@@ -7,18 +14,9 @@ import type { CorrelationPattern, LogLevel, ParsedLogEntry, LogFileConfig, LogPa
 export const JELLYFIN_LOG_FILE_CONFIG: LogFileConfig = {
   defaultPaths: {
     docker: ['/config/log'],
-    linux: [
-      '/var/lib/jellyfin/log',
-      '~/.local/share/jellyfin/log',
-    ],
-    windows: [
-      'C:\\ProgramData\\Jellyfin\\Server\\log',
-      '%LOCALAPPDATA%\\jellyfin\\log',
-    ],
-    macos: [
-      '~/.local/share/jellyfin/log',
-      '~/Library/Application Support/Jellyfin/log',
-    ],
+    linux: ['/var/lib/jellyfin/log', '~/.local/share/jellyfin/log'],
+    windows: ['C:\\ProgramData\\Jellyfin\\Server\\log', '%LOCALAPPDATA%\\jellyfin\\log'],
+    macos: ['~/.local/share/jellyfin/log', '~/Library/Application Support/Jellyfin/log'],
   },
   filePatterns: ['log_*.log', 'jellyfin*.log'],
   encoding: 'utf-8',

@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { AlertTriangle, ChevronRight, ChevronLeft } from "lucide-react";
-import Link from "next/link";
-import { useState, useEffect, useMemo } from "react";
+import { AlertTriangle, ChevronRight, ChevronLeft } from 'lucide-react';
+import Link from 'next/link';
+import { useState, useEffect, useMemo } from 'react';
 
-import { Skeleton } from "@/components/ui/skeleton";
-import { useFitToViewport, useFitToViewportPagination } from "@/hooks/use-fit-to-viewport";
-import { cn } from "@/lib/utils";
+import { Skeleton } from '@/components/ui/skeleton';
+import { useFitToViewport, useFitToViewportPagination } from '@/hooks/use-fit-to-viewport';
+import { cn } from '@/lib/utils';
 
 interface Issue {
   id: string;
@@ -26,8 +26,8 @@ const HEADER_HEIGHT = 28; // Title row (~14px) + mb-3 (12px) + small buffer
 const PAGINATION_HEIGHT = 40; // Pagination controls (pt-3 + mt-2 + ~24px button)
 const ROW_GAP = 0; // No gap - rows are flush
 
-const SORT_KEY = "logarr-issues-sort";
-type SortOption = "count" | "severity";
+const SORT_KEY = 'logarr-issues-sort';
+type SortOption = 'count' | 'severity';
 
 const severityOrder: Record<string, number> = {
   critical: 0,
@@ -38,12 +38,12 @@ const severityOrder: Record<string, number> = {
 };
 
 export function TopIssuesCard({ issues, loading }: TopIssuesCardProps) {
-  const [sortBy, setSortBy] = useState<SortOption>("severity");
+  const [sortBy, setSortBy] = useState<SortOption>('severity');
 
   // Load preference from localStorage
   useEffect(() => {
     const stored = localStorage.getItem(SORT_KEY);
-    if (stored && ["count", "severity"].includes(stored)) {
+    if (stored && ['count', 'severity'].includes(stored)) {
       setSortBy(stored as SortOption);
     }
   }, []);
@@ -56,14 +56,14 @@ export function TopIssuesCard({ issues, loading }: TopIssuesCardProps) {
   const sortedIssues = useMemo(() => {
     const sorted = [...issues];
     switch (sortBy) {
-      case "count":
+      case 'count':
         // Primary: count desc, Secondary: severity
         return sorted.sort((a, b) => {
           const countDiff = b.occurrenceCount - a.occurrenceCount;
           if (countDiff !== 0) return countDiff;
           return (severityOrder[a.severity] ?? 99) - (severityOrder[b.severity] ?? 99);
         });
-      case "severity":
+      case 'severity':
       default:
         // Primary: severity, Secondary: count desc
         return sorted.sort((a, b) => {
@@ -94,17 +94,21 @@ export function TopIssuesCard({ issues, loading }: TopIssuesCardProps) {
 
   if (loading) {
     return (
-      <div ref={containerRef} className="rounded-xl border bg-card p-4 flex flex-col h-full">
-        <div className="flex items-center justify-between mb-3">
+      <div ref={containerRef} className="bg-card flex h-full flex-col rounded-xl border p-4">
+        <div className="mb-3 flex items-center justify-between">
           <Skeleton className="h-4 w-24 bg-white/5" />
           <Skeleton className="h-3 w-16 bg-white/5" />
         </div>
         <div className="flex-1">
           {Array.from({ length: pageSize }).map((_, i) => (
-            <div key={i} className="flex items-center gap-2.5 px-2 rounded-lg" style={{ height: 36 }}>
-              <Skeleton className="h-5 w-12 rounded bg-white/5 shrink-0" />
+            <div
+              key={i}
+              className="flex items-center gap-2.5 rounded-lg px-2"
+              style={{ height: 36 }}
+            >
+              <Skeleton className="h-5 w-12 shrink-0 rounded bg-white/5" />
               <Skeleton className="h-3.5 flex-1 bg-white/5" />
-              <Skeleton className="h-3 w-8 bg-white/5 shrink-0" />
+              <Skeleton className="h-3 w-8 shrink-0 bg-white/5" />
             </div>
           ))}
         </div>
@@ -113,30 +117,30 @@ export function TopIssuesCard({ issues, loading }: TopIssuesCardProps) {
   }
 
   return (
-    <div ref={containerRef} className="rounded-xl border bg-card p-4 flex flex-col h-full">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-zinc-200 tracking-tight">Top Issues</h3>
+    <div ref={containerRef} className="bg-card flex h-full flex-col rounded-xl border p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-sm font-semibold tracking-tight text-zinc-200">Top Issues</h3>
         <div className="flex items-center gap-3">
           {/* Sort toggle */}
           <div className="flex items-center rounded-md border border-white/10 p-0.5">
             <button
-              onClick={() => handleSortChange("severity")}
+              onClick={() => handleSortChange('severity')}
               className={cn(
-                "px-2 py-0.5 rounded text-xs font-medium transition-colors",
-                sortBy === "severity"
-                  ? "bg-white/10 text-zinc-200"
-                  : "text-zinc-500 hover:text-zinc-400"
+                'rounded px-2 py-0.5 text-xs font-medium transition-colors',
+                sortBy === 'severity'
+                  ? 'bg-white/10 text-zinc-200'
+                  : 'text-zinc-500 hover:text-zinc-400'
               )}
             >
               Severity
             </button>
             <button
-              onClick={() => handleSortChange("count")}
+              onClick={() => handleSortChange('count')}
               className={cn(
-                "px-2 py-0.5 rounded text-xs font-medium transition-colors",
-                sortBy === "count"
-                  ? "bg-white/10 text-zinc-200"
-                  : "text-zinc-500 hover:text-zinc-400"
+                'rounded px-2 py-0.5 text-xs font-medium transition-colors',
+                sortBy === 'count'
+                  ? 'bg-white/10 text-zinc-200'
+                  : 'text-zinc-500 hover:text-zinc-400'
               )}
             >
               Count
@@ -144,7 +148,7 @@ export function TopIssuesCard({ issues, loading }: TopIssuesCardProps) {
           </div>
           <Link
             href="/issues"
-            className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300 transition-colors font-medium"
+            className="flex items-center gap-1 text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-300"
           >
             View All <ChevronRight className="h-3 w-3" />
           </Link>
@@ -152,8 +156,8 @@ export function TopIssuesCard({ issues, loading }: TopIssuesCardProps) {
       </div>
 
       {issues.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center py-4 text-center">
-          <AlertTriangle className="h-8 w-8 text-zinc-700 mb-2" />
+        <div className="flex flex-1 flex-col items-center justify-center py-4 text-center">
+          <AlertTriangle className="mb-2 h-8 w-8 text-zinc-700" />
           <p className="text-sm text-zinc-600">No open issues</p>
         </div>
       ) : (
@@ -162,22 +166,26 @@ export function TopIssuesCard({ issues, loading }: TopIssuesCardProps) {
             {paginatedIssues.map((issue) => (
               <Link key={issue.id} href={`/issues?id=${issue.id}`}>
                 <div
-                  className="flex items-center gap-2.5 px-2 rounded-lg hover:bg-white/4 transition-colors group"
+                  className="group flex items-center gap-2.5 rounded-lg px-2 transition-colors hover:bg-white/4"
                   style={{ height: 36 }}
                 >
-                  <div className={cn(
-                    "px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide shrink-0",
-                    issue.severity === "critical" && "bg-rose-500/20 text-rose-400",
-                    issue.severity === "high" && "bg-amber-500/20 text-amber-400",
-                    issue.severity === "medium" && "bg-blue-500/20 text-blue-400",
-                    issue.severity === "low" && "bg-zinc-500/20 text-zinc-400"
-                  )}>
+                  <div
+                    className={cn(
+                      'shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide uppercase',
+                      issue.severity === 'critical' && 'bg-rose-500/20 text-rose-400',
+                      issue.severity === 'high' && 'bg-amber-500/20 text-amber-400',
+                      issue.severity === 'medium' && 'bg-blue-500/20 text-blue-400',
+                      issue.severity === 'low' && 'bg-zinc-500/20 text-zinc-400'
+                    )}
+                  >
                     {issue.severity}
                   </div>
-                  <span className="text-sm text-zinc-400 group-hover:text-zinc-300 truncate flex-1 transition-colors">
+                  <span className="flex-1 truncate text-sm text-zinc-400 transition-colors group-hover:text-zinc-300">
                     {issue.title}
                   </span>
-                  <span className="text-xs text-zinc-600 tabular-nums shrink-0 font-medium">{issue.occurrenceCount.toLocaleString()}×</span>
+                  <span className="shrink-0 text-xs font-medium text-zinc-600 tabular-nums">
+                    {issue.occurrenceCount.toLocaleString()}×
+                  </span>
                 </div>
               </Link>
             ))}
@@ -185,13 +193,15 @@ export function TopIssuesCard({ issues, loading }: TopIssuesCardProps) {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between pt-3 mt-2 border-t border-white/5">
+            <div className="mt-2 flex items-center justify-between border-t border-white/5 pt-3">
               <button
                 onClick={prevPage}
                 disabled={!hasPrevPage}
                 className={cn(
-                  "p-1 rounded transition-colors",
-                  !hasPrevPage ? "text-zinc-700 cursor-not-allowed" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+                  'rounded p-1 transition-colors',
+                  !hasPrevPage
+                    ? 'cursor-not-allowed text-zinc-700'
+                    : 'text-zinc-500 hover:bg-white/5 hover:text-zinc-300'
                 )}
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -203,8 +213,10 @@ export function TopIssuesCard({ issues, loading }: TopIssuesCardProps) {
                 onClick={nextPage}
                 disabled={!hasNextPage}
                 className={cn(
-                  "p-1 rounded transition-colors",
-                  !hasNextPage ? "text-zinc-700 cursor-not-allowed" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+                  'rounded p-1 transition-colors',
+                  !hasNextPage
+                    ? 'cursor-not-allowed text-zinc-700'
+                    : 'text-zinc-500 hover:bg-white/5 hover:text-zinc-300'
                 )}
               >
                 <ChevronRight className="h-4 w-4" />

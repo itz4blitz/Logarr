@@ -96,7 +96,9 @@ Return ONLY valid JSON. No markdown code blocks around the JSON.`;
 
     // Sample Error Messages (varied examples)
     if (ctx.sampleOccurrences.length > 0) {
-      sections.push(`## Sample Error Messages (${ctx.sampleOccurrences.length} recent occurrences)`);
+      sections.push(
+        `## Sample Error Messages (${ctx.sampleOccurrences.length} recent occurrences)`
+      );
 
       for (let i = 0; i < Math.min(3, ctx.sampleOccurrences.length); i++) {
         const occ = ctx.sampleOccurrences[i]!;
@@ -112,7 +114,7 @@ ${occ.userId ? `User: ${occ.userId}` : ''}`);
     // Timeline Analysis
     sections.push(`## Timeline Analysis
 - **Trend:** ${ctx.timeline.trend}
-- **Peak Hours (UTC):** ${ctx.timeline.peakHours.length > 0 ? ctx.timeline.peakHours.map(h => `${h}:00`).join(', ') : 'No clear pattern'}
+- **Peak Hours (UTC):** ${ctx.timeline.peakHours.length > 0 ? ctx.timeline.peakHours.map((h) => `${h}:00`).join(', ') : 'No clear pattern'}
 - **Burst Detected:** ${ctx.timeline.burstDetected ? 'Yes (3+ occurrences in single hour)' : 'No'}`);
 
     // Last 24 hours chart
@@ -128,7 +130,9 @@ ${occ.userId ? `User: ${occ.userId}` : ''}`);
       sections.push(`## Affected Users (${ctx.issue.affectedUsersCount} total)`);
       for (const user of ctx.affectedUsers.slice(0, 5)) {
         const devices = user.devices.length > 0 ? user.devices.join(', ') : 'unknown device';
-        sections.push(`- **${user.userName || user.userId}**: ${user.occurrenceCount} occurrences, devices: ${devices}`);
+        sections.push(
+          `- **${user.userName || user.userId}**: ${user.occurrenceCount} occurrences, devices: ${devices}`
+        );
       }
       if (ctx.affectedUsers.length > 5) {
         sections.push(`- ... and ${ctx.affectedUsers.length - 5} more users`);
@@ -165,9 +169,8 @@ ${occ.userId ? `User: ${occ.userId}` : ''}`);
       sections.push(`## Stack Traces (${ctx.stackTraces.length} unique patterns)`);
       for (const st of ctx.stackTraces.slice(0, 2)) {
         // Truncate very long stack traces
-        const truncatedTrace = st.trace.length > 1500
-          ? st.trace.substring(0, 1500) + '\n... (truncated)'
-          : st.trace;
+        const truncatedTrace =
+          st.trace.length > 1500 ? st.trace.substring(0, 1500) + '\n... (truncated)' : st.trace;
 
         sections.push(`
 ### Pattern (${st.count} occurrences)
@@ -217,14 +220,16 @@ Please provide a helpful response in markdown format. You can reference the orig
    * Format hourly data as a simple ASCII chart
    */
   private formatHourlyChart(hourly: { hour: string; count: number }[]): string {
-    const max = Math.max(...hourly.map(h => h.count), 1);
+    const max = Math.max(...hourly.map((h) => h.count), 1);
 
-    return hourly.map(h => {
-      const barLength = Math.round((h.count / max) * 20);
-      const bar = '█'.repeat(barLength) + '░'.repeat(20 - barLength);
-      // Extract just the hour part for display
-      const hourPart = h.hour.split(' ')[1] || h.hour;
-      return `${hourPart}: ${bar} ${h.count}`;
-    }).join('\n');
+    return hourly
+      .map((h) => {
+        const barLength = Math.round((h.count / max) * 20);
+        const bar = '█'.repeat(barLength) + '░'.repeat(20 - barLength);
+        // Extract just the hour part for display
+        const hourPart = h.hour.split(' ')[1] || h.hour;
+        return `${hourPart}: ${bar} ${h.count}`;
+      })
+      .join('\n');
   }
 }

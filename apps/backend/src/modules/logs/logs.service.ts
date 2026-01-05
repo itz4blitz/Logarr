@@ -59,9 +59,7 @@ export class LogsService {
     }
 
     if (params.search) {
-      conditions.push(
-        sql`${schema.logEntries.message} ILIKE ${'%' + params.search + '%'}`
-      );
+      conditions.push(sql`${schema.logEntries.message} ILIKE ${'%' + params.search + '%'}`);
     }
 
     return conditions;

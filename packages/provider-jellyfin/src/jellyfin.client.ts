@@ -68,7 +68,9 @@ export class JellyfinClient extends EventEmitter {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Jellyfin API error: ${response.status} ${response.statusText} - ${errorText}`);
+      throw new Error(
+        `Jellyfin API error: ${response.status} ${response.statusText} - ${errorText}`
+      );
     }
 
     return response.json() as Promise<T>;

@@ -1,7 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-
 import { DATABASE_CONNECTION } from '../../database';
 import { createMockDb, configureMockDb, type MockDb } from '../../test/mock-db';
 
@@ -17,10 +16,7 @@ describe('SettingsService', () => {
     mockDb = createMockDb();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        SettingsService,
-        { provide: DATABASE_CONNECTION, useValue: mockDb },
-      ],
+      providers: [SettingsService, { provide: DATABASE_CONNECTION, useValue: mockDb }],
     }).compile();
 
     service = module.get<SettingsService>(SettingsService);

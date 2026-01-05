@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { Zap, AlertTriangle, Activity, Server } from "lucide-react";
+import { Zap, AlertTriangle, Activity, Server } from 'lucide-react';
 
 import {
   HealthBar,
@@ -10,9 +10,10 @@ import {
   NowPlayingCard,
   SourcesCard,
   TopIssuesCard,
-} from "@/components/dashboard";
-import { useDashboardStats, useActiveSessions, useServers } from "@/hooks/use-api";
-import { useSessionSocket } from "@/hooks/use-session-socket";
+} from '@/components/dashboard';
+import { useDashboardStats, useActiveSessions, useServers } from '@/hooks/use-api';
+import { useRealtimeLogDistribution } from '@/hooks/use-realtime-log-distribution';
+import { useSessionSocket } from '@/hooks/use-session-socket';
 
 export default function DashboardPage() {
   const { data, isLoading } = useDashboardStats();
@@ -22,31 +23,44 @@ export default function DashboardPage() {
   // Connect to WebSocket for real-time session updates
   useSessionSocket({ enabled: true });
 
+  // Real-time log distribution updates
+  const { data: realtimeLogDistribution } = useRealtimeLogDistribution({
+    initialData: data?.logDistribution,
+    enabled: !isLoading,
+  });
+
   const loading = isLoading || !data;
 
   return (
-    <div className="flex flex-col h-full gap-4 min-h-0 overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
       {/* Health Status Bar */}
       <HealthBar
-        health={data?.health || { status: "healthy", sources: { online: 0, total: 0 }, issues: { critical: 0, high: 0, open: 0 }, activeStreams: 0 }}
+        health={
+          data?.health || {
+            status: 'healthy',
+            sources: { online: 0, total: 0 },
+            issues: { critical: 0, high: 0, open: 0 },
+            activeStreams: 0,
+          }
+        }
         loading={loading}
       />
 
       {/* Key Metrics Row */}
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4 shrink-0">
+      <div className="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-4">
         <MetricCard
           title="Errors Today"
-          value={data?.logDistribution.error.toLocaleString() || "0"}
+          value={realtimeLogDistribution?.error.toLocaleString() || '0'}
           icon={Zap}
           href="/logs?levels=error"
           trend={data?.metrics.errorRate.trend}
           loading={loading}
           valueClassName={
-            (data?.logDistribution.error || 0) > 100
-              ? "text-rose-500"
-              : (data?.logDistribution.error || 0) > 20
-              ? "text-amber-500"
-              : undefined
+            (realtimeLogDistribution?.error || 0) > 100
+              ? 'text-rose-500'
+              : (realtimeLogDistribution?.error || 0) > 20
+                ? 'text-amber-500'
+                : undefined
           }
         />
         <MetricCard
@@ -59,7 +73,7 @@ export default function DashboardPage() {
         />
         <MetricCard
           title="Log Volume"
-          value={data?.metrics.logVolume.today.toLocaleString() || "0"}
+          value={realtimeLogDistribution?.total.toLocaleString() || '0'}
           icon={Activity}
           href="/logs"
           trend={data?.metrics.logVolume.trend}
@@ -76,27 +90,30 @@ export default function DashboardPage() {
       </div>
 
       {/* Main Content Grid - fills remaining height */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 grid-rows-[1fr_1fr] gap-4">
+      <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[1fr_1fr] gap-4 lg:grid-cols-3">
         {/* Activity Chart - spans 2 columns */}
-        <div className="lg:col-span-2 min-h-0">
-          <ActivityChart
-            data={data?.activityChart || []}
-            loading={loading}
-          />
+        <div className="min-h-0 lg:col-span-2">
+          <ActivityChart data={data?.activityChart || []} loading={loading} />
         </div>
 
         {/* Source Status */}
         <div className="min-h-0">
-          <SourcesCard
-            sources={data?.sources || []}
-            loading={loading}
-          />
+          <SourcesCard sources={data?.sources || []} loading={loading} />
         </div>
 
         {/* Log Distribution */}
         <div className="min-h-0">
           <LogDistributionChart
-            data={data?.logDistribution || { error: 0, warn: 0, info: 0, debug: 0, total: 0, topSources: [] }}
+            data={
+              realtimeLogDistribution || {
+                error: 0,
+                warn: 0,
+                info: 0,
+                debug: 0,
+                total: 0,
+                topSources: [],
+              }
+            }
             loading={loading}
           />
         </div>
@@ -112,10 +129,7 @@ export default function DashboardPage() {
 
         {/* Top Issues */}
         <div className="min-h-0">
-          <TopIssuesCard
-            issues={data?.topIssues || []}
-            loading={loading}
-          />
+          <TopIssuesCard issues={data?.topIssues || []} loading={loading} />
         </div>
       </div>
     </div>

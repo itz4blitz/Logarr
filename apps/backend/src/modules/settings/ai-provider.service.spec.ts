@@ -2,7 +2,6 @@ import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-
 import { DATABASE_CONNECTION } from '../../database';
 import { createMockDb, configureMockDb, type MockDb } from '../../test/mock-db';
 
@@ -36,10 +35,7 @@ describe('AiProviderService', () => {
     vi.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        AiProviderService,
-        { provide: DATABASE_CONNECTION, useValue: mockDb },
-      ],
+      providers: [AiProviderService, { provide: DATABASE_CONNECTION, useValue: mockDb }],
     }).compile();
 
     service = module.get<AiProviderService>(AiProviderService);
@@ -56,7 +52,7 @@ describe('AiProviderService', () => {
     it('should include openai provider', () => {
       const providers = service.getAvailableProviders();
 
-      const openai = providers.find(p => p.id === 'openai');
+      const openai = providers.find((p) => p.id === 'openai');
       expect(openai).toBeDefined();
       expect(openai?.name).toBeDefined();
     });
@@ -64,28 +60,28 @@ describe('AiProviderService', () => {
     it('should include anthropic provider', () => {
       const providers = service.getAvailableProviders();
 
-      const anthropic = providers.find(p => p.id === 'anthropic');
+      const anthropic = providers.find((p) => p.id === 'anthropic');
       expect(anthropic).toBeDefined();
     });
 
     it('should include google provider', () => {
       const providers = service.getAvailableProviders();
 
-      const google = providers.find(p => p.id === 'google');
+      const google = providers.find((p) => p.id === 'google');
       expect(google).toBeDefined();
     });
 
     it('should include ollama provider', () => {
       const providers = service.getAvailableProviders();
 
-      const ollama = providers.find(p => p.id === 'ollama');
+      const ollama = providers.find((p) => p.id === 'ollama');
       expect(ollama).toBeDefined();
     });
 
     it('should include lmstudio provider', () => {
       const providers = service.getAvailableProviders();
 
-      const lmstudio = providers.find(p => p.id === 'lmstudio');
+      const lmstudio = providers.find((p) => p.id === 'lmstudio');
       expect(lmstudio).toBeDefined();
     });
 
@@ -139,7 +135,9 @@ describe('AiProviderService', () => {
     it('should throw NotFoundException when not found', async () => {
       configureMockDb(mockDb, { select: [] });
 
-      await expect(service.getProviderSettingById('non-existent')).rejects.toThrow(NotFoundException);
+      await expect(service.getProviderSettingById('non-existent')).rejects.toThrow(
+        NotFoundException
+      );
     });
   });
 
@@ -242,7 +240,9 @@ describe('AiProviderService', () => {
     it('should throw NotFoundException when not found', async () => {
       configureMockDb(mockDb, { select: [] });
 
-      await expect(service.updateProviderSetting('non-existent', { name: 'Test' })).rejects.toThrow(NotFoundException);
+      await expect(service.updateProviderSetting('non-existent', { name: 'Test' })).rejects.toThrow(
+        NotFoundException
+      );
     });
 
     it('should unset other defaults when setting as default', async () => {
@@ -267,7 +267,9 @@ describe('AiProviderService', () => {
     it('should throw NotFoundException when not found', async () => {
       configureMockDb(mockDb, { select: [] });
 
-      await expect(service.deleteProviderSetting('non-existent')).rejects.toThrow(NotFoundException);
+      await expect(service.deleteProviderSetting('non-existent')).rejects.toThrow(
+        NotFoundException
+      );
     });
   });
 
@@ -405,7 +407,15 @@ describe('AiProviderService', () => {
   describe('getAnalysisHistory', () => {
     it('should return paginated analysis history', async () => {
       const history = [
-        { id: '1', provider: 'openai', prompt: 'test', response: 'response', tokensUsed: 100, createdAt: new Date(), serverId: 'server-1' },
+        {
+          id: '1',
+          provider: 'openai',
+          prompt: 'test',
+          response: 'response',
+          tokensUsed: 100,
+          createdAt: new Date(),
+          serverId: 'server-1',
+        },
       ];
       configureMockDb(mockDb, { select: history });
 
@@ -469,17 +479,17 @@ describe('AiProviderService', () => {
     it('should throw BadRequestException when no provider configured', async () => {
       configureMockDb(mockDb, { select: [] });
 
-      await expect(
-        service.generateAnalysisWithSystemPrompt('system', 'user')
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.generateAnalysisWithSystemPrompt('system', 'user')).rejects.toThrow(
+        BadRequestException
+      );
     });
   });
 
   describe('fetchProviderModels', () => {
     it('should throw BadRequestException for unknown provider', async () => {
-      await expect(
-        service.fetchProviderModels('unknown' as any, 'key')
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.fetchProviderModels('unknown' as any, 'key')).rejects.toThrow(
+        BadRequestException
+      );
     });
 
     it('should return fallback models on error', async () => {
@@ -493,7 +503,7 @@ describe('AiProviderService', () => {
       const models = await service.fetchProviderModels('anthropic', 'any-key');
 
       expect(models).toBeInstanceOf(Array);
-      expect(models.some(m => m.id.includes('claude'))).toBe(true);
+      expect(models.some((m) => m.id.includes('claude'))).toBe(true);
     });
   });
 });

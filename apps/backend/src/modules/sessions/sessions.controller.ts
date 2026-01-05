@@ -3,11 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 import { LogEntryDto } from '../logs/logs.dto';
 
-import {
-  SessionSearchDto,
-  SessionDto,
-  SessionTimelineDto,
-} from './sessions.dto';
+import { SessionSearchDto, SessionDto, SessionTimelineDto } from './sessions.dto';
 import { SessionsService } from './sessions.service';
 
 @ApiTags('sessions')

@@ -28,25 +28,30 @@ Then go to **Docker** > **Add Container** and the templates will appear in the d
 ## Quick Setup
 
 ### 1. Install logarr-db
+
 - Leave defaults or customize port/credentials
 - Wait for container to start and become healthy
 
 ### 2. Install logarr-redis
+
 - Leave defaults
 - Wait for container to start
 
 ### 3. Install logarr-backend
+
 - Update `DATABASE_URL` if you changed db credentials
 - Update `CORS_ORIGIN` to `http://YOUR_UNRAID_IP:3001`
 - Optionally mount log directories to `/app/logs`
 
 ### 4. Install logarr-frontend
+
 - Update `NEXT_PUBLIC_API_URL` to `http://YOUR_UNRAID_IP:4001/api`
 - Update `NEXT_PUBLIC_WS_URL` to `ws://YOUR_UNRAID_IP:4001`
 
 ## Network Configuration
 
 All containers use bridge networking by default. The containers communicate via their container names:
+
 - `logarr-db` - PostgreSQL on port 5432
 - `logarr-redis` - Redis on port 6379
 - `logarr-backend` - API on port 4000 (exposed as 4001)
@@ -93,15 +98,18 @@ If you prefer to set up containers manually without templates:
 ## Troubleshooting
 
 ### Backend won't start
+
 - Ensure logarr-db and logarr-redis are running first
 - Check DATABASE_URL and REDIS_URL are correct
 - View container logs for specific errors
 
 ### Frontend shows connection errors
+
 - Verify NEXT_PUBLIC_API_URL points to your backend
 - Ensure CORS_ORIGIN in backend matches frontend URL
 - Check that backend is running and accessible
 
 ### Logs not appearing
+
 - Mount your application log directories to `/app/logs` in the backend container
 - Configure log sources in the Logarr web UI

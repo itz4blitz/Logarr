@@ -1,14 +1,9 @@
-"use client";
+'use client';
 
-import {
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface TablePaginationProps {
   currentPage: number;
@@ -49,12 +44,12 @@ export function TablePagination({
   return (
     <div
       className={cn(
-        "flex items-center justify-between px-4 border-t bg-muted/30 shrink-0",
+        'bg-muted/30 flex shrink-0 items-center justify-between border-t px-4',
         className
       )}
       style={{ height }}
     >
-      <div className="text-sm text-muted-foreground">
+      <div className="text-muted-foreground text-sm">
         <span className="hidden sm:inline">Showing </span>
         <span className="font-medium">{startIndex + 1}</span>
         <span>-</span>

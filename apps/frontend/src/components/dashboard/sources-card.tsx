@@ -1,18 +1,17 @@
-"use client";
+'use client';
 
-import { formatDistanceToNow } from "date-fns";
-import { Server, ChevronRight, ChevronLeft } from "lucide-react";
-import Link from "next/link";
-import { useState, useEffect, useMemo } from "react";
+import { formatDistanceToNow } from 'date-fns';
+import { Server, ChevronRight, ChevronLeft } from 'lucide-react';
+import Link from 'next/link';
+import { useState, useEffect, useMemo } from 'react';
 
-import type { DashboardSource } from "@/lib/api";
+import type { DashboardSource } from '@/lib/api';
 
-import { ConnectionStatus } from "@/components/connection-status";
-import { ProviderIcon, getProviderMeta } from "@/components/provider-icon";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useFitToViewport, useFitToViewportPagination } from "@/hooks/use-fit-to-viewport";
-import { cn } from "@/lib/utils";
-
+import { ConnectionStatus } from '@/components/connection-status';
+import { ProviderIcon, getProviderMeta } from '@/components/provider-icon';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useFitToViewport, useFitToViewportPagination } from '@/hooks/use-fit-to-viewport';
+import { cn } from '@/lib/utils';
 
 interface SourcesCardProps {
   sources: DashboardSource[];
@@ -24,16 +23,16 @@ const HEADER_HEIGHT = 32; // Title row height
 const PAGINATION_HEIGHT = 44; // Pagination controls height
 const ROW_GAP = 8; // Gap between rows
 
-const SORT_KEY = "logarr-sources-sort";
-type SortOption = "name" | "lastSeen";
+const SORT_KEY = 'logarr-sources-sort';
+type SortOption = 'name' | 'lastSeen';
 
 export function SourcesCard({ sources, loading }: SourcesCardProps) {
-  const [sortBy, setSortBy] = useState<SortOption>("name");
+  const [sortBy, setSortBy] = useState<SortOption>('name');
 
   // Load preference from localStorage
   useEffect(() => {
     const stored = localStorage.getItem(SORT_KEY);
-    if (stored && ["name", "lastSeen"].includes(stored)) {
+    if (stored && ['name', 'lastSeen'].includes(stored)) {
       setSortBy(stored as SortOption);
     }
   }, []);
@@ -46,7 +45,7 @@ export function SourcesCard({ sources, loading }: SourcesCardProps) {
   const sortedSources = useMemo(() => {
     const sorted = [...sources];
     switch (sortBy) {
-      case "lastSeen":
+      case 'lastSeen':
         // Most recently seen first, then by name
         return sorted.sort((a, b) => {
           if (!a.lastSeen && !b.lastSeen) return a.name.localeCompare(b.name);
@@ -56,7 +55,7 @@ export function SourcesCard({ sources, loading }: SourcesCardProps) {
           if (timeDiff !== 0) return timeDiff;
           return a.name.localeCompare(b.name);
         });
-      case "name":
+      case 'name':
       default:
         // Pure alphabetical
         return sorted.sort((a, b) => a.name.localeCompare(b.name));
@@ -83,20 +82,20 @@ export function SourcesCard({ sources, loading }: SourcesCardProps) {
 
   if (loading) {
     return (
-      <div ref={containerRef} className="rounded-xl border bg-card p-4 flex flex-col h-full">
-        <div className="flex items-center justify-between mb-3">
+      <div ref={containerRef} className="bg-card flex h-full flex-col rounded-xl border p-4">
+        <div className="mb-3 flex items-center justify-between">
           <Skeleton className="h-4 w-20 bg-white/5" />
           <Skeleton className="h-3 w-16 bg-white/5" />
         </div>
         <div className="flex-1 space-y-2">
           {Array.from({ length: pageSize }).map((_, i) => (
-            <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-lg">
-              <Skeleton className="h-9 w-9 rounded-lg shrink-0 bg-white/5" />
-              <div className="flex-1 min-w-0 space-y-1.5">
+            <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2.5">
+              <Skeleton className="h-9 w-9 shrink-0 rounded-lg bg-white/5" />
+              <div className="min-w-0 flex-1 space-y-1.5">
                 <Skeleton className="h-3.5 w-3/4 bg-white/5" />
                 <Skeleton className="h-2.5 w-1/2 bg-white/5" />
               </div>
-              <Skeleton className="h-4 w-4 rounded bg-white/5 shrink-0" />
+              <Skeleton className="h-4 w-4 shrink-0 rounded bg-white/5" />
             </div>
           ))}
         </div>
@@ -105,30 +104,30 @@ export function SourcesCard({ sources, loading }: SourcesCardProps) {
   }
 
   return (
-    <div ref={containerRef} className="rounded-xl border bg-card p-4 flex flex-col h-full">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-zinc-200 tracking-tight">Sources</h3>
+    <div ref={containerRef} className="bg-card flex h-full flex-col rounded-xl border p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-sm font-semibold tracking-tight text-zinc-200">Sources</h3>
         <div className="flex items-center gap-3">
           {/* Sort toggle */}
           <div className="flex items-center rounded-md border border-white/10 p-0.5">
             <button
-              onClick={() => handleSortChange("name")}
+              onClick={() => handleSortChange('name')}
               className={cn(
-                "px-2 py-0.5 rounded text-xs font-medium transition-colors",
-                sortBy === "name"
-                  ? "bg-white/10 text-zinc-200"
-                  : "text-zinc-500 hover:text-zinc-400"
+                'rounded px-2 py-0.5 text-xs font-medium transition-colors',
+                sortBy === 'name'
+                  ? 'bg-white/10 text-zinc-200'
+                  : 'text-zinc-500 hover:text-zinc-400'
               )}
             >
               Name
             </button>
             <button
-              onClick={() => handleSortChange("lastSeen")}
+              onClick={() => handleSortChange('lastSeen')}
               className={cn(
-                "px-2 py-0.5 rounded text-xs font-medium transition-colors",
-                sortBy === "lastSeen"
-                  ? "bg-white/10 text-zinc-200"
-                  : "text-zinc-500 hover:text-zinc-400"
+                'rounded px-2 py-0.5 text-xs font-medium transition-colors',
+                sortBy === 'lastSeen'
+                  ? 'bg-white/10 text-zinc-200'
+                  : 'text-zinc-500 hover:text-zinc-400'
               )}
             >
               Recent
@@ -136,7 +135,7 @@ export function SourcesCard({ sources, loading }: SourcesCardProps) {
           </div>
           <Link
             href="/sources"
-            className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300 transition-colors font-medium"
+            className="flex items-center gap-1 text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-300"
           >
             Manage <ChevronRight className="h-3 w-3" />
           </Link>
@@ -144,8 +143,8 @@ export function SourcesCard({ sources, loading }: SourcesCardProps) {
       </div>
 
       {sources.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center py-4 text-center">
-          <Server className="h-10 w-10 text-zinc-700 mb-3" />
+        <div className="flex flex-1 flex-col items-center justify-center py-4 text-center">
+          <Server className="mb-3 h-10 w-10 text-zinc-700" />
           <p className="text-sm text-zinc-500">No sources configured</p>
         </div>
       ) : (
@@ -154,21 +153,27 @@ export function SourcesCard({ sources, loading }: SourcesCardProps) {
             {paginatedSources.map((source) => {
               const meta = getProviderMeta(source.providerId);
               return (
-                <Link key={source.id} href={`/sources?edit=${source.id}`} className="block group">
-                  <div className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all",
-                    "hover:bg-white/5"
-                  )}>
-                    <div className={cn(
-                      "h-9 w-9 rounded-lg flex items-center justify-center shrink-0",
-                      meta.bgColor,
-                      !source.isConnected && "opacity-40 grayscale"
-                    )}>
+                <Link key={source.id} href={`/sources?edit=${source.id}`} className="group block">
+                  <div
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all',
+                      'hover:bg-white/5'
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
+                        meta.bgColor,
+                        !source.isConnected && 'opacity-40 grayscale'
+                      )}
+                    >
                       <ProviderIcon providerId={source.providerId} size="sm" />
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-zinc-100 truncate">{source.name}</span>
+                        <span className="truncate text-sm font-semibold text-zinc-100">
+                          {source.name}
+                        </span>
                         <ConnectionStatus
                           apiConnected={source.isConnected}
                           fileIngestionEnabled={source.fileIngestionEnabled}
@@ -179,10 +184,12 @@ export function SourcesCard({ sources, loading }: SourcesCardProps) {
                       </div>
                       <span className="text-xs text-zinc-500">
                         {source.version && `v${source.version} • `}
-                        {source.lastSeen ? formatDistanceToNow(new Date(source.lastSeen), { addSuffix: true }) : "Never"}
+                        {source.lastSeen
+                          ? formatDistanceToNow(new Date(source.lastSeen), { addSuffix: true })
+                          : 'Never'}
                       </span>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-zinc-700 group-hover:text-zinc-400 transition-colors shrink-0" />
+                    <ChevronRight className="h-4 w-4 shrink-0 text-zinc-700 transition-colors group-hover:text-zinc-400" />
                   </div>
                 </Link>
               );
@@ -191,13 +198,15 @@ export function SourcesCard({ sources, loading }: SourcesCardProps) {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between pt-3 mt-2 border-t border-white/5">
+            <div className="mt-2 flex items-center justify-between border-t border-white/5 pt-3">
               <button
                 onClick={prevPage}
                 disabled={!hasPrevPage}
                 className={cn(
-                  "p-1 rounded transition-colors",
-                  !hasPrevPage ? "text-zinc-700 cursor-not-allowed" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+                  'rounded p-1 transition-colors',
+                  !hasPrevPage
+                    ? 'cursor-not-allowed text-zinc-700'
+                    : 'text-zinc-500 hover:bg-white/5 hover:text-zinc-300'
                 )}
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -209,8 +218,10 @@ export function SourcesCard({ sources, loading }: SourcesCardProps) {
                 onClick={nextPage}
                 disabled={!hasNextPage}
                 className={cn(
-                  "p-1 rounded transition-colors",
-                  !hasNextPage ? "text-zinc-700 cursor-not-allowed" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+                  'rounded p-1 transition-colors',
+                  !hasNextPage
+                    ? 'cursor-not-allowed text-zinc-700'
+                    : 'text-zinc-500 hover:bg-white/5 hover:text-zinc-300'
                 )}
               >
                 <ChevronRight className="h-4 w-4" />

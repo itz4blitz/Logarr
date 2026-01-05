@@ -1,20 +1,17 @@
-"use client";
+'use client';
 
-import { formatDistanceToNow } from "date-fns";
-import { Server, ArrowRight, Activity } from "lucide-react";
-import Link from "next/link";
+import { formatDistanceToNow } from 'date-fns';
+import { Server, ArrowRight, Activity } from 'lucide-react';
+import Link from 'next/link';
 
-import type { DashboardSource } from "@/lib/api";
+import type { DashboardSource } from '@/lib/api';
 
-import { AddSourceModal } from "@/components/add-source-modal";
-import { ConnectionStatus } from "@/components/connection-status";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
-
-
-
+import { AddSourceModal } from '@/components/add-source-modal';
+import { ConnectionStatus } from '@/components/connection-status';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 interface SourceStatusProps {
   sources: DashboardSource[];
@@ -24,11 +21,11 @@ interface SourceStatusProps {
 export function SourceStatus({ sources, loading }: SourceStatusProps) {
   if (loading) {
     return (
-      <Card className="flex flex-col min-h-0">
+      <Card className="flex min-h-0 flex-col">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">Source Status</CardTitle>
         </CardHeader>
-        <CardContent className="flex-1 min-h-0">
+        <CardContent className="min-h-0 flex-1">
           <div className="space-y-2">
             {Array.from({ length: 3 }).map((_, i) => (
               <Skeleton key={i} className="h-12 w-full" />
@@ -40,23 +37,23 @@ export function SourceStatus({ sources, loading }: SourceStatusProps) {
   }
 
   return (
-    <Card className="flex flex-col min-h-0">
+    <Card className="flex min-h-0 flex-col">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium">Source Status</CardTitle>
           <Link href="/sources">
-            <Button variant="ghost" size="sm" className="text-xs h-7 px-2">
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
               Manage
-              <ArrowRight className="h-3 w-3 ml-1" />
+              <ArrowRight className="ml-1 h-3 w-3" />
             </Button>
           </Link>
         </div>
       </CardHeader>
-      <CardContent className="flex-1 min-h-0 overflow-auto">
+      <CardContent className="min-h-0 flex-1 overflow-auto">
         {sources.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-6 text-center">
-            <Server className="h-8 w-8 text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground mb-3">No sources configured</p>
+            <Server className="text-muted-foreground mb-2 h-8 w-8" />
+            <p className="text-muted-foreground mb-3 text-sm">No sources configured</p>
             <AddSourceModal
               trigger={
                 <Button size="sm" variant="outline">
@@ -70,9 +67,9 @@ export function SourceStatus({ sources, loading }: SourceStatusProps) {
             {sources.map((source) => (
               <div
                 key={source.id}
-                className="flex items-center justify-between p-2.5 rounded-lg bg-muted/30"
+                className="bg-muted/30 flex items-center justify-between rounded-lg p-2.5"
               >
-                <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex min-w-0 items-center gap-2.5">
                   <ConnectionStatus
                     apiConnected={source.isConnected}
                     fileIngestionEnabled={source.fileIngestionEnabled}
@@ -81,28 +78,24 @@ export function SourceStatus({ sources, loading }: SourceStatusProps) {
                     variant="dot"
                   />
                   <div className="min-w-0">
-                    <span className="text-sm font-medium truncate block">
-                      {source.name}
-                    </span>
+                    <span className="block truncate text-sm font-medium">{source.name}</span>
                     {source.version && (
-                      <span className="text-xs text-muted-foreground">
-                        v{source.version}
-                      </span>
+                      <span className="text-muted-foreground text-xs">v{source.version}</span>
                     )}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 shrink-0">
+                <div className="flex shrink-0 items-center gap-3">
                   {source.activeStreams > 0 && (
                     <div className="flex items-center gap-1 text-xs text-green-500">
                       <Activity className="h-3 w-3" />
                       <span>{source.activeStreams}</span>
                     </div>
                   )}
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-muted-foreground text-xs">
                     {source.lastSeen
                       ? formatDistanceToNow(new Date(source.lastSeen), { addSuffix: true })
-                      : "Never"}
+                      : 'Never'}
                   </span>
                 </div>
               </div>

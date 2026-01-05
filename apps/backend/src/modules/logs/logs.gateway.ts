@@ -39,10 +39,7 @@ export class LogsGateway {
   private subscriptions = new Map<string, LogSubscription>();
 
   @SubscribeMessage('subscribe')
-  handleSubscribe(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() data: LogSubscription
-  ) {
+  handleSubscribe(@ConnectedSocket() client: Socket, @MessageBody() data: LogSubscription) {
     // Store full subscription for per-client filtering
     this.subscriptions.set(client.id, data);
     return { subscribed: true, filters: data };

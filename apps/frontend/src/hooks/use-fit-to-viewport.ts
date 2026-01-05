@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useRef, useState, useEffect, useMemo, useCallback } from "react";
+import { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 
 interface UseFitToViewportOptions {
   /** Height of each row in pixels */
@@ -95,16 +95,7 @@ export function useFitToViewport<T extends HTMLElement = HTMLDivElement>({
     const calculated = Math.floor(availableHeight / rowWithGap);
 
     return Math.min(Math.max(calculated, minRows), maxRows);
-  }, [
-    containerHeight,
-    isReady,
-    rowHeight,
-    headerHeight,
-    paginationHeight,
-    gap,
-    minRows,
-    maxRows,
-  ]);
+  }, [containerHeight, isReady, rowHeight, headerHeight, paginationHeight, gap, minRows, maxRows]);
 
   return {
     containerRef,
@@ -117,10 +108,7 @@ export function useFitToViewport<T extends HTMLElement = HTMLDivElement>({
 /**
  * Helper hook for managing pagination state with fit-to-viewport
  */
-export function useFitToViewportPagination<T>(
-  data: T[],
-  pageSize: number
-) {
+export function useFitToViewportPagination<T>(data: T[], pageSize: number) {
   const [currentPage, setCurrentPage] = useState(0);
 
   const totalPages = Math.max(1, Math.ceil(data.length / pageSize));
@@ -137,9 +125,12 @@ export function useFitToViewportPagination<T>(
     return data.slice(start, start + pageSize);
   }, [data, currentPage, pageSize]);
 
-  const goToPage = useCallback((page: number) => {
-    setCurrentPage(Math.max(0, Math.min(page, totalPages - 1)));
-  }, [totalPages]);
+  const goToPage = useCallback(
+    (page: number) => {
+      setCurrentPage(Math.max(0, Math.min(page, totalPages - 1)));
+    },
+    [totalPages]
+  );
 
   const nextPage = useCallback(() => {
     setCurrentPage((p) => Math.min(p + 1, totalPages - 1));

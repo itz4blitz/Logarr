@@ -1,29 +1,29 @@
-"use client";
+'use client';
 
-import { usePathname } from "next/navigation";
+import { usePathname } from 'next/navigation';
 
-import { AppSidebar } from "@/components/app-sidebar";
-import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbPage } from "@/components/ui/breadcrumb";
-import { Separator } from "@/components/ui/separator";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
-
+import { AppSidebar } from '@/components/app-sidebar';
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbPage,
+} from '@/components/ui/breadcrumb';
+import { Separator } from '@/components/ui/separator';
+import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 
 const pageNames: Record<string, string> = {
-  "/": "Dashboard",
-  "/sources": "Sources",
-  "/logs": "Logs",
-  "/sessions": "Sessions",
-  "/issues": "Issues",
-  "/settings": "Settings",
+  '/': 'Dashboard',
+  '/sources': 'Sources',
+  '/logs': 'Logs',
+  '/sessions': 'Sessions',
+  '/issues': 'Issues',
+  '/settings': 'Settings',
 };
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const pageName = pageNames[pathname] || "Dashboard";
+  const pageName = pageNames[pathname] || 'Dashboard';
 
   return (
     <SidebarProvider>
@@ -40,9 +40,7 @@ export default function DashboardLayout({
             </BreadcrumbList>
           </Breadcrumb>
         </header>
-        <main className="flex-1 min-h-0 overflow-hidden p-6 flex flex-col">
-          {children}
-        </main>
+        <main className="flex min-h-0 flex-1 flex-col overflow-hidden p-6">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );

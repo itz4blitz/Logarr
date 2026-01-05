@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useId } from "react";
+import Link from 'next/link';
+import { useId } from 'react';
 
-import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 interface SparklineProps {
   data: number[];
@@ -35,20 +35,20 @@ function Sparkline({ data, className, positive = true }: SparklineProps) {
     const prev = arr[i - 1];
     const cpx = (prev.x + point.x) / 2;
     return `${acc} C ${cpx} ${prev.y}, ${cpx} ${point.y}, ${point.x} ${point.y}`;
-  }, "");
+  }, '');
 
   // Gradient fill path
   const fillPath = `${pathData} L ${width} ${height} L 0 ${height} Z`;
 
-  const strokeColor = positive ? "#10b981" : "#f43f5e";
-  const fillColorStart = positive ? "rgba(16, 185, 129, 0.3)" : "rgba(244, 63, 94, 0.3)";
-  const fillColorEnd = positive ? "rgba(16, 185, 129, 0)" : "rgba(244, 63, 94, 0)";
+  const strokeColor = positive ? '#10b981' : '#f43f5e';
+  const fillColorStart = positive ? 'rgba(16, 185, 129, 0.3)' : 'rgba(244, 63, 94, 0.3)';
+  const fillColorEnd = positive ? 'rgba(16, 185, 129, 0)' : 'rgba(244, 63, 94, 0)';
 
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
       preserveAspectRatio="none"
-      className={cn("w-16 h-8", className)}
+      className={cn('h-8 w-16', className)}
     >
       <defs>
         <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
@@ -56,10 +56,7 @@ function Sparkline({ data, className, positive = true }: SparklineProps) {
           <stop offset="100%" stopColor={fillColorEnd} />
         </linearGradient>
       </defs>
-      <path
-        d={fillPath}
-        fill={`url(#${gradientId})`}
-      />
+      <path d={fillPath} fill={`url(#${gradientId})`} />
       <path
         d={pathData}
         fill="none"
@@ -95,10 +92,13 @@ export function MetricCard({
   valueClassName,
 }: MetricCardProps) {
   const content = (
-    <div className={cn(
-      "group relative rounded-xl border bg-card p-4 transition-all duration-300",
-      href && "hover:bg-muted/80 hover:border-border cursor-pointer hover:shadow-lg hover:shadow-black/20"
-    )}>
+    <div
+      className={cn(
+        'group bg-card relative rounded-xl border p-4 transition-all duration-300',
+        href &&
+          'hover:bg-muted/80 hover:border-border cursor-pointer hover:shadow-lg hover:shadow-black/20'
+      )}
+    >
       {loading ? (
         <div className="space-y-3">
           <Skeleton className="h-3 w-20 bg-white/5" />
@@ -106,33 +106,37 @@ export function MetricCard({
         </div>
       ) : (
         <>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[11px] font-semibold tracking-widest text-zinc-500 uppercase">
               {title}
             </span>
-            <div className="p-1.5 rounded-lg bg-white/5 group-hover:bg-white/8 transition-colors">
-              <Icon className="h-3.5 w-3.5 text-zinc-500 group-hover:text-zinc-400 transition-colors" />
+            <div className="rounded-lg bg-white/5 p-1.5 transition-colors group-hover:bg-white/8">
+              <Icon className="h-3.5 w-3.5 text-zinc-500 transition-colors group-hover:text-zinc-400" />
             </div>
           </div>
 
           <div className="flex items-end justify-between gap-3">
             <div className="min-w-0">
-              <div className={cn(
-                "text-2xl font-bold tabular-nums leading-none tracking-tight text-zinc-100",
-                valueClassName
-              )}>
+              <div
+                className={cn(
+                  'text-2xl leading-none font-bold tracking-tight text-zinc-100 tabular-nums',
+                  valueClassName
+                )}
+              >
                 {value}
               </div>
               {subtitle && (
-                <span className="text-[11px] text-zinc-500 mt-1.5 block font-medium">{subtitle}</span>
+                <span className="mt-1.5 block text-[11px] font-medium text-zinc-500">
+                  {subtitle}
+                </span>
               )}
             </div>
 
             {trend && trend.length > 1 && (
               <Sparkline
                 data={trend}
-                className="shrink-0 opacity-80 group-hover:opacity-100 transition-opacity"
-                positive={!valueClassName?.includes("red")}
+                className="shrink-0 opacity-80 transition-opacity group-hover:opacity-100"
+                positive={!valueClassName?.includes('red')}
               />
             )}
           </div>

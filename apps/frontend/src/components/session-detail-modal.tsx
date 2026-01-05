@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { formatDistanceToNow, format, intervalToDuration } from "date-fns";
+import { formatDistanceToNow, format, intervalToDuration } from 'date-fns';
 import {
   Play,
   Pause,
@@ -28,65 +28,64 @@ import {
   AlertTriangle,
   History,
   ChevronRight,
-} from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
-import { useState, useEffect } from "react";
+} from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useState, useEffect } from 'react';
 
-import type { Session, Server, LogEntry, Issue } from "@/lib/api";
+import type { Session, Server, LogEntry, Issue } from '@/lib/api';
 
-import { ProviderIcon, getProviderMeta } from "@/components/provider-icon";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useSessionLogs, useIssues, useSessions } from "@/hooks/use-api";
-import { useSessionSocket } from "@/hooks/use-session-socket";
-import { cn } from "@/lib/utils";
-
+import { ProviderIcon, getProviderMeta } from '@/components/provider-icon';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useSessionLogs, useIssues, useSessions } from '@/hooks/use-api';
+import { useSessionSocket } from '@/hooks/use-session-socket';
+import { cn } from '@/lib/utils';
 
 // ============================================================================
 // Utility Functions
 // ============================================================================
 
 function getDeviceIcon(deviceName?: string | null, clientName?: string | null) {
-  const name = (deviceName || clientName || "").toLowerCase();
-  if (name.includes("tv") || name.includes("android tv") || name.includes("fire")) {
+  const name = (deviceName || clientName || '').toLowerCase();
+  if (name.includes('tv') || name.includes('android tv') || name.includes('fire')) {
     return Tv;
   }
-  if (name.includes("mobile") || name.includes("phone") || name.includes("ios") || name.includes("android")) {
+  if (
+    name.includes('mobile') ||
+    name.includes('phone') ||
+    name.includes('ios') ||
+    name.includes('android')
+  ) {
     return Smartphone;
   }
   return Monitor;
 }
 
 function MediaTypeIcon({ itemType, className }: { itemType?: string | null; className?: string }) {
-  const type = (itemType || "").toLowerCase();
-  if (type.includes("episode") || type.includes("series")) return <Tv2 className={className} />;
-  if (type.includes("movie")) return <Film className={className} />;
-  if (type.includes("audio") || type.includes("music")) return <Music className={className} />;
+  const type = (itemType || '').toLowerCase();
+  if (type.includes('episode') || type.includes('series')) return <Tv2 className={className} />;
+  if (type.includes('movie')) return <Film className={className} />;
+  if (type.includes('audio') || type.includes('music')) return <Music className={className} />;
   return <ImageIcon className={className} />;
 }
 
 function formatDuration(ticks: string | null): string {
-  if (!ticks) return "--:--";
+  if (!ticks) return '--:--';
   const seconds = Math.floor(parseInt(ticks) / 10000000);
   const hours = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
   const secs = seconds % 60;
   if (hours > 0) {
-    return `${hours}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
 function getProgress(positionTicks: string | null, runTimeTicks: string | null): number {
@@ -99,31 +98,31 @@ function getProgress(positionTicks: string | null, runTimeTicks: string | null):
 
 function getMediaImageUrl(server: Server | undefined, itemId: string | null): string | null {
   if (!server || !itemId) return null;
-  const baseUrl = server.url.replace(/\/$/, "");
+  const baseUrl = server.url.replace(/\/$/, '');
   return `${baseUrl}/Items/${itemId}/Images/Primary?maxHeight=400&quality=90`;
 }
 
 function getUserAvatarUrl(server: Server | undefined, userId: string | null): string | null {
   if (!server || !userId) return null;
-  const baseUrl = server.url.replace(/\/$/, "");
+  const baseUrl = server.url.replace(/\/$/, '');
   return `${baseUrl}/Users/${userId}/Images/Primary?maxHeight=64&quality=90`;
 }
 
 function getUserProfileUrl(server: Server | undefined, userId: string | null): string | null {
   if (!server || !userId) return null;
-  const baseUrl = server.url.replace(/\/$/, "");
+  const baseUrl = server.url.replace(/\/$/, '');
   return `${baseUrl}/web/index.html#!/dashboard/users/profile?userId=${userId}`;
 }
 
 function getPlayMethodLabel(playMethod?: string | null): string {
-  if (!playMethod) return "Unknown";
+  if (!playMethod) return 'Unknown';
   switch (playMethod.toLowerCase()) {
-    case "directplay":
-      return "Direct Play";
-    case "directstream":
-      return "Direct Stream";
-    case "transcode":
-      return "Transcoding";
+    case 'directplay':
+      return 'Direct Play';
+    case 'directstream':
+      return 'Direct Stream';
+    case 'transcode':
+      return 'Transcoding';
     default:
       return playMethod;
   }
@@ -131,37 +130,37 @@ function getPlayMethodLabel(playMethod?: string | null): string {
 
 function getTranscodeReasonLabel(reason: string): string {
   const labels: Record<string, string> = {
-    ContainerNotSupported: "Container not supported",
-    VideoCodecNotSupported: "Video codec not supported",
-    AudioCodecNotSupported: "Audio codec not supported",
-    SubtitleCodecNotSupported: "Subtitle codec not supported",
-    AudioIsExternal: "External audio",
-    SecondaryAudioNotSupported: "Secondary audio not supported",
-    VideoProfileNotSupported: "Video profile not supported",
-    VideoLevelNotSupported: "Video level not supported",
-    VideoBitDepthNotSupported: "Video bit depth not supported",
-    VideoResolutionNotSupported: "Resolution not supported",
-    RefFramesNotSupported: "Reference frames not supported",
-    AnamorphicVideoNotSupported: "Anamorphic video not supported",
-    AudioBitrateNotSupported: "Audio bitrate not supported",
-    AudioChannelsNotSupported: "Audio channels not supported",
-    AudioSampleRateNotSupported: "Audio sample rate not supported",
+    ContainerNotSupported: 'Container not supported',
+    VideoCodecNotSupported: 'Video codec not supported',
+    AudioCodecNotSupported: 'Audio codec not supported',
+    SubtitleCodecNotSupported: 'Subtitle codec not supported',
+    AudioIsExternal: 'External audio',
+    SecondaryAudioNotSupported: 'Secondary audio not supported',
+    VideoProfileNotSupported: 'Video profile not supported',
+    VideoLevelNotSupported: 'Video level not supported',
+    VideoBitDepthNotSupported: 'Video bit depth not supported',
+    VideoResolutionNotSupported: 'Resolution not supported',
+    RefFramesNotSupported: 'Reference frames not supported',
+    AnamorphicVideoNotSupported: 'Anamorphic video not supported',
+    AudioBitrateNotSupported: 'Audio bitrate not supported',
+    AudioChannelsNotSupported: 'Audio channels not supported',
+    AudioSampleRateNotSupported: 'Audio sample rate not supported',
   };
-  return labels[reason] || reason.replace(/([A-Z])/g, " $1").trim();
+  return labels[reason] || reason.replace(/([A-Z])/g, ' $1').trim();
 }
 
 function getSeverityColor(severity: string) {
   switch (severity) {
-    case "critical":
-      return "bg-red-500/10 text-red-500 border-red-500/30";
-    case "high":
-      return "bg-orange-500/10 text-orange-500 border-orange-500/30";
-    case "medium":
-      return "bg-yellow-500/10 text-yellow-500 border-yellow-500/30";
-    case "low":
-      return "bg-blue-500/10 text-blue-500 border-blue-500/30";
+    case 'critical':
+      return 'bg-red-500/10 text-red-500 border-red-500/30';
+    case 'high':
+      return 'bg-orange-500/10 text-orange-500 border-orange-500/30';
+    case 'medium':
+      return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30';
+    case 'low':
+      return 'bg-blue-500/10 text-blue-500 border-blue-500/30';
     default:
-      return "bg-zinc-500/10 text-zinc-400 border-zinc-500/30";
+      return 'bg-zinc-500/10 text-zinc-400 border-zinc-500/30';
   }
 }
 
@@ -179,21 +178,16 @@ function CopyButton({ text, label }: { text: string; label?: string }) {
   };
 
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      className="h-6 px-2 text-xs"
-      onClick={handleCopy}
-    >
+    <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={handleCopy}>
       {copied ? (
         <>
-          <Check className="h-3 w-3 mr-1" />
+          <Check className="mr-1 h-3 w-3" />
           Copied
         </>
       ) : (
         <>
-          <Copy className="h-3 w-3 mr-1" />
-          {label || "Copy"}
+          <Copy className="mr-1 h-3 w-3" />
+          {label || 'Copy'}
         </>
       )}
     </Button>
@@ -202,45 +196,64 @@ function CopyButton({ text, label }: { text: string; label?: string }) {
 
 function LogLevelBadge({ level }: { level: string }) {
   const colors: Record<string, string> = {
-    error: "bg-red-500/10 text-red-500 border-red-500/20",
-    warn: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
-    info: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-    debug: "bg-zinc-500/10 text-zinc-500 border-zinc-500/20",
+    error: 'bg-red-500/10 text-red-500 border-red-500/20',
+    warn: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
+    info: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+    debug: 'bg-zinc-500/10 text-zinc-500 border-zinc-500/20',
   };
   return (
     <Badge
       variant="outline"
-      className={cn("uppercase text-[10px] font-medium px-1.5 py-0", colors[level] || colors.info)}
+      className={cn('px-1.5 py-0 text-[10px] font-medium uppercase', colors[level] || colors.info)}
     >
       {level}
     </Badge>
   );
 }
 
-function InfoRow({ icon: Icon, label, value, mono = false }: { icon: React.ElementType; label: string; value: React.ReactNode; mono?: boolean }) {
+function InfoRow({
+  icon: Icon,
+  label,
+  value,
+  mono = false,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: React.ReactNode;
+  mono?: boolean;
+}) {
   return (
     <div className="flex items-start gap-3">
-      <Icon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+      <Icon className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
       <div className="min-w-0 flex-1">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className={cn("text-sm font-medium truncate", mono && "font-mono text-xs")}>{value}</p>
+        <p className="text-muted-foreground text-xs">{label}</p>
+        <p className={cn('truncate text-sm font-medium', mono && 'font-mono text-xs')}>{value}</p>
       </div>
     </div>
   );
 }
 
-function StatCard({ label, value, icon: Icon, color }: { label: string; value: string | number; icon: React.ElementType; color?: string }) {
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  color,
+}: {
+  label: string;
+  value: string | number;
+  icon: React.ElementType;
+  color?: string;
+}) {
   return (
-    <div className="bg-muted/30 rounded-lg p-3 space-y-1">
+    <div className="bg-muted/30 space-y-1 rounded-lg p-3">
       <div className="flex items-center gap-2">
-        <Icon className={cn("h-4 w-4", color || "text-muted-foreground")} />
-        <span className="text-xs text-muted-foreground">{label}</span>
+        <Icon className={cn('h-4 w-4', color || 'text-muted-foreground')} />
+        <span className="text-muted-foreground text-xs">{label}</span>
       </div>
       <p className="text-lg font-semibold tabular-nums">{value}</p>
     </div>
   );
 }
-
 
 // ============================================================================
 // Tab Content Components
@@ -256,62 +269,75 @@ function OverviewTab({ session, server }: { session: Session; server?: Server })
       <div className="space-y-6">
         {/* Playback Info */}
         <div className="space-y-3">
-          <h4 className="text-sm font-semibold flex items-center gap-2">
+          <h4 className="flex items-center gap-2 text-sm font-semibold">
             <Settings className="h-4 w-4" />
             Playback Details
           </h4>
-          <div className="bg-muted/30 rounded-lg p-4 space-y-3">
+          <div className="bg-muted/30 space-y-3 rounded-lg p-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-xs text-muted-foreground">Play Method</p>
-                <div className="flex items-center gap-2 mt-1">
+                <p className="text-muted-foreground text-xs">Play Method</p>
+                <div className="mt-1 flex items-center gap-2">
                   {isTranscoding ? (
                     <Zap className="h-4 w-4 text-orange-500" />
                   ) : (
                     <Wifi className="h-4 w-4 text-green-500" />
                   )}
-                  <span className={cn("text-sm font-medium", isTranscoding ? "text-orange-500" : "text-green-500")}>
+                  <span
+                    className={cn(
+                      'text-sm font-medium',
+                      isTranscoding ? 'text-orange-500' : 'text-green-500'
+                    )}
+                  >
                     {getPlayMethodLabel(nowPlaying?.playMethod)}
                   </span>
                 </div>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Container</p>
-                <p className="text-sm font-medium mt-1 uppercase">{nowPlaying?.container || "Unknown"}</p>
+                <p className="text-muted-foreground text-xs">Container</p>
+                <p className="mt-1 text-sm font-medium uppercase">
+                  {nowPlaying?.container || 'Unknown'}
+                </p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-xs text-muted-foreground">Video Codec</p>
-                <p className="text-sm font-medium mt-1 uppercase">{nowPlaying?.videoCodec || "N/A"}</p>
+                <p className="text-muted-foreground text-xs">Video Codec</p>
+                <p className="mt-1 text-sm font-medium uppercase">
+                  {nowPlaying?.videoCodec || 'N/A'}
+                </p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Audio Codec</p>
-                <p className="text-sm font-medium mt-1 uppercase">{nowPlaying?.audioCodec || "N/A"}</p>
+                <p className="text-muted-foreground text-xs">Audio Codec</p>
+                <p className="mt-1 text-sm font-medium uppercase">
+                  {nowPlaying?.audioCodec || 'N/A'}
+                </p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Transcode Reasons */}
-        {isTranscoding && nowPlaying?.transcodeReasons && nowPlaying.transcodeReasons.length > 0 && (
-          <div className="space-y-3">
-            <h4 className="text-sm font-semibold flex items-center gap-2">
-              <Zap className="h-4 w-4 text-orange-500" />
-              Transcode Reasons
-            </h4>
-            <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4">
-              <ul className="space-y-2">
-                {nowPlaying.transcodeReasons.map((reason, i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm">
-                    <div className="h-1.5 w-1.5 rounded-full bg-orange-500 shrink-0" />
-                    <span className="text-orange-200">{getTranscodeReasonLabel(reason)}</span>
-                  </li>
-                ))}
-              </ul>
+        {isTranscoding &&
+          nowPlaying?.transcodeReasons &&
+          nowPlaying.transcodeReasons.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="flex items-center gap-2 text-sm font-semibold">
+                <Zap className="h-4 w-4 text-orange-500" />
+                Transcode Reasons
+              </h4>
+              <div className="rounded-lg border border-orange-500/20 bg-orange-500/10 p-4">
+                <ul className="space-y-2">
+                  {nowPlaying.transcodeReasons.map((reason, i) => (
+                    <li key={i} className="flex items-center gap-2 text-sm">
+                      <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-orange-500" />
+                      <span className="text-orange-200">{getTranscodeReasonLabel(reason)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
-          </div>
-        )}
+          )}
       </div>
 
       {/* Right Column */}
@@ -319,31 +345,35 @@ function OverviewTab({ session, server }: { session: Session; server?: Server })
         {/* Media Info */}
         {nowPlaying && (
           <div className="space-y-3">
-            <h4 className="text-sm font-semibold flex items-center gap-2">
+            <h4 className="flex items-center gap-2 text-sm font-semibold">
               <Film className="h-4 w-4" />
               Media Information
             </h4>
-            <div className="bg-muted/30 rounded-lg p-4 space-y-3">
+            <div className="bg-muted/30 space-y-3 rounded-lg p-4">
               {nowPlaying.seriesName && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Series</p>
-                  <p className="text-sm font-medium mt-1">{nowPlaying.seriesName}</p>
+                  <p className="text-muted-foreground text-xs">Series</p>
+                  <p className="mt-1 text-sm font-medium">{nowPlaying.seriesName}</p>
                 </div>
               )}
               {nowPlaying.seasonName && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Season</p>
-                  <p className="text-sm font-medium mt-1">{nowPlaying.seasonName}</p>
+                  <p className="text-muted-foreground text-xs">Season</p>
+                  <p className="mt-1 text-sm font-medium">{nowPlaying.seasonName}</p>
                 </div>
               )}
               <div>
-                <p className="text-xs text-muted-foreground">Type</p>
-                <p className="text-sm font-medium mt-1">{session.nowPlayingItemType || "Unknown"}</p>
+                <p className="text-muted-foreground text-xs">Type</p>
+                <p className="mt-1 text-sm font-medium">
+                  {session.nowPlayingItemType || 'Unknown'}
+                </p>
               </div>
               {nowPlaying.runTimeTicks && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Runtime</p>
-                  <p className="text-sm font-medium mt-1">{formatDuration(nowPlaying.runTimeTicks)}</p>
+                  <p className="text-muted-foreground text-xs">Runtime</p>
+                  <p className="mt-1 text-sm font-medium">
+                    {formatDuration(nowPlaying.runTimeTicks)}
+                  </p>
                 </div>
               )}
             </div>
@@ -352,7 +382,7 @@ function OverviewTab({ session, server }: { session: Session; server?: Server })
 
         {/* Session Stats */}
         <div className="space-y-3">
-          <h4 className="text-sm font-semibold flex items-center gap-2">
+          <h4 className="flex items-center gap-2 text-sm font-semibold">
             <Activity className="h-4 w-4" />
             Session Stats
           </h4>
@@ -364,22 +394,27 @@ function OverviewTab({ session, server }: { session: Session; server?: Server })
                   start: new Date(session.startedAt),
                   end: session.endedAt ? new Date(session.endedAt) : new Date(),
                 });
-                return [
-                  duration.hours && `${duration.hours}h`,
-                  duration.minutes && `${duration.minutes}m`,
-                  duration.seconds && `${duration.seconds}s`,
-                ].filter(Boolean).join(" ") || "< 1s";
+                return (
+                  [
+                    duration.hours && `${duration.hours}h`,
+                    duration.minutes && `${duration.minutes}m`,
+                    duration.seconds && `${duration.seconds}s`,
+                  ]
+                    .filter(Boolean)
+                    .join(' ') || '< 1s'
+                );
               })()}
               icon={Clock}
             />
             <StatCard
               label="Progress"
-              value={session.nowPlaying?.runTimeTicks
-                ? `${getProgress(session.nowPlaying.positionTicks, session.nowPlaying.runTimeTicks)}%`
-                : "Live"
+              value={
+                session.nowPlaying?.runTimeTicks
+                  ? `${getProgress(session.nowPlaying.positionTicks, session.nowPlaying.runTimeTicks)}%`
+                  : 'Live'
               }
               icon={Activity}
-              color={session.isActive ? "text-green-500" : undefined}
+              color={session.isActive ? 'text-green-500' : undefined}
             />
           </div>
         </div>
@@ -388,13 +423,19 @@ function OverviewTab({ session, server }: { session: Session; server?: Server })
         {nowPlaying && (nowPlaying.isPaused || nowPlaying.isMuted) && (
           <div className="flex gap-2">
             {nowPlaying.isPaused && (
-              <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">
-                <Pause className="h-3 w-3 mr-1" />
+              <Badge
+                variant="secondary"
+                className="border-yellow-500/20 bg-yellow-500/10 text-yellow-500"
+              >
+                <Pause className="mr-1 h-3 w-3" />
                 Paused
               </Badge>
             )}
             {nowPlaying.isMuted && (
-              <Badge variant="secondary" className="bg-zinc-500/10 text-zinc-400 border-zinc-500/20">
+              <Badge
+                variant="secondary"
+                className="border-zinc-500/20 bg-zinc-500/10 text-zinc-400"
+              >
                 Muted
               </Badge>
             )}
@@ -416,32 +457,34 @@ function UserDeviceTab({ session, server }: { session: Session; server?: Server 
       <div className="space-y-6">
         {/* User Info */}
         <div className="space-y-3">
-          <h4 className="text-sm font-semibold flex items-center gap-2">
+          <h4 className="flex items-center gap-2 text-sm font-semibold">
             <User className="h-4 w-4" />
             User
           </h4>
           <div className="bg-muted/30 rounded-lg p-4">
             <div className="flex items-center gap-4">
               <Avatar className="h-14 w-14">
-                <AvatarImage src={userAvatarUrl || undefined} alt={session.userName || "User"} />
+                <AvatarImage src={userAvatarUrl || undefined} alt={session.userName || 'User'} />
                 <AvatarFallback className="text-lg">
-                  {(session.userName || "U").charAt(0).toUpperCase()}
+                  {(session.userName || 'U').charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-lg">{session.userName || "Unknown User"}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-lg font-semibold">{session.userName || 'Unknown User'}</p>
                 {session.userId && (
-                  <div className="flex items-center gap-2 mt-1">
-                    <p className="text-xs text-muted-foreground font-mono truncate">{session.userId.slice(0, 12)}...</p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <p className="text-muted-foreground truncate font-mono text-xs">
+                      {session.userId.slice(0, 12)}...
+                    </p>
                     <CopyButton text={session.userId} />
                   </div>
                 )}
               </div>
             </div>
             {userProfileUrl && (
-              <Button variant="outline" size="sm" className="w-full mt-3" asChild>
+              <Button variant="outline" size="sm" className="mt-3 w-full" asChild>
                 <a href={userProfileUrl} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                  <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
                   View User Profile
                 </a>
               </Button>
@@ -451,7 +494,7 @@ function UserDeviceTab({ session, server }: { session: Session; server?: Server 
 
         {/* Network Info */}
         <div className="space-y-3">
-          <h4 className="text-sm font-semibold flex items-center gap-2">
+          <h4 className="flex items-center gap-2 text-sm font-semibold">
             <Globe className="h-4 w-4" />
             Network
           </h4>
@@ -459,13 +502,13 @@ function UserDeviceTab({ session, server }: { session: Session; server?: Server 
             {session.ipAddress ? (
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground">IP Address</p>
-                  <p className="text-sm font-mono mt-1">{session.ipAddress}</p>
+                  <p className="text-muted-foreground text-xs">IP Address</p>
+                  <p className="mt-1 font-mono text-sm">{session.ipAddress}</p>
                 </div>
                 <CopyButton text={session.ipAddress} />
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No network information available</p>
+              <p className="text-muted-foreground text-sm">No network information available</p>
             )}
           </div>
         </div>
@@ -475,15 +518,15 @@ function UserDeviceTab({ session, server }: { session: Session; server?: Server 
       <div className="space-y-6">
         {/* Device Info */}
         <div className="space-y-3">
-          <h4 className="text-sm font-semibold flex items-center gap-2">
+          <h4 className="flex items-center gap-2 text-sm font-semibold">
             <DeviceIcon className="h-4 w-4" />
             Device
           </h4>
-          <div className="bg-muted/30 rounded-lg p-4 space-y-4">
+          <div className="bg-muted/30 space-y-4 rounded-lg p-4">
             <InfoRow
               icon={DeviceIcon}
               label="Device Name"
-              value={session.deviceName || "Unknown"}
+              value={session.deviceName || 'Unknown'}
             />
             {session.clientName && (
               <InfoRow
@@ -502,8 +545,10 @@ function UserDeviceTab({ session, server }: { session: Session; server?: Server 
             {session.deviceId && (
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground">Device ID</p>
-                  <p className="text-xs font-mono truncate mt-1">{session.deviceId.slice(0, 20)}...</p>
+                  <p className="text-muted-foreground text-xs">Device ID</p>
+                  <p className="mt-1 truncate font-mono text-xs">
+                    {session.deviceId.slice(0, 20)}...
+                  </p>
                 </div>
                 <CopyButton text={session.deviceId} />
               </div>
@@ -514,18 +559,23 @@ function UserDeviceTab({ session, server }: { session: Session; server?: Server 
         {/* Server Info */}
         {server && (
           <div className="space-y-3">
-            <h4 className="text-sm font-semibold flex items-center gap-2">
+            <h4 className="flex items-center gap-2 text-sm font-semibold">
               <ServerIcon className="h-4 w-4" />
               Server
             </h4>
             <div className="bg-muted/30 rounded-lg p-4">
               <div className="flex items-center gap-3">
-                <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center", getProviderMeta(server.providerId).bgColor)}>
+                <div
+                  className={cn(
+                    'flex h-10 w-10 items-center justify-center rounded-lg',
+                    getProviderMeta(server.providerId).bgColor
+                  )}
+                >
                   <ProviderIcon providerId={server.providerId} size="md" />
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="font-semibold">{server.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">{server.url}</p>
+                  <p className="text-muted-foreground truncate text-xs">{server.url}</p>
                 </div>
               </div>
             </div>
@@ -535,19 +585,21 @@ function UserDeviceTab({ session, server }: { session: Session; server?: Server 
         {/* Session IDs */}
         <div className="space-y-3">
           <h4 className="text-sm font-semibold">Session Identifiers</h4>
-          <div className="bg-muted/30 rounded-lg p-4 space-y-3">
+          <div className="bg-muted/30 space-y-3 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-muted-foreground">Session ID</p>
-                <p className="text-xs font-mono truncate max-w-[180px] mt-1">{session.id}</p>
+                <p className="text-muted-foreground text-xs">Session ID</p>
+                <p className="mt-1 max-w-[180px] truncate font-mono text-xs">{session.id}</p>
               </div>
               <CopyButton text={session.id} />
             </div>
             {session.externalId && (
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground">External ID</p>
-                  <p className="text-xs font-mono truncate max-w-[180px] mt-1">{session.externalId}</p>
+                  <p className="text-muted-foreground text-xs">External ID</p>
+                  <p className="mt-1 max-w-[180px] truncate font-mono text-xs">
+                    {session.externalId}
+                  </p>
                 </div>
                 <CopyButton text={session.externalId} />
               </div>
@@ -564,7 +616,7 @@ function UserHistoryTab({ session, userId }: { session: Session; userId: string 
 
   // Filter sessions for this user
   const userSessions = allSessions
-    ?.filter(s => s.userId === userId && s.id !== session.id)
+    ?.filter((s) => s.userId === userId && s.id !== session.id)
     .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
     .slice(0, 10);
 
@@ -581,9 +633,9 @@ function UserHistoryTab({ session, userId }: { session: Session; userId: string 
   if (!userId) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <User className="h-10 w-10 text-muted-foreground/50 mb-3" />
-        <p className="font-medium text-muted-foreground">No user identified</p>
-        <p className="text-sm text-muted-foreground/70 mt-1">
+        <User className="text-muted-foreground/50 mb-3 h-10 w-10" />
+        <p className="text-muted-foreground font-medium">No user identified</p>
+        <p className="text-muted-foreground/70 mt-1 text-sm">
           User history unavailable for anonymous sessions
         </p>
       </div>
@@ -593,9 +645,9 @@ function UserHistoryTab({ session, userId }: { session: Session; userId: string 
   if (!userSessions || userSessions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <History className="h-10 w-10 text-muted-foreground/50 mb-3" />
-        <p className="font-medium text-muted-foreground">No previous sessions</p>
-        <p className="text-sm text-muted-foreground/70 mt-1">
+        <History className="text-muted-foreground/50 mb-3 h-10 w-10" />
+        <p className="text-muted-foreground font-medium">No previous sessions</p>
+        <p className="text-muted-foreground/70 mt-1 text-sm">
           This is the first recorded session for this user
         </p>
       </div>
@@ -604,35 +656,40 @@ function UserHistoryTab({ session, userId }: { session: Session; userId: string 
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Recent sessions from <span className="font-medium text-foreground">{session.userName}</span>
+      <p className="text-muted-foreground text-sm">
+        Recent sessions from <span className="text-foreground font-medium">{session.userName}</span>
       </p>
       <div className="space-y-2">
         {userSessions.map((s) => (
           <div
             key={s.id}
-            className="flex items-center gap-3 rounded-lg border border-border/50 bg-muted/20 p-3 hover:bg-muted/30 transition-colors"
+            className="border-border/50 bg-muted/20 hover:bg-muted/30 flex items-center gap-3 rounded-lg border p-3 transition-colors"
           >
             <div className="shrink-0">
-              <MediaTypeIcon itemType={s.nowPlayingItemType} className="h-5 w-5 text-muted-foreground" />
+              <MediaTypeIcon
+                itemType={s.nowPlayingItemType}
+                className="text-muted-foreground h-5 w-5"
+              />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{s.nowPlayingItemName || "Unknown Media"}</p>
-              <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">
+                {s.nowPlayingItemName || 'Unknown Media'}
+              </p>
+              <div className="text-muted-foreground mt-0.5 flex items-center gap-2 text-xs">
                 <span>{s.deviceName || s.clientName}</span>
                 <span>•</span>
                 <span>{formatDistanceToNow(new Date(s.startedAt), { addSuffix: true })}</span>
               </div>
             </div>
-            <Badge variant={s.isActive ? "default" : "secondary"} className="text-xs">
-              {s.isActive ? "Active" : "Ended"}
+            <Badge variant={s.isActive ? 'default' : 'secondary'} className="text-xs">
+              {s.isActive ? 'Active' : 'Ended'}
             </Badge>
           </div>
         ))}
       </div>
       <Link
-        href={`/sessions?search=${encodeURIComponent(session.userName || "")}`}
-        className="flex items-center justify-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors pt-2"
+        href={`/sessions?search=${encodeURIComponent(session.userName || '')}`}
+        className="text-muted-foreground hover:text-foreground flex items-center justify-center gap-1 pt-2 text-sm transition-colors"
       >
         View all sessions <ChevronRight className="h-4 w-4" />
       </Link>
@@ -645,13 +702,14 @@ function IssuesTab({ userId, userName }: { userId: string | null; userName: stri
   const { data: issues, isLoading } = useIssues({
     search: userId || userName || undefined,
     limit: 20,
-    sortBy: "lastSeen",
-    sortOrder: "desc",
+    sortBy: 'lastSeen',
+    sortOrder: 'desc',
   });
 
   // Filter to only show error-related issues
   const relevantIssues = issues?.filter(
-    (issue) => issue.severity === "critical" || issue.severity === "high" || issue.severity === "medium"
+    (issue) =>
+      issue.severity === 'critical' || issue.severity === 'high' || issue.severity === 'medium'
   );
 
   if (isLoading) {
@@ -667,9 +725,9 @@ function IssuesTab({ userId, userName }: { userId: string | null; userName: stri
   if (!userId && !userName) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <User className="h-10 w-10 text-muted-foreground/50 mb-3" />
-        <p className="font-medium text-muted-foreground">No user identified</p>
-        <p className="text-sm text-muted-foreground/70 mt-1">
+        <User className="text-muted-foreground/50 mb-3 h-10 w-10" />
+        <p className="text-muted-foreground font-medium">No user identified</p>
+        <p className="text-muted-foreground/70 mt-1 text-sm">
           Cannot search for issues without user context
         </p>
       </div>
@@ -679,9 +737,9 @@ function IssuesTab({ userId, userName }: { userId: string | null; userName: stri
   if (!relevantIssues || relevantIssues.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <AlertTriangle className="h-10 w-10 text-green-500/50 mb-3" />
-        <p className="font-medium text-muted-foreground">No issues found</p>
-        <p className="text-sm text-muted-foreground/70 mt-1">
+        <AlertTriangle className="mb-3 h-10 w-10 text-green-500/50" />
+        <p className="text-muted-foreground font-medium">No issues found</p>
+        <p className="text-muted-foreground/70 mt-1 text-sm">
           No errors or issues associated with this user
         </p>
       </div>
@@ -690,39 +748,41 @@ function IssuesTab({ userId, userName }: { userId: string | null; userName: stri
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Issues affecting <span className="font-medium text-foreground">{userName || "this user"}</span>
+      <p className="text-muted-foreground text-sm">
+        Issues affecting{' '}
+        <span className="text-foreground font-medium">{userName || 'this user'}</span>
       </p>
       <div className="space-y-2">
         {relevantIssues.map((issue) => (
-          <Link
-            key={issue.id}
-            href={`/issues?id=${issue.id}`}
-            className="block"
-          >
-            <div className="flex items-start gap-3 rounded-lg border border-border/50 bg-muted/20 p-3 hover:bg-muted/30 transition-colors">
+          <Link key={issue.id} href={`/issues?id=${issue.id}`} className="block">
+            <div className="border-border/50 bg-muted/20 hover:bg-muted/30 flex items-start gap-3 rounded-lg border p-3 transition-colors">
               <Badge
                 variant="outline"
-                className={cn("shrink-0 uppercase text-[10px] font-medium", getSeverityColor(issue.severity))}
+                className={cn(
+                  'shrink-0 text-[10px] font-medium uppercase',
+                  getSeverityColor(issue.severity)
+                )}
               >
                 {issue.severity}
               </Badge>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium line-clamp-1">{issue.title}</p>
-                <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+              <div className="min-w-0 flex-1">
+                <p className="line-clamp-1 text-sm font-medium">{issue.title}</p>
+                <div className="text-muted-foreground mt-1 flex items-center gap-2 text-xs">
                   <span>{issue.occurrenceCount} occurrences</span>
                   <span>•</span>
-                  <span>Last seen {formatDistanceToNow(new Date(issue.lastSeen), { addSuffix: true })}</span>
+                  <span>
+                    Last seen {formatDistanceToNow(new Date(issue.lastSeen), { addSuffix: true })}
+                  </span>
                 </div>
               </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+              <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
             </div>
           </Link>
         ))}
       </div>
       <Link
-        href={`/issues?search=${encodeURIComponent(userId || userName || "")}`}
-        className="flex items-center justify-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors pt-2"
+        href={`/issues?search=${encodeURIComponent(userId || userName || '')}`}
+        className="text-muted-foreground hover:text-foreground flex items-center justify-center gap-1 pt-2 text-sm transition-colors"
       >
         View all issues <ChevronRight className="h-4 w-4" />
       </Link>
@@ -734,8 +794,8 @@ function LogsTab({ sessionId }: { sessionId: string }) {
   const { data: logs, isLoading } = useSessionLogs(sessionId);
 
   // Count errors and warnings
-  const errorCount = logs?.filter((l) => l.level === "error").length || 0;
-  const warnCount = logs?.filter((l) => l.level === "warn").length || 0;
+  const errorCount = logs?.filter((l) => l.level === 'error').length || 0;
+  const warnCount = logs?.filter((l) => l.level === 'warn').length || 0;
 
   if (isLoading) {
     return (
@@ -750,9 +810,9 @@ function LogsTab({ sessionId }: { sessionId: string }) {
   if (!logs || logs.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <FileText className="h-10 w-10 text-muted-foreground/50 mb-3" />
-        <p className="font-medium text-muted-foreground">No logs found</p>
-        <p className="text-sm text-muted-foreground/70 mt-1">
+        <FileText className="text-muted-foreground/50 mb-3 h-10 w-10" />
+        <p className="text-muted-foreground font-medium">No logs found</p>
+        <p className="text-muted-foreground/70 mt-1 text-sm">
           No log entries are associated with this session
         </p>
       </div>
@@ -764,12 +824,8 @@ function LogsTab({ sessionId }: { sessionId: string }) {
       {/* Summary */}
       {(errorCount > 0 || warnCount > 0) && (
         <div className="flex items-center gap-3 text-sm">
-          {errorCount > 0 && (
-            <span className="text-red-500">{errorCount} errors</span>
-          )}
-          {warnCount > 0 && (
-            <span className="text-yellow-500">{warnCount} warnings</span>
-          )}
+          {errorCount > 0 && <span className="text-red-500">{errorCount} errors</span>}
+          {warnCount > 0 && <span className="text-yellow-500">{warnCount} warnings</span>}
           <span className="text-muted-foreground">{logs.length} total entries</span>
         </div>
       )}
@@ -778,15 +834,17 @@ function LogsTab({ sessionId }: { sessionId: string }) {
         {logs.map((log) => (
           <div
             key={log.id}
-            className="flex items-start gap-3 rounded-lg border border-border/50 bg-muted/20 p-3 hover:bg-muted/30 transition-colors"
+            className="border-border/50 bg-muted/20 hover:bg-muted/30 flex items-start gap-3 rounded-lg border p-3 transition-colors"
           >
             <LogLevelBadge level={log.level} />
-            <div className="flex-1 min-w-0">
-              <p className="font-mono text-xs leading-relaxed line-clamp-2">{log.message}</p>
-              <div className="flex items-center gap-2 mt-1.5 text-[10px] text-muted-foreground">
-                {log.source && <span className="truncate max-w-[200px]">{log.source}</span>}
+            <div className="min-w-0 flex-1">
+              <p className="line-clamp-2 font-mono text-xs leading-relaxed">{log.message}</p>
+              <div className="text-muted-foreground mt-1.5 flex items-center gap-2 text-[10px]">
+                {log.source && <span className="max-w-[200px] truncate">{log.source}</span>}
                 <span>•</span>
-                <span className="tabular-nums">{format(new Date(log.timestamp), "HH:mm:ss.SSS")}</span>
+                <span className="tabular-nums">
+                  {format(new Date(log.timestamp), 'HH:mm:ss.SSS')}
+                </span>
               </div>
             </div>
           </div>
@@ -807,8 +865,13 @@ interface SessionDetailModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function SessionDetailModal({ session, server, open, onOpenChange }: SessionDetailModalProps) {
-  const [activeTab, setActiveTab] = useState("overview");
+export function SessionDetailModal({
+  session,
+  server,
+  open,
+  onOpenChange,
+}: SessionDetailModalProps) {
+  const [activeTab, setActiveTab] = useState('overview');
 
   // Connect to WebSocket for real-time updates when modal is open
   useSessionSocket({ enabled: open });
@@ -816,7 +879,7 @@ export function SessionDetailModal({ session, server, open, onOpenChange }: Sess
   // Reset tab when session changes
   useEffect(() => {
     if (session) {
-      setActiveTab("overview");
+      setActiveTab('overview');
     }
   }, [session?.id]);
 
@@ -833,51 +896,54 @@ export function SessionDetailModal({ session, server, open, onOpenChange }: Sess
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-5xl max-w-[95vw] w-full h-[85vh] flex flex-col p-0 gap-0 overflow-hidden border-white/10 bg-linear-to-b from-background to-background/95">
+      <DialogContent className="from-background to-background/95 flex h-[85vh] w-full max-w-[95vw] flex-col gap-0 overflow-hidden border-white/10 bg-linear-to-b p-0 sm:max-w-5xl">
         {/* Header */}
         <div className="relative shrink-0">
           {/* Background gradient */}
           <div
             className={cn(
-              "absolute inset-0 opacity-20",
+              'absolute inset-0 opacity-20',
               session.isActive
-                ? "bg-linear-to-br from-green-500 to-emerald-600"
-                : "bg-linear-to-br from-zinc-500 to-zinc-600"
+                ? 'bg-linear-to-br from-green-500 to-emerald-600'
+                : 'bg-linear-to-br from-zinc-500 to-zinc-600'
             )}
           />
 
           <DialogHeader className="relative p-6 pb-4">
             <div className="flex gap-5">
               {/* Poster */}
-              <div className="relative h-28 w-20 shrink-0 overflow-hidden rounded-lg bg-muted shadow-lg">
+              <div className="bg-muted relative h-28 w-20 shrink-0 overflow-hidden rounded-lg shadow-lg">
                 {mediaImageUrl ? (
                   <Image
                     src={mediaImageUrl}
-                    alt={session.nowPlayingItemName || "Media"}
+                    alt={session.nowPlayingItemName || 'Media'}
                     className="h-full w-full object-cover"
                     fill
                     sizes="80px"
                     unoptimized
                     onError={(e) => {
-                      e.currentTarget.style.display = "none";
+                      e.currentTarget.style.display = 'none';
                     }}
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-muted to-muted/50">
-                    <MediaTypeIcon itemType={session.nowPlayingItemType} className="h-10 w-10 text-muted-foreground/40" />
+                  <div className="from-muted to-muted/50 flex h-full w-full items-center justify-center bg-linear-to-br">
+                    <MediaTypeIcon
+                      itemType={session.nowPlayingItemType}
+                      className="text-muted-foreground/40 h-10 w-10"
+                    />
                   </div>
                 )}
               </div>
 
               {/* Info */}
-              <div className="flex-1 min-w-0 pr-8">
+              <div className="min-w-0 flex-1 pr-8">
                 <div className="flex items-start gap-3">
                   <div className="min-w-0 flex-1">
-                    <DialogTitle className="text-xl font-bold truncate pr-4">
-                      {session.nowPlayingItemName || "Unknown Media"}
+                    <DialogTitle className="truncate pr-4 text-xl font-bold">
+                      {session.nowPlayingItemName || 'Unknown Media'}
                     </DialogTitle>
                     {nowPlaying?.seriesName && (
-                      <p className="text-sm text-muted-foreground truncate mt-0.5">
+                      <p className="text-muted-foreground mt-0.5 truncate text-sm">
                         {nowPlaying.seriesName}
                         {nowPlaying.seasonName && ` • ${nowPlaying.seasonName}`}
                       </p>
@@ -888,25 +954,29 @@ export function SessionDetailModal({ session, server, open, onOpenChange }: Sess
                   <Badge
                     variant="secondary"
                     className={cn(
-                      "shrink-0",
-                      isPlaying && "bg-green-500/20 text-green-500 border-green-500/30",
-                      isPaused && "bg-yellow-500/20 text-yellow-500 border-yellow-500/30",
-                      !session.isActive && "bg-zinc-500/20 text-zinc-400 border-zinc-500/30"
+                      'shrink-0',
+                      isPlaying && 'border-green-500/30 bg-green-500/20 text-green-500',
+                      isPaused && 'border-yellow-500/30 bg-yellow-500/20 text-yellow-500',
+                      !session.isActive && 'border-zinc-500/30 bg-zinc-500/20 text-zinc-400'
                     )}
                   >
                     {isPlaying ? (
                       <>
-                        {isLiveStream ? <Radio className="h-3 w-3 mr-1" /> : <Play className="h-3 w-3 mr-1" />}
-                        {isLiveStream ? "Streaming" : "Playing"}
+                        {isLiveStream ? (
+                          <Radio className="mr-1 h-3 w-3" />
+                        ) : (
+                          <Play className="mr-1 h-3 w-3" />
+                        )}
+                        {isLiveStream ? 'Streaming' : 'Playing'}
                       </>
                     ) : isPaused ? (
                       <>
-                        <Pause className="h-3 w-3 mr-1" />
+                        <Pause className="mr-1 h-3 w-3" />
                         Paused
                       </>
                     ) : (
                       <>
-                        <Clock className="h-3 w-3 mr-1" />
+                        <Clock className="mr-1 h-3 w-3" />
                         Ended
                       </>
                     )}
@@ -918,16 +988,16 @@ export function SessionDetailModal({ session, server, open, onOpenChange }: Sess
                   <div className="mt-3">
                     {nowPlaying.runTimeTicks ? (
                       <div className="space-y-1">
-                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div className="bg-muted h-1.5 overflow-hidden rounded-full">
                           <div
                             className={cn(
-                              "h-full rounded-full transition-all",
-                              isPlaying ? "bg-green-500" : "bg-muted-foreground/50"
+                              'h-full rounded-full transition-all',
+                              isPlaying ? 'bg-green-500' : 'bg-muted-foreground/50'
                             )}
                             style={{ width: `${progress}%` }}
                           />
                         </div>
-                        <div className="flex justify-between text-xs text-muted-foreground tabular-nums">
+                        <div className="text-muted-foreground flex justify-between text-xs tabular-nums">
                           <span>{formatDuration(nowPlaying.positionTicks)}</span>
                           <span>{progress}%</span>
                           <span>{formatDuration(nowPlaying.runTimeTicks)}</span>
@@ -935,19 +1005,22 @@ export function SessionDetailModal({ session, server, open, onOpenChange }: Sess
                       </div>
                     ) : isPlaying ? (
                       <div className="space-y-1">
-                        <div className="relative h-1.5 bg-green-500 rounded-full overflow-hidden">
+                        <div className="relative h-1.5 overflow-hidden rounded-full bg-green-500">
                           <div
                             className="absolute inset-y-0 w-1/2"
                             style={{
-                              background: "linear-gradient(90deg, transparent 0%, rgb(134 239 172) 40%, rgb(134 239 172) 60%, transparent 100%)",
-                              animation: "shimmer 2s ease-in-out infinite",
+                              background:
+                                'linear-gradient(90deg, transparent 0%, rgb(134 239 172) 40%, rgb(134 239 172) 60%, transparent 100%)',
+                              animation: 'shimmer 2s ease-in-out infinite',
                             }}
                           />
                         </div>
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span className="tabular-nums">{formatDuration(nowPlaying.positionTicks)}</span>
+                        <div className="text-muted-foreground flex justify-between text-xs">
+                          <span className="tabular-nums">
+                            {formatDuration(nowPlaying.positionTicks)}
+                          </span>
                           <span className="flex items-center gap-1">
-                            <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" />
                             Live
                           </span>
                         </div>
@@ -957,13 +1030,13 @@ export function SessionDetailModal({ session, server, open, onOpenChange }: Sess
                 )}
 
                 {/* Quick info pills */}
-                <div className="flex flex-wrap items-center gap-2 mt-3">
+                <div className="mt-3 flex flex-wrap items-center gap-2">
                   <TooltipProvider delayDuration={200}>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Badge variant="outline" className="gap-1.5 text-xs">
                           <User className="h-3 w-3" />
-                          {session.userName || "Unknown"}
+                          {session.userName || 'Unknown'}
                         </Badge>
                       </TooltipTrigger>
                       <TooltipContent>User</TooltipContent>
@@ -973,10 +1046,13 @@ export function SessionDetailModal({ session, server, open, onOpenChange }: Sess
                       <TooltipTrigger asChild>
                         <Badge variant="outline" className="gap-1.5 text-xs">
                           {(() => {
-                            const DeviceIcon = getDeviceIcon(session.deviceName, session.clientName);
+                            const DeviceIcon = getDeviceIcon(
+                              session.deviceName,
+                              session.clientName
+                            );
                             return <DeviceIcon className="h-3 w-3" />;
                           })()}
-                          {session.deviceName || session.clientName || "Unknown"}
+                          {session.deviceName || session.clientName || 'Unknown'}
                         </Badge>
                       </TooltipTrigger>
                       <TooltipContent>Device</TooltipContent>
@@ -997,7 +1073,10 @@ export function SessionDetailModal({ session, server, open, onOpenChange }: Sess
                     {nowPlaying?.isTranscoding && (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Badge variant="outline" className="gap-1.5 text-xs text-orange-500 border-orange-500/30">
+                          <Badge
+                            variant="outline"
+                            className="gap-1.5 border-orange-500/30 text-xs text-orange-500"
+                          >
                             <Zap className="h-3 w-3" />
                             Transcoding
                           </Badge>
@@ -1023,48 +1102,52 @@ export function SessionDetailModal({ session, server, open, onOpenChange }: Sess
         </div>
 
         {/* Tabs Navigation - Pill/Segment Style like Issues page */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <div className="px-6 py-3 border-b border-white/5 shrink-0">
-            <TabsList className="h-10 w-full bg-muted/30 rounded-lg p-1 gap-1">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="flex min-h-0 flex-1 flex-col overflow-hidden"
+        >
+          <div className="shrink-0 border-b border-white/5 px-6 py-3">
+            <TabsList className="bg-muted/30 h-10 w-full gap-1 rounded-lg p-1">
               <TabsTrigger
                 value="overview"
-                className="flex-1 h-8 rounded-md text-sm font-medium transition-all data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                className="data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50 data-[state=active]:bg-background data-[state=active]:text-foreground h-8 flex-1 rounded-md text-sm font-medium transition-all data-[state=active]:shadow-sm"
               >
-                <Info className="h-4 w-4 mr-2" />
+                <Info className="mr-2 h-4 w-4" />
                 Overview
               </TabsTrigger>
               <TabsTrigger
                 value="user"
-                className="flex-1 h-8 rounded-md text-sm font-medium transition-all data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                className="data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50 data-[state=active]:bg-background data-[state=active]:text-foreground h-8 flex-1 rounded-md text-sm font-medium transition-all data-[state=active]:shadow-sm"
               >
-                <User className="h-4 w-4 mr-2" />
+                <User className="mr-2 h-4 w-4" />
                 User & Device
               </TabsTrigger>
               <TabsTrigger
                 value="history"
-                className="flex-1 h-8 rounded-md text-sm font-medium transition-all data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                className="data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50 data-[state=active]:bg-background data-[state=active]:text-foreground h-8 flex-1 rounded-md text-sm font-medium transition-all data-[state=active]:shadow-sm"
               >
-                <History className="h-4 w-4 mr-2" />
+                <History className="mr-2 h-4 w-4" />
                 History
               </TabsTrigger>
               <TabsTrigger
                 value="issues"
-                className="flex-1 h-8 rounded-md text-sm font-medium transition-all data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                className="data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50 data-[state=active]:bg-background data-[state=active]:text-foreground h-8 flex-1 rounded-md text-sm font-medium transition-all data-[state=active]:shadow-sm"
               >
-                <AlertTriangle className="h-4 w-4 mr-2" />
+                <AlertTriangle className="mr-2 h-4 w-4" />
                 Issues
               </TabsTrigger>
               <TabsTrigger
                 value="logs"
-                className="flex-1 h-8 rounded-md text-sm font-medium transition-all data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                className="data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50 data-[state=active]:bg-background data-[state=active]:text-foreground h-8 flex-1 rounded-md text-sm font-medium transition-all data-[state=active]:shadow-sm"
               >
-                <FileText className="h-4 w-4 mr-2" />
+                <FileText className="mr-2 h-4 w-4" />
                 Logs
               </TabsTrigger>
             </TabsList>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-hidden">
+          <div className="min-h-0 flex-1 overflow-hidden">
             {/* Overview Tab */}
             <TabsContent value="overview" className="mt-0 h-full data-[state=inactive]:hidden">
               <ScrollArea className="h-full">
@@ -1113,10 +1196,10 @@ export function SessionDetailModal({ session, server, open, onOpenChange }: Sess
         </Tabs>
 
         {/* Footer */}
-        <div className="shrink-0 border-t bg-muted/30 px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="bg-muted/30 flex shrink-0 items-center justify-between border-t px-6 py-3">
+          <div className="text-muted-foreground flex items-center gap-2 text-xs">
             <span>Session ID:</span>
-            <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-[10px]">
+            <code className="bg-muted rounded px-1.5 py-0.5 font-mono text-[10px]">
               {session.id.slice(0, 8)}...
             </code>
             <CopyButton text={session.id} label="Copy ID" />
@@ -1125,8 +1208,8 @@ export function SessionDetailModal({ session, server, open, onOpenChange }: Sess
           {userProfileUrl && (
             <Button variant="outline" size="sm" asChild>
               <a href={userProfileUrl} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-                View User in {providerMeta?.name || "Server"}
+                <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                View User in {providerMeta?.name || 'Server'}
               </a>
             </Button>
           )}
