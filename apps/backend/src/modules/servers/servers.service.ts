@@ -1,4 +1,5 @@
 import { JellyfinProvider } from '@logarr/provider-jellyfin';
+import { PlexProvider } from '@logarr/provider-plex';
 import { ProwlarrProvider } from '@logarr/provider-prowlarr';
 import { RadarrProvider } from '@logarr/provider-radarr';
 import { SonarrProvider } from '@logarr/provider-sonarr';
@@ -30,6 +31,9 @@ export class ServersService {
     // Register available providers
     const jellyfinProvider = new JellyfinProvider();
     this.providers.set(jellyfinProvider.id, jellyfinProvider);
+
+    const plexProvider = new PlexProvider();
+    this.providers.set(plexProvider.id, plexProvider);
 
     const sonarrProvider = new SonarrProvider();
     this.providers.set(sonarrProvider.id, sonarrProvider);
@@ -113,7 +117,8 @@ export class ServersService {
 
     // Check if file ingestion settings changed
     const fileIngestionChanged =
-      dto.fileIngestionEnabled !== undefined && dto.fileIngestionEnabled !== currentServer.fileIngestionEnabled ||
+      (dto.fileIngestionEnabled !== undefined &&
+        dto.fileIngestionEnabled !== currentServer.fileIngestionEnabled) ||
       dto.logPaths !== undefined ||
       dto.logFilePatterns !== undefined;
 
@@ -130,7 +135,7 @@ export class ServersService {
         // Update connection status based on whether it started successfully
         if (updatedServer.fileIngestionEnabled && updatedServer.logPaths?.length) {
           const status = this.fileIngestionService.getStatus();
-          const isConnected = status.tailers.some(t => t.startsWith(`${id}:`));
+          const isConnected = status.tailers.some((t) => t.startsWith(`${id}:`));
 
           await this.db
             .update(schema.servers)
@@ -290,10 +295,12 @@ export class ServersService {
         // If paths are valid and file ingestion isn't running, start it
         if (validation.valid) {
           const status = this.fileIngestionService.getStatus();
-          const alreadyTailing = status.tailers.some(t => t.startsWith(`${id}:`));
+          const alreadyTailing = status.tailers.some((t) => t.startsWith(`${id}:`));
 
           if (!alreadyTailing) {
-            this.logger.log(`Starting file ingestion for server ${id} after successful path validation`);
+            this.logger.log(
+              `Starting file ingestion for server ${id} after successful path validation`
+            );
             await this.fileIngestionService.restartServerFileIngestion(
               id,
               this.ingestionService.getProviders()
@@ -354,5 +361,32 @@ export class ServersService {
       name: p.name,
       capabilities: p.capabilities,
     }));
+  }
+
+  /**
+   * Test all server connections in parallel
+   * Used on page load to get accurate real-time status
+   */
+  async testAllConnections(): Promise<
+    Record<string, Awaited<ReturnType<typeof this.testConnection>>>
+  > {
+    const servers = await this.findAll();
+
+    const results = await Promise.allSettled(
+      servers.map(async (server) => ({
+        id: server.id,
+        result: await this.testConnection(server.id),
+      }))
+    );
+
+    const resultMap: Record<string, Awaited<ReturnType<typeof this.testConnection>>> = {};
+
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        resultMap[result.value.id] = result.value.result;
+      }
+    }
+
+    return resultMap;
   }
 }

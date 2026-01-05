@@ -1,4 +1,5 @@
 import { JellyfinProvider, JellyfinClient } from '@logarr/provider-jellyfin';
+import { PlexProvider, PlexClient } from '@logarr/provider-plex';
 import { ProwlarrProvider } from '@logarr/provider-prowlarr';
 import { RadarrProvider } from '@logarr/provider-radarr';
 import { SonarrProvider } from '@logarr/provider-sonarr';
@@ -14,7 +15,11 @@ import { LogsGateway } from '../logs/logs.gateway';
 import { SessionsGateway } from '../sessions/sessions.gateway';
 
 import type { MediaServerProvider, NormalizedSession, NormalizedActivity } from '@logarr/core';
-import type { JellyfinSession, JellyfinPlaybackProgressData, JellyfinPlaybackEventData } from '@logarr/provider-jellyfin';
+import type {
+  JellyfinSession,
+  JellyfinPlaybackProgressData,
+  JellyfinPlaybackEventData,
+} from '@logarr/provider-jellyfin';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 /**
@@ -30,7 +35,11 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(IngestionService.name);
   private providers: Map<string, MediaServerProvider> = new Map();
   private pollingInterval: NodeJS.Timeout | null = null;
+  private sessionPollingInterval: NodeJS.Timeout | null = null;
   private jellyfinClients: Map<string, JellyfinClient> = new Map();
+  private plexClients: Map<string, PlexClient> = new Map();
+  private plexRefreshTimers: Map<string, NodeJS.Timeout> = new Map();
+  private plexLastRefresh: Map<string, number> = new Map();
 
   constructor(
     @Inject(DATABASE_CONNECTION)
@@ -53,6 +62,9 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
 
     const prowlarrProvider = new ProwlarrProvider();
     this.providers.set(prowlarrProvider.id, prowlarrProvider);
+
+    const plexProvider = new PlexProvider();
+    this.providers.set(plexProvider.id, plexProvider);
   }
 
   async onModuleInit() {
@@ -65,11 +77,23 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
       });
     }, 30000);
 
+    // Start polling for sessions every 5 seconds as backup to WebSocket
+    // Plex WebSocket only sends updates every ~10 seconds, so this provides better responsiveness
+    this.sessionPollingInterval = setInterval(() => {
+      this.pollAllSessions().catch((err) => {
+        this.logger.error('Error polling sessions:', err);
+      });
+    }, 5000);
+
     // Initial poll for logs
     await this.pollAllServers();
 
-    // Connect WebSocket for real-time session updates (100% real-time, no polling)
+    // Initial poll for sessions from all servers that support it
+    await this.pollAllSessions();
+
+    // Connect WebSockets for real-time session updates
     await this.connectJellyfinWebSockets();
+    await this.connectPlexWebSockets();
 
     // Start file-based log ingestion for servers that have it enabled
     try {
@@ -98,11 +122,19 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
     if (this.pollingInterval) {
       clearInterval(this.pollingInterval);
     }
+    if (this.sessionPollingInterval) {
+      clearInterval(this.sessionPollingInterval);
+    }
     // Disconnect all Jellyfin WebSockets
     for (const client of this.jellyfinClients.values()) {
       client.disconnectWebSocket();
     }
     this.jellyfinClients.clear();
+    // Disconnect all Plex WebSockets
+    for (const client of this.plexClients.values()) {
+      client.disconnectWebSocket();
+    }
+    this.plexClients.clear();
   }
 
   private async pollAllServers() {
@@ -178,9 +210,58 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
           updatedAt: new Date(),
         })
         .where(eq(schema.servers.id, server.id));
-
     } finally {
       await provider.disconnect();
+    }
+  }
+
+  /**
+   * Poll sessions from all servers that support session tracking.
+   * Called on startup to populate initial session state before WebSockets take over.
+   */
+  private async pollAllSessions() {
+    const servers = await this.db
+      .select()
+      .from(schema.servers)
+      .where(eq(schema.servers.isEnabled, true));
+
+    for (const server of servers) {
+      const provider = this.providers.get(server.providerId);
+      if (!provider?.capabilities.supportsSessions) {
+        continue;
+      }
+
+      try {
+        await provider.connect({
+          url: server.url,
+          apiKey: server.apiKey,
+          logPath: server.logPath ?? undefined,
+        });
+
+        const sessions = await provider.getSessions();
+
+        if (sessions.length > 0) {
+          this.logger.log(`Session poll: ${sessions.length} sessions from ${server.name}`);
+          // Debug: Log session details for Plex
+          if (server.providerId === 'plex') {
+            for (const session of sessions) {
+              this.logger.debug(
+                `Plex session: ${session.userName} playing "${session.nowPlaying?.itemName}" - duration: ${session.nowPlaying?.durationTicks}, thumb: ${session.nowPlaying?.thumbnailUrl ? 'yes' : 'no'}`
+              );
+            }
+          }
+        }
+
+        // Sync to database
+        await this.syncSessions(server.id, [...sessions]);
+
+        // Broadcast to frontend
+        this.sessionsGateway.broadcastSessions(server.id, [...sessions]);
+      } catch (error) {
+        this.logger.warn(`Failed to poll sessions from ${server.name}:`, error);
+      } finally {
+        await provider.disconnect();
+      }
     }
   }
 
@@ -261,10 +342,7 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
     return insertedCount;
   }
 
-  private async syncSessions(
-    serverId: string,
-    remoteSessions: readonly NormalizedSession[]
-  ) {
+  private async syncSessions(serverId: string, remoteSessions: readonly NormalizedSession[]) {
     const remoteSessionIds = new Set(remoteSessions.map((s) => s.externalId));
 
     // Get all sessions for this server (active or recent)
@@ -273,9 +351,7 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
       .from(schema.sessions)
       .where(eq(schema.sessions.serverId, serverId));
 
-    const existingSessionMap = new Map(
-      activeSessions.map((s) => [s.externalId, s])
-    );
+    const existingSessionMap = new Map(activeSessions.map((s) => [s.externalId, s]));
 
     // Process remote sessions
     for (const remote of remoteSessions) {
@@ -292,7 +368,7 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
           .set({
             lastActivity: new Date(),
             isActive: isActivelyPlaying,
-            endedAt: isActivelyPlaying ? null : (existing.isActive ? new Date() : existing.endedAt),
+            endedAt: isActivelyPlaying ? null : existing.isActive ? new Date() : existing.endedAt,
             nowPlayingItemId: remote.nowPlaying?.itemId ?? null,
             nowPlayingItemName: remote.nowPlaying?.itemName ?? null,
             nowPlayingItemType: remote.nowPlaying?.itemType ?? null,
@@ -302,22 +378,40 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
 
         // Add playback event if now playing
         if (remote.nowPlaying) {
+          this.logger.debug(
+            `Inserting playback event for session ${existing.id}: ${remote.nowPlaying.itemName}, duration=${remote.nowPlaying.durationTicks}, thumb=${remote.nowPlaying.thumbnailUrl ? 'yes' : 'no'}`
+          );
           await this.db.insert(schema.playbackEvents).values({
             sessionId: existing.id,
             eventType: 'update',
             itemId: remote.nowPlaying.itemId,
             itemName: remote.nowPlaying.itemName,
             itemType: remote.nowPlaying.itemType,
-            positionTicks: remote.nowPlaying.positionTicks !== null && remote.nowPlaying.positionTicks !== undefined ? BigInt(remote.nowPlaying.positionTicks) : null,
-            durationTicks: remote.nowPlaying.durationTicks !== null && remote.nowPlaying.durationTicks !== undefined ? BigInt(remote.nowPlaying.durationTicks) : null,
+            positionTicks:
+              remote.nowPlaying.positionTicks !== null &&
+              remote.nowPlaying.positionTicks !== undefined
+                ? BigInt(remote.nowPlaying.positionTicks)
+                : null,
+            durationTicks:
+              remote.nowPlaying.durationTicks !== null &&
+              remote.nowPlaying.durationTicks !== undefined
+                ? BigInt(remote.nowPlaying.durationTicks)
+                : null,
             isPaused: remote.nowPlaying.isPaused ?? false,
             isMuted: remote.nowPlaying.isMuted ?? false,
             isTranscoding: remote.nowPlaying.isTranscoding ?? false,
-            transcodeReasons: remote.nowPlaying.transcodeReasons ? [...remote.nowPlaying.transcodeReasons] : null,
+            transcodeReasons: remote.nowPlaying.transcodeReasons
+              ? [...remote.nowPlaying.transcodeReasons]
+              : null,
             videoCodec: remote.nowPlaying.videoCodec,
             audioCodec: remote.nowPlaying.audioCodec,
             container: remote.nowPlaying.container,
+            thumbnailUrl: remote.nowPlaying.thumbnailUrl,
+            seriesName: remote.nowPlaying.seriesName,
+            seasonName: remote.nowPlaying.seasonName,
           });
+        } else {
+          this.logger.debug(`No nowPlaying data for session ${existing.id} (${remote.userName})`);
         }
       } else {
         // Create new session - only mark as active if actually playing media
@@ -362,15 +456,28 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
             itemId: remote.nowPlaying.itemId,
             itemName: remote.nowPlaying.itemName,
             itemType: remote.nowPlaying.itemType,
-            positionTicks: remote.nowPlaying.positionTicks !== null && remote.nowPlaying.positionTicks !== undefined ? BigInt(remote.nowPlaying.positionTicks) : null,
-            durationTicks: remote.nowPlaying.durationTicks !== null && remote.nowPlaying.durationTicks !== undefined ? BigInt(remote.nowPlaying.durationTicks) : null,
+            positionTicks:
+              remote.nowPlaying.positionTicks !== null &&
+              remote.nowPlaying.positionTicks !== undefined
+                ? BigInt(remote.nowPlaying.positionTicks)
+                : null,
+            durationTicks:
+              remote.nowPlaying.durationTicks !== null &&
+              remote.nowPlaying.durationTicks !== undefined
+                ? BigInt(remote.nowPlaying.durationTicks)
+                : null,
             isPaused: remote.nowPlaying.isPaused ?? false,
             isMuted: remote.nowPlaying.isMuted ?? false,
             isTranscoding: remote.nowPlaying.isTranscoding ?? false,
-            transcodeReasons: remote.nowPlaying.transcodeReasons ? [...remote.nowPlaying.transcodeReasons] : null,
+            transcodeReasons: remote.nowPlaying.transcodeReasons
+              ? [...remote.nowPlaying.transcodeReasons]
+              : null,
             videoCodec: remote.nowPlaying.videoCodec,
             audioCodec: remote.nowPlaying.audioCodec,
             container: remote.nowPlaying.container,
+            thumbnailUrl: remote.nowPlaying.thumbnailUrl,
+            seriesName: remote.nowPlaying.seriesName,
+            seasonName: remote.nowPlaying.seasonName,
           });
         }
       }
@@ -478,23 +585,25 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
       startedAt: new Date(session.LastActivityDate),
       lastActivity: new Date(session.LastActivityDate),
       isActive: session.IsActive,
-      nowPlaying: session.NowPlayingItem ? {
-        itemId: session.NowPlayingItem.Id,
-        itemName: session.NowPlayingItem.Name,
-        itemType: session.NowPlayingItem.Type,
-        seriesName: session.NowPlayingItem.SeriesName,
-        seasonName: session.NowPlayingItem.SeasonName,
-        positionTicks: session.PlayState?.PositionTicks ?? 0,
-        durationTicks: session.NowPlayingItem.RunTimeTicks,
-        isPaused: session.PlayState?.IsPaused ?? false,
-        isMuted: session.PlayState?.IsMuted ?? false,
-        isTranscoding: session.TranscodingInfo !== undefined,
-        transcodeReasons: session.TranscodingInfo?.TranscodeReasons ?? undefined,
-        playMethod: session.PlayState?.PlayMethod,
-        videoCodec: session.TranscodingInfo?.VideoCodec,
-        audioCodec: session.TranscodingInfo?.AudioCodec,
-        container: session.TranscodingInfo?.Container ?? session.NowPlayingItem.Container,
-      } : undefined,
+      nowPlaying: session.NowPlayingItem
+        ? {
+            itemId: session.NowPlayingItem.Id,
+            itemName: session.NowPlayingItem.Name,
+            itemType: session.NowPlayingItem.Type,
+            seriesName: session.NowPlayingItem.SeriesName,
+            seasonName: session.NowPlayingItem.SeasonName,
+            positionTicks: session.PlayState?.PositionTicks ?? 0,
+            durationTicks: session.NowPlayingItem.RunTimeTicks,
+            isPaused: session.PlayState?.IsPaused ?? false,
+            isMuted: session.PlayState?.IsMuted ?? false,
+            isTranscoding: session.TranscodingInfo !== undefined,
+            transcodeReasons: session.TranscodingInfo?.TranscodeReasons ?? undefined,
+            playMethod: session.PlayState?.PlayMethod,
+            videoCodec: session.TranscodingInfo?.VideoCodec,
+            audioCodec: session.TranscodingInfo?.AudioCodec,
+            container: session.TranscodingInfo?.Container ?? session.NowPlayingItem.Container,
+          }
+        : undefined,
     }));
 
     // Sync to database (same as polling but real-time)
@@ -502,5 +611,142 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
 
     // Broadcast updated sessions to frontend
     this.sessionsGateway.broadcastSessions(serverId, normalizedSessions);
+  }
+
+  // ===========================================================================
+  // Plex WebSocket Integration
+  // ===========================================================================
+
+  /**
+   * Connect WebSockets to all enabled Plex servers
+   */
+  private async connectPlexWebSockets() {
+    const servers = await this.db
+      .select()
+      .from(schema.servers)
+      .where(eq(schema.servers.isEnabled, true));
+
+    for (const server of servers) {
+      if (server.providerId === 'plex') {
+        this.connectPlexWebSocket(server);
+      }
+    }
+  }
+
+  /**
+   * Connect WebSocket to a single Plex server
+   */
+  private connectPlexWebSocket(server: typeof schema.servers.$inferSelect) {
+    // Disconnect existing connection if any
+    const existingClient = this.plexClients.get(server.id);
+    if (existingClient) {
+      existingClient.disconnectWebSocket();
+      this.plexClients.delete(server.id);
+    }
+
+    const client = new PlexClient(server.url, server.apiKey);
+    this.plexClients.set(server.id, client);
+
+    // Set up event handlers
+    client.on('connected', () => {
+      this.logger.log(`WebSocket connected to Plex server: ${server.name}`);
+    });
+
+    client.on('disconnected', () => {
+      this.logger.warn(`WebSocket disconnected from Plex server: ${server.name}`);
+    });
+
+    client.on('error', (error: Error) => {
+      this.logger.error(`WebSocket error for Plex server ${server.name}:`, error.message);
+    });
+
+    // Handle real-time playback notifications
+    // Broadcast progress immediately for real-time UI, then do throttled full refresh
+    client.on('playing', (notification) => {
+      // Immediately broadcast the progress update for real-time UI
+      // This gives instant position updates without waiting for API
+      this.sessionsGateway.broadcastPlaybackProgress(server.id, {
+        sessionKey: notification.sessionKey,
+        ratingKey: notification.ratingKey,
+        viewOffset: notification.viewOffset,
+        state: notification.state,
+        // Convert viewOffset (ms) to ticks for frontend compatibility
+        positionTicks: notification.viewOffset * 10000,
+      });
+
+      // Also do a throttled full refresh to sync complete session data (artwork, duration, etc.)
+      this.throttledPlexRefresh(server);
+    });
+
+    // Connect to WebSocket
+    client.connectWebSocket();
+  }
+
+  /**
+   * Throttled refresh for Plex sessions
+   * Ensures we don't call the API more than once every 1 second per server
+   */
+  private throttledPlexRefresh(server: typeof schema.servers.$inferSelect) {
+    const now = Date.now();
+    const lastRefresh = this.plexLastRefresh.get(server.id) ?? 0;
+    const timeSinceLastRefresh = now - lastRefresh;
+    const THROTTLE_MS = 1000; // 1 second throttle for responsive updates
+
+    // If we refreshed recently, schedule a delayed refresh instead
+    if (timeSinceLastRefresh < THROTTLE_MS) {
+      // Cancel any existing scheduled refresh
+      const existingTimer = this.plexRefreshTimers.get(server.id);
+      if (existingTimer) {
+        clearTimeout(existingTimer);
+      }
+
+      // Schedule refresh for when throttle period ends
+      const delay = THROTTLE_MS - timeSinceLastRefresh;
+      const timer = setTimeout(() => {
+        this.plexRefreshTimers.delete(server.id);
+        this.doPlexRefresh(server);
+      }, delay);
+      this.plexRefreshTimers.set(server.id, timer);
+      return;
+    }
+
+    // Otherwise refresh immediately
+    this.doPlexRefresh(server);
+  }
+
+  private doPlexRefresh(server: typeof schema.servers.$inferSelect) {
+    this.plexLastRefresh.set(server.id, Date.now());
+    this.refreshPlexSessions(server).catch((err) => {
+      this.logger.error(`Error refreshing Plex sessions for ${server.name}:`, err);
+    });
+  }
+
+  /**
+   * Refresh Plex sessions via API and broadcast to frontend
+   * Called when we receive a WebSocket playing notification
+   */
+  private async refreshPlexSessions(server: typeof schema.servers.$inferSelect) {
+    const provider = this.providers.get('plex') as PlexProvider | undefined;
+    if (!provider) {
+      return;
+    }
+
+    try {
+      await provider.connect({
+        url: server.url,
+        apiKey: server.apiKey,
+        logPath: server.logPath ?? undefined,
+      });
+
+      const sessions = await provider.getSessions();
+
+      // Sync to database
+      await this.syncSessions(server.id, [...sessions]);
+
+      // Broadcast updated sessions to frontend
+      this.sessionsGateway.broadcastSessions(server.id, [...sessions]);
+    } finally {
+      await provider.disconnect();
+    }
   }
 }

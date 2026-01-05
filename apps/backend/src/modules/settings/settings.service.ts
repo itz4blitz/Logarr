@@ -46,17 +46,13 @@ export class SettingsService {
     issueCount: number;
   }> {
     try {
-      const serverCount = await this.db
-        .select({ count: schema.servers.id })
-        .from(schema.servers);
+      const serverCount = await this.db.select({ count: schema.servers.id }).from(schema.servers);
 
       const logCount = await this.db
         .select({ count: schema.logEntries.id })
         .from(schema.logEntries);
 
-      const issueCount = await this.db
-        .select({ count: schema.issues.id })
-        .from(schema.issues);
+      const issueCount = await this.db.select({ count: schema.issues.id }).from(schema.issues);
 
       return {
         version: '0.1.0',

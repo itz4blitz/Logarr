@@ -112,21 +112,12 @@ export class SettingsController {
 
   @Post('ai/test')
   async testProvider(@Body() dto: TestProviderDto) {
-    return this.aiProviderService.testProvider(
-      dto.provider,
-      dto.apiKey,
-      dto.model,
-      dto.baseUrl
-    );
+    return this.aiProviderService.testProvider(dto.provider, dto.apiKey, dto.model, dto.baseUrl);
   }
 
   @Post('ai/models')
   async fetchModels(@Body() dto: FetchModelsDto) {
-    return this.aiProviderService.fetchProviderModels(
-      dto.provider,
-      dto.apiKey,
-      dto.baseUrl
-    );
+    return this.aiProviderService.fetchProviderModels(dto.provider, dto.apiKey, dto.baseUrl);
   }
 
   @Post('ai/:id/test')
@@ -135,9 +126,7 @@ export class SettingsController {
   }
 
   @Post('ai/analyze')
-  async generateAnalysis(
-    @Body() body: { prompt: string; providerId?: string }
-  ) {
+  async generateAnalysis(@Body() body: { prompt: string; providerId?: string }) {
     return this.aiProviderService.generateAnalysis(body.prompt, body.providerId);
   }
 }

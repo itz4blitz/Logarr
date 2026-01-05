@@ -122,7 +122,10 @@ export interface ArrQueueItemBase {
   readonly status: string;
   readonly trackedDownloadStatus: string;
   readonly trackedDownloadState: string;
-  readonly statusMessages: readonly { readonly title: string; readonly messages: readonly string[] }[];
+  readonly statusMessages: readonly {
+    readonly title: string;
+    readonly messages: readonly string[];
+  }[];
   readonly errorMessage?: string;
   readonly downloadId: string;
   readonly protocol: string;

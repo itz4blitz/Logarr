@@ -98,12 +98,16 @@ export class DashboardService {
 
     // Calculate metrics with trends
     const todayLogs = dailyLogCounts[dailyLogCounts.length - 1] || 0;
-    const avgLogs = dailyLogCounts.length > 0
-      ? Math.round(dailyLogCounts.reduce((a, b) => a + b, 0) / dailyLogCounts.length)
-      : 0;
+    const avgLogs =
+      dailyLogCounts.length > 0
+        ? Math.round(dailyLogCounts.reduce((a, b) => a + b, 0) / dailyLogCounts.length)
+        : 0;
 
     const todayErrors = activityChart.reduce((sum, h) => sum + h.error, 0);
-    const todayTotal = activityChart.reduce((sum, h) => sum + h.error + h.warn + h.info + h.debug, 0);
+    const todayTotal = activityChart.reduce(
+      (sum, h) => sum + h.error + h.warn + h.info + h.debug,
+      0
+    );
     const currentErrorRate = todayTotal > 0 ? todayErrors / todayTotal : 0;
 
     // Calculate error rate trend (simplified - just show daily values scaled 0-100)
@@ -116,7 +120,7 @@ export class DashboardService {
     // Build recent events
     const recentEvents: RecentEventDto[] = recentIssues.map((issue) => ({
       id: issue.id,
-      type: issue.status === 'resolved' ? 'issue_resolved' as const : 'issue_new' as const,
+      type: issue.status === 'resolved' ? ('issue_resolved' as const) : ('issue_new' as const),
       title: issue.title,
       timestamp: issue.updatedAt.toISOString(),
       severity: issue.severity,
@@ -129,7 +133,7 @@ export class DashboardService {
         issues: {
           critical: issueStats.critical,
           high: issueStats.high,
-          open: issueStats.open
+          open: issueStats.open,
         },
         activeStreams: activeSessions.length,
       },
@@ -292,7 +296,11 @@ export class DashboardService {
         .groupBy(schema.logEntries.source, schema.logEntries.level),
     ]);
 
-    let error = 0, warn = 0, info = 0, debug = 0, total = 0;
+    let error = 0,
+      warn = 0,
+      info = 0,
+      debug = 0,
+      total = 0;
 
     for (const row of levelResults) {
       const cnt = Number(row.count);

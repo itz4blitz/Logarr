@@ -84,12 +84,12 @@ _Configure multiple AI providers for issue analysis (Anthropic, OpenAI, Google, 
 
 | Category             | Capabilities                                                                                    |
 | -------------------- | ----------------------------------------------------------------------------------------------- |
-| **Log Aggregation**  | Real-time streaming, full-text search, advanced filtering by server/level/source type          |
-| **File Ingestion**   | Direct container log reading, multi-line stack trace assembly, automatic rotation detection    |
-| **Issue Detection**  | Automatic error fingerprinting, deduplication, impact scoring, status tracking                 |
-| **AI Analysis**      | Root cause identification, actionable fixes, multi-provider support (Anthropic, OpenAI, Google)|
-| **Session Tracking** | Active playback monitoring, transcoding visibility, user attribution                           |
-| **Dashboard**        | System health, 24-hour activity timeline, top issues, now playing                              |
+| **Log Aggregation**  | Real-time streaming, full-text search, advanced filtering by server/level/source type           |
+| **File Ingestion**   | Direct container log reading, multi-line stack trace assembly, automatic rotation detection     |
+| **Issue Detection**  | Automatic error fingerprinting, deduplication, impact scoring, status tracking                  |
+| **AI Analysis**      | Root cause identification, actionable fixes, multi-provider support (Anthropic, OpenAI, Google) |
+| **Session Tracking** | Active playback monitoring, transcoding visibility, user attribution                            |
+| **Dashboard**        | System health, 24-hour activity timeline, top issues, now playing                               |
 
 ---
 
@@ -214,7 +214,7 @@ Once running, Swagger docs are available at `http://localhost:4001/api/docs`.
 
 ```javascript
 // Connect to ws://localhost:4001/logs
-socket.on('log', (log) => {});           // New log entry
+socket.on('log', (log) => {}); // New log entry
 socket.on('issue.created', (issue) => {}); // New issue detected
 socket.on('session.started', (session) => {}); // Playback started
 ```
@@ -258,10 +258,10 @@ Guidelines: TypeScript strict mode, ESLint + Prettier, tests for new features.
 
 Logarr has comprehensive test coverage using [Vitest](https://vitest.dev/).
 
-| Package | Tests | Coverage |
-|---------|-------|----------|
-| **Backend** | 249 | 89.57% lines |
-| **Frontend** | 54 | 100% lines |
+| Package      | Tests | Coverage     |
+| ------------ | ----- | ------------ |
+| **Backend**  | 249   | 89.57% lines |
+| **Frontend** | 54    | 100% lines   |
 
 ### Running Tests
 
@@ -273,14 +273,14 @@ pnpm test:e2e          # Run Playwright E2E tests
 
 ### Coverage by Module (Backend)
 
-| Module | Statements | Branches | Functions | Lines |
-|--------|------------|----------|-----------|-------|
-| logs.service | 100% | 98% | 100% | 100% |
-| sessions.service | 100% | 92% | 100% | 100% |
-| settings.service | 100% | 100% | 100% | 100% |
-| dashboard.service | 98% | 95% | 100% | 99% |
-| servers.service | 87% | 78% | 87% | 88% |
-| issues.service | 79% | 80% | 74% | 82% |
+| Module            | Statements | Branches | Functions | Lines |
+| ----------------- | ---------- | -------- | --------- | ----- |
+| logs.service      | 100%       | 98%      | 100%      | 100%  |
+| sessions.service  | 100%       | 92%      | 100%      | 100%  |
+| settings.service  | 100%       | 100%     | 100%      | 100%  |
+| dashboard.service | 98%        | 95%      | 100%      | 99%   |
+| servers.service   | 87%        | 78%      | 87%       | 88%   |
+| issues.service    | 79%        | 80%      | 74%       | 82%   |
 
 > Coverage thresholds are enforced at 80% for statements, branches, functions, and lines.
 

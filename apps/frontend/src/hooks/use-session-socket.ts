@@ -1,14 +1,15 @@
-"use client";
+'use client';
 
-import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
-import { io } from "socket.io-client";
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
+import { io } from 'socket.io-client';
 
-import { queryKeys } from "./use-api";
+import { queryKeys } from './use-api';
 
-import type { Socket } from "socket.io-client";
+import type { Socket } from 'socket.io-client';
+import type { Session } from '@/lib/api';
 
-import { config } from "@/lib/config";
+import { config } from '@/lib/config';
 
 const SOCKET_URL = config.wsUrl;
 
@@ -16,8 +17,16 @@ interface SessionSubscription {
   serverId?: string;
 }
 
+interface PlaybackProgressData {
+  sessionKey?: string;
+  ratingKey?: string;
+  viewOffset?: number;
+  state?: string;
+  positionTicks?: number;
+}
+
 interface SessionUpdatePayload {
-  type: "sessions" | "playbackStart" | "playbackStop" | "playbackProgress";
+  type: 'sessions' | 'playbackStart' | 'playbackStop' | 'playbackProgress';
   serverId: string;
   data: unknown;
 }
@@ -43,10 +52,10 @@ export function useSessionSocket(options: UseSessionSocketOptions = {}) {
       return;
     }
 
-    console.log("[SessionSocket] Connecting to", `${SOCKET_URL}/sessions`);
+    console.log('[SessionSocket] Connecting to', `${SOCKET_URL}/sessions`);
 
     const socket = io(`${SOCKET_URL}/sessions`, {
-      transports: ["websocket", "polling"],
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
@@ -54,34 +63,64 @@ export function useSessionSocket(options: UseSessionSocketOptions = {}) {
 
     socketRef.current = socket;
 
-    socket.on("connect", () => {
-      console.log("[SessionSocket] Connected");
+    socket.on('connect', () => {
+      console.log('[SessionSocket] Connected');
       setConnected(true);
       // Subscribe to sessions
       const subscription: SessionSubscription = { serverId };
-      socket.emit("subscribe", subscription);
+      socket.emit('subscribe', subscription);
       subscriptionRef.current = subscription;
     });
 
-    socket.on("disconnect", () => {
-      console.log("[SessionSocket] Disconnected");
+    socket.on('disconnect', () => {
+      console.log('[SessionSocket] Disconnected');
       setConnected(false);
     });
 
-    socket.on("sessionUpdate", (payload: SessionUpdatePayload) => {
-      console.log("[SessionSocket] Received update:", payload.type);
-      // Invalidate queries to refetch with latest data
-      // This provides instant updates while keeping React Query as source of truth
-      queryClient.invalidateQueries({ queryKey: queryKeys.sessions });
-      queryClient.invalidateQueries({ queryKey: queryKeys.activeSessions });
+    socket.on('sessionUpdate', (payload: SessionUpdatePayload) => {
+      // For progress updates, update the cache directly for instant UI response
+      if (payload.type === 'playbackProgress') {
+        const progressData = payload.data as PlaybackProgressData;
+
+        // Update active sessions cache directly
+        queryClient.setQueryData<Session[]>(queryKeys.activeSessions, (oldData) => {
+          if (!oldData) return oldData;
+          return oldData.map((session) => {
+            // Match by sessionKey (Plex) or by serverId + ratingKey
+            const isMatch =
+              (progressData.sessionKey && session.externalId === progressData.sessionKey) ||
+              (session.serverId === payload.serverId &&
+                session.nowPlaying?.itemId === progressData.ratingKey);
+
+            if (isMatch && session.nowPlaying && progressData.positionTicks !== undefined) {
+              return {
+                ...session,
+                nowPlaying: {
+                  ...session.nowPlaying,
+                  positionTicks: String(progressData.positionTicks),
+                  isPaused: progressData.state === 'paused',
+                },
+              };
+            }
+            return session;
+          });
+        });
+
+        // Also invalidate to ensure eventual consistency
+        queryClient.invalidateQueries({ queryKey: queryKeys.activeSessions });
+      } else {
+        // For other updates (sessions, start, stop), invalidate to refetch
+        queryClient.invalidateQueries({ queryKey: queryKeys.sessions });
+        queryClient.invalidateQueries({ queryKey: queryKeys.activeSessions });
+      }
     });
 
-    socket.on("connect_error", (error) => {
-      console.error("[SessionSocket] Connection error:", error);
+    socket.on('connect_error', (error) => {
+      console.error('[SessionSocket] Connection error:', error);
     });
 
     return () => {
-      socket.emit("unsubscribe");
+      socket.emit('unsubscribe');
       socket.disconnect();
       socketRef.current = null;
     };
@@ -94,8 +133,8 @@ export function useSessionSocket(options: UseSessionSocketOptions = {}) {
 
     const newSubscription: SessionSubscription = { serverId };
     if (newSubscription.serverId !== subscriptionRef.current.serverId) {
-      socket.emit("unsubscribe");
-      socket.emit("subscribe", newSubscription);
+      socket.emit('unsubscribe');
+      socket.emit('subscribe', newSubscription);
       subscriptionRef.current = newSubscription;
     }
   }, [connected, serverId]);

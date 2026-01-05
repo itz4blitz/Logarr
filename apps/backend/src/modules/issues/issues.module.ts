@@ -8,7 +8,6 @@ import { IssuesController } from './issues.controller';
 import { IssuesGateway } from './issues.gateway';
 import { IssuesService } from './issues.service';
 
-
 @Module({
   imports: [SettingsModule],
   controllers: [IssuesController],

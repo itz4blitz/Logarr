@@ -34,7 +34,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSessions, useActiveSessions, useServers } from '@/hooks/use-api';
 import { useSessionSocket } from '@/hooks/use-session-socket';
 
-
 // ============================================================================
 // Constants
 // ============================================================================
@@ -210,7 +209,7 @@ function SessionGrid({
     <div ref={containerRef} className="flex h-full flex-col overflow-hidden">
       {/* Loading state */}
       {(isLoading || !isReady) && (
-        <div className="grid grid-cols-1 gap-2 lg:grid-cols-2 p-1">
+        <div className="grid grid-cols-1 gap-2 p-1 lg:grid-cols-2">
           {Array.from({ length: Math.max(4, pageSize) }).map((_, i) => (
             <SessionCardSkeleton key={i} />
           ))}
@@ -223,7 +222,9 @@ function SessionGrid({
           <div className="text-center">
             <EmptyIcon className="text-muted-foreground/50 mx-auto h-12 w-12" />
             <h3 className="text-muted-foreground mt-4 text-lg font-semibold">{emptyTitle}</h3>
-            <p className="text-muted-foreground/70 mt-2 max-w-[250px] text-sm">{emptyDescription}</p>
+            <p className="text-muted-foreground/70 mt-2 max-w-[250px] text-sm">
+              {emptyDescription}
+            </p>
           </div>
         </div>
       )}
@@ -233,7 +234,9 @@ function SessionGrid({
         <div className="flex flex-1 items-center justify-center">
           <div className="text-center">
             <Filter className="text-muted-foreground/50 mx-auto h-12 w-12" />
-            <h3 className="text-muted-foreground mt-4 text-lg font-semibold">No matching sessions</h3>
+            <h3 className="text-muted-foreground mt-4 text-lg font-semibold">
+              No matching sessions
+            </h3>
             <p className="text-muted-foreground/70 mt-2 max-w-[250px] text-sm">
               Try adjusting your filters to see more results
             </p>
@@ -259,10 +262,10 @@ function SessionGrid({
 
           {totalPages > 1 && (
             <div
-              className="flex items-center justify-between border-t px-4 bg-muted/30 shrink-0"
+              className="bg-muted/30 flex shrink-0 items-center justify-between border-t px-4"
               style={{ height: PAGINATION_HEIGHT }}
             >
-              <div className="text-sm text-muted-foreground">
+              <div className="text-muted-foreground text-sm">
                 <span className="font-medium">{page * pageSize + 1}</span>
                 <span>-</span>
                 <span className="font-medium">{Math.min((page + 1) * pageSize, totalItems)}</span>
@@ -347,7 +350,10 @@ function Toolbar({ sortBy, filterBy, onSortChange, onFilterChange, sessionCounts
   };
 
   return (
-    <div className="flex items-center justify-between gap-4 px-1 py-2" style={{ height: TOOLBAR_HEIGHT }}>
+    <div
+      className="flex items-center justify-between gap-4 px-1 py-2"
+      style={{ height: TOOLBAR_HEIGHT }}
+    >
       {/* Filter Buttons */}
       <div className="flex items-center gap-1">
         <Button
@@ -373,7 +379,10 @@ function Toolbar({ sortBy, filterBy, onSortChange, onFilterChange, sessionCounts
           <Play className="h-3.5 w-3.5 text-green-500" />
           Playing
           {sessionCounts.playing > 0 && (
-            <Badge variant="secondary" className="h-5 px-1.5 text-xs bg-green-500/10 text-green-500">
+            <Badge
+              variant="secondary"
+              className="h-5 bg-green-500/10 px-1.5 text-xs text-green-500"
+            >
               {sessionCounts.playing}
             </Badge>
           )}
@@ -387,7 +396,10 @@ function Toolbar({ sortBy, filterBy, onSortChange, onFilterChange, sessionCounts
           <Pause className="h-3.5 w-3.5 text-yellow-500" />
           Paused
           {sessionCounts.paused > 0 && (
-            <Badge variant="secondary" className="h-5 px-1.5 text-xs bg-yellow-500/10 text-yellow-500">
+            <Badge
+              variant="secondary"
+              className="h-5 bg-yellow-500/10 px-1.5 text-xs text-yellow-500"
+            >
               {sessionCounts.paused}
             </Badge>
           )}
@@ -401,7 +413,10 @@ function Toolbar({ sortBy, filterBy, onSortChange, onFilterChange, sessionCounts
           <Zap className="h-3.5 w-3.5 text-orange-500" />
           Transcoding
           {sessionCounts.transcoding > 0 && (
-            <Badge variant="secondary" className="h-5 px-1.5 text-xs bg-orange-500/10 text-orange-500">
+            <Badge
+              variant="secondary"
+              className="h-5 bg-orange-500/10 px-1.5 text-xs text-orange-500"
+            >
               {sessionCounts.transcoding}
             </Badge>
           )}
@@ -481,31 +496,34 @@ export default function SessionsPage() {
     setModalOpen(true);
   }, []);
 
-  const serverMap = useMemo(() =>
-    servers?.reduce(
-      (acc, server) => {
-        acc[server.id] = server;
-        return acc;
-      },
-      {} as Record<string, Server>
-    ) || {},
+  const serverMap = useMemo(
+    () =>
+      servers?.reduce(
+        (acc, server) => {
+          acc[server.id] = server;
+          return acc;
+        },
+        {} as Record<string, Server>
+      ) || {},
     [servers]
   );
 
   const isLoading = loadingAll || loadingActive;
 
   // Sort sessions by startedAt (most recent first) to prevent random reordering
-  const sortedActiveSessions = useMemo(() =>
-    activeSessions
-      ?.slice()
-      .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()),
+  const sortedActiveSessions = useMemo(
+    () =>
+      activeSessions
+        ?.slice()
+        .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()),
     [activeSessions]
   );
 
-  const sortedAllSessions = useMemo(() =>
-    allSessions
-      ?.slice()
-      .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()),
+  const sortedAllSessions = useMemo(
+    () =>
+      allSessions
+        ?.slice()
+        .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()),
     [allSessions]
   );
 
@@ -514,9 +532,9 @@ export default function SessionsPage() {
     const sessions = sortedActiveSessions || [];
     return {
       all: sessions.length,
-      playing: sessions.filter(s => s.isActive && s.nowPlaying && !s.nowPlaying.isPaused).length,
-      paused: sessions.filter(s => s.isActive && s.nowPlaying?.isPaused).length,
-      transcoding: sessions.filter(s => s.nowPlaying?.isTranscoding).length,
+      playing: sessions.filter((s) => s.isActive && s.nowPlaying && !s.nowPlaying.isPaused).length,
+      paused: sessions.filter((s) => s.isActive && s.nowPlaying?.isPaused).length,
+      transcoding: sessions.filter((s) => s.nowPlaying?.isTranscoding).length,
     };
   }, [sortedActiveSessions]);
 
@@ -524,9 +542,9 @@ export default function SessionsPage() {
     const sessions = sortedAllSessions || [];
     return {
       all: sessions.length,
-      playing: sessions.filter(s => s.isActive && s.nowPlaying && !s.nowPlaying.isPaused).length,
-      paused: sessions.filter(s => s.isActive && s.nowPlaying?.isPaused).length,
-      transcoding: sessions.filter(s => s.nowPlaying?.isTranscoding).length,
+      playing: sessions.filter((s) => s.isActive && s.nowPlaying && !s.nowPlaying.isPaused).length,
+      paused: sessions.filter((s) => s.isActive && s.nowPlaying?.isPaused).length,
+      transcoding: sessions.filter((s) => s.nowPlaying?.isTranscoding).length,
     };
   }, [sortedAllSessions]);
 
@@ -558,7 +576,7 @@ export default function SessionsPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="active" className="mt-2 min-h-0 flex-1 overflow-hidden flex flex-col">
+        <TabsContent value="active" className="mt-2 flex min-h-0 flex-1 flex-col overflow-hidden">
           <Toolbar
             sortBy={sortBy}
             filterBy={filterBy}
@@ -566,7 +584,7 @@ export default function SessionsPage() {
             onFilterChange={handleFilterChange}
             sessionCounts={activeSessionCounts}
           />
-          <div className="flex-1 min-h-0">
+          <div className="min-h-0 flex-1">
             <SessionGrid
               sessions={sortedActiveSessions}
               serverMap={serverMap}
@@ -581,7 +599,7 @@ export default function SessionsPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="history" className="mt-2 min-h-0 flex-1 overflow-hidden flex flex-col">
+        <TabsContent value="history" className="mt-2 flex min-h-0 flex-1 flex-col overflow-hidden">
           <Toolbar
             sortBy={sortBy}
             filterBy={filterBy}
@@ -589,7 +607,7 @@ export default function SessionsPage() {
             onFilterChange={handleFilterChange}
             sessionCounts={historySessionCounts}
           />
-          <div className="flex-1 min-h-0">
+          <div className="min-h-0 flex-1">
             <SessionGrid
               sessions={sortedAllSessions}
               serverMap={serverMap}

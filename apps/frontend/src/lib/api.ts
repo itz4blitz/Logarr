@@ -181,6 +181,7 @@ export interface NowPlaying {
   audioCodec: string | null;
   container: string | null;
   playMethod: string | null;
+  thumbnailUrl: string | null;
 }
 
 export interface Session {
@@ -226,7 +227,14 @@ export interface HealthCheck {
 // Issue types
 export type IssueStatus = 'open' | 'acknowledged' | 'in_progress' | 'resolved' | 'ignored';
 export type IssueSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info';
-export type IssueSource = 'jellyfin' | 'sonarr' | 'radarr' | 'prowlarr' | 'docker' | 'system';
+export type IssueSource =
+  | 'jellyfin'
+  | 'plex'
+  | 'sonarr'
+  | 'radarr'
+  | 'prowlarr'
+  | 'docker'
+  | 'system';
 
 export interface Issue {
   id: string;
@@ -655,6 +663,12 @@ class ApiClient {
     });
   }
 
+  async testAllConnections(): Promise<Record<string, ConnectionStatus>> {
+    return this.request<Record<string, ConnectionStatus>>('/servers/test-all', {
+      method: 'POST',
+    });
+  }
+
   async getProviders(): Promise<Provider[]> {
     return this.request<Provider[]>('/servers/providers');
   }
@@ -666,7 +680,7 @@ class ApiClient {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined) {
           if (Array.isArray(value)) {
-            value.forEach(v => searchParams.append(key, v));
+            value.forEach((v) => searchParams.append(key, v));
           } else {
             searchParams.append(key, String(value));
           }
@@ -723,7 +737,7 @@ class ApiClient {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined) {
           if (Array.isArray(value)) {
-            value.forEach(v => searchParams.append(key, v));
+            value.forEach((v) => searchParams.append(key, v));
           } else {
             searchParams.append(key, String(value));
           }
@@ -797,7 +811,11 @@ class ApiClient {
     });
   }
 
-  async getIssueOccurrences(id: string, limit?: number, offset?: number): Promise<{
+  async getIssueOccurrences(
+    id: string,
+    limit?: number,
+    offset?: number
+  ): Promise<{
     data: Array<{
       id: string;
       timestamp: string;
@@ -847,8 +865,13 @@ class ApiClient {
     });
   }
 
-  async getAnalysisConversation(issueId: string, conversationId: string): Promise<AnalysisConversation> {
-    return this.request<AnalysisConversation>(`/issues/${issueId}/analyze/conversation/${conversationId}`);
+  async getAnalysisConversation(
+    issueId: string,
+    conversationId: string
+  ): Promise<AnalysisConversation> {
+    return this.request<AnalysisConversation>(
+      `/issues/${issueId}/analyze/conversation/${conversationId}`
+    );
   }
 
   async getLatestAnalysisConversation(issueId: string): Promise<AnalysisConversation | null> {
@@ -879,7 +902,10 @@ class ApiClient {
     });
   }
 
-  async updateAiProviderSetting(id: string, data: UpdateAiProviderDto): Promise<AiProviderSettings> {
+  async updateAiProviderSetting(
+    id: string,
+    data: UpdateAiProviderDto
+  ): Promise<AiProviderSettings> {
     return this.request<AiProviderSettings>(`/settings/ai/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -890,7 +916,12 @@ class ApiClient {
     await this.request(`/settings/ai/${id}`, { method: 'DELETE' });
   }
 
-  async testAiProvider(provider: AiProviderType, apiKey: string, model: string, baseUrl?: string): Promise<TestProviderResult> {
+  async testAiProvider(
+    provider: AiProviderType,
+    apiKey: string,
+    model: string,
+    baseUrl?: string
+  ): Promise<TestProviderResult> {
     return this.request<TestProviderResult>('/settings/ai/test', {
       method: 'POST',
       body: JSON.stringify({ provider, apiKey, model, baseUrl }),
@@ -903,7 +934,11 @@ class ApiClient {
     });
   }
 
-  async fetchAiProviderModels(provider: AiProviderType, apiKey: string, baseUrl?: string): Promise<AiModelInfo[]> {
+  async fetchAiProviderModels(
+    provider: AiProviderType,
+    apiKey: string,
+    baseUrl?: string
+  ): Promise<AiModelInfo[]> {
     return this.request<AiModelInfo[]>('/settings/ai/models', {
       method: 'POST',
       body: JSON.stringify({ provider, apiKey, baseUrl }),
@@ -940,7 +975,9 @@ class ApiClient {
     if (params?.offset !== undefined) searchParams.append('offset', String(params.offset));
     if (params?.provider) searchParams.append('provider', params.provider);
     const query = searchParams.toString();
-    return this.request<AiAnalysisHistoryResponse>(`/settings/ai/history${query ? `?${query}` : ''}`);
+    return this.request<AiAnalysisHistoryResponse>(
+      `/settings/ai/history${query ? `?${query}` : ''}`
+    );
   }
 }
 

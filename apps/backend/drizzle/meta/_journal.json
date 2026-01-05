@@ -22,6 +22,13 @@
       "when": 1767472023798,
       "tag": "0002_powerful_fallen_one",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1767560000000,
+      "tag": "0004_add-playback-thumbnail",
+      "breakpoints": true
     }
   ]
 }

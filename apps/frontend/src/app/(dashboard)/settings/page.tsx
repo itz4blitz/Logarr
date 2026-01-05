@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from 'date-fns';
 import {
   Plus,
   Trash2,
@@ -23,10 +23,10 @@ import {
   Sparkles,
   Activity,
   RefreshCw,
-} from "lucide-react";
-import { useState, useRef } from "react";
-import Markdown from "react-markdown";
-import { toast } from "sonner";
+} from 'lucide-react';
+import { useState, useRef } from 'react';
+import Markdown from 'react-markdown';
+import { toast } from 'sonner';
 
 import type {
   AiProviderType,
@@ -35,9 +35,9 @@ import type {
   AiModelInfo,
   CreateAiProviderDto,
   UpdateAiProviderDto,
-} from "@/lib/api";
+} from '@/lib/api';
 
-import { ProviderIcon, providerMeta } from "@/components/provider-icon";
+import { ProviderIcon, providerMeta } from '@/components/provider-icon';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,42 +47,38 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+} from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   useAvailableAiProviders,
   useAiProviderSettings,
@@ -94,9 +90,8 @@ import {
   useFetchAiProviderModels,
   useAiUsageStats,
   useAiAnalysisHistory,
-} from "@/hooks/use-api";
-import { cn } from "@/lib/utils";
-
+} from '@/hooks/use-api';
+import { cn } from '@/lib/utils';
 
 function AiProvidersGrid({
   providers,
@@ -136,16 +131,14 @@ function AiProvidersGrid({
 
   // Get unconfigured providers
   const configuredProviderIds = new Set((settings || []).map((s) => s.provider));
-  const unconfiguredProviders = (providers || []).filter(
-    (p) => !configuredProviderIds.has(p.id)
-  );
+  const unconfiguredProviders = (providers || []).filter((p) => !configuredProviderIds.has(p.id));
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="rounded-xl border bg-card p-5">
+            <div key={i} className="bg-card rounded-xl border p-5">
               <div className="flex items-start gap-4">
                 <Skeleton className="h-12 w-12 rounded-xl" />
                 <div className="flex-1 space-y-2">
@@ -170,19 +163,23 @@ function AiProvidersGrid({
     <div className="space-y-6">
       {/* Configured Providers */}
       {hasNoConfigured ? (
-        <div className="relative overflow-hidden rounded-2xl border-2 border-dashed border-muted-foreground/20 bg-linear-to-br from-muted/30 to-muted/10 p-12">
-          <div className="absolute inset-0 bg-grid-white/5" />
+        <div className="border-muted-foreground/20 from-muted/30 to-muted/10 relative overflow-hidden rounded-2xl border-2 border-dashed bg-linear-to-br p-12">
+          <div className="bg-grid-white/5 absolute inset-0" />
           <div className="relative flex flex-col items-center justify-center text-center">
             <div className="mb-4 rounded-2xl bg-linear-to-br from-violet-500/20 to-purple-500/20 p-4">
               <Sparkles className="h-8 w-8 text-violet-400" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">No AI Providers Configured</h3>
-            <p className="text-muted-foreground text-sm max-w-md mb-6">
-              Connect an AI provider to enable intelligent log analysis, error detection, and automated troubleshooting suggestions.
+            <h3 className="mb-2 text-lg font-semibold">No AI Providers Configured</h3>
+            <p className="text-muted-foreground mb-6 max-w-md text-sm">
+              Connect an AI provider to enable intelligent log analysis, error detection, and
+              automated troubleshooting suggestions.
             </p>
-            <div className="flex flex-wrap gap-2 justify-center">
+            <div className="flex flex-wrap justify-center gap-2">
               {(providers || []).slice(0, 3).map((provider) => {
-                const meta = providerMeta[provider.id] || { bgColor: "bg-gray-500/10", color: "#888" };
+                const meta = providerMeta[provider.id] || {
+                  bgColor: 'bg-gray-500/10',
+                  color: '#888',
+                };
                 return (
                   <Button
                     key={provider.id}
@@ -190,7 +187,7 @@ function AiProvidersGrid({
                     className="gap-2"
                     onClick={() => onAdd(provider)}
                   >
-                    <div className={cn("p-1 rounded", meta.bgColor)}>
+                    <div className={cn('rounded p-1', meta.bgColor)}>
                       <ProviderIcon providerId={provider.id} size="sm" />
                     </div>
                     {provider.name}
@@ -201,43 +198,48 @@ function AiProvidersGrid({
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-0.5">
+        <div className="grid grid-cols-1 gap-4 p-0.5 md:grid-cols-2 xl:grid-cols-3">
           {configuredSettings.map(({ setting, provider }) => {
             if (!provider) return null;
-            const meta = providerMeta[provider.id] || { bgColor: "bg-gray-500/10", color: "#888" };
-            const modelName = provider.models.find((m) => m.id === setting.model)?.name || setting.model;
+            const meta = providerMeta[provider.id] || { bgColor: 'bg-gray-500/10', color: '#888' };
+            const modelName =
+              provider.models.find((m) => m.id === setting.model)?.name || setting.model;
             const isTesting = testingId === setting.id;
-            const isConnected = setting.lastTestResult === "success";
-            const hasFailed = setting.lastTestResult && setting.lastTestResult !== "success";
+            const isConnected = setting.lastTestResult === 'success';
+            const hasFailed = setting.lastTestResult && setting.lastTestResult !== 'success';
 
             return (
               <div
                 key={setting.id}
                 className={cn(
-                  "group relative rounded-xl border bg-card transition-all duration-200",
-                  "hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/20"
+                  'group bg-card relative rounded-xl border transition-all duration-200',
+                  'hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/20'
                 )}
-                style={setting.isDefault ? {
-                  boxShadow: `0 0 0 2px ${meta.color}40`,
-                } : undefined}
+                style={
+                  setting.isDefault
+                    ? {
+                        boxShadow: `0 0 0 2px ${meta.color}40`,
+                      }
+                    : undefined
+                }
               >
                 {/* Gradient accent bar - hidden when default since outline provides visual distinction */}
                 {!setting.isDefault && (
                   <div
-                    className="absolute top-0 left-0 right-0 h-1 rounded-t-xl"
+                    className="absolute top-0 right-0 left-0 h-1 rounded-t-xl"
                     style={{
-                      background: `linear-gradient(to right, ${meta.color}, ${meta.color}80)`
+                      background: `linear-gradient(to right, ${meta.color}, ${meta.color}80)`,
                     }}
                   />
                 )}
 
                 <div className="p-5">
                   {/* Header */}
-                  <div className="flex items-start justify-between mb-4">
+                  <div className="mb-4 flex items-start justify-between">
                     <div className="flex items-center gap-3">
                       <div
                         className={cn(
-                          "p-3 rounded-xl transition-transform group-hover:scale-105",
+                          'rounded-xl p-3 transition-transform group-hover:scale-105',
                           meta.bgColor
                         )}
                         style={{ boxShadow: `0 4px 12px ${meta.color}20` }}
@@ -249,14 +251,14 @@ function AiProvidersGrid({
                           <h3 className="font-semibold">{setting.name}</h3>
                           {setting.isDefault && (
                             <Badge
-                              className="text-[10px] px-1.5 border"
+                              className="border px-1.5 text-[10px]"
                               style={{
                                 backgroundColor: `${meta.color}15`,
                                 color: meta.color,
                                 borderColor: `${meta.color}30`,
                               }}
                             >
-                              <Star className="h-2.5 w-2.5 mr-0.5 fill-current" />
+                              <Star className="mr-0.5 h-2.5 w-2.5 fill-current" />
                               Default
                             </Badge>
                           )}
@@ -265,7 +267,7 @@ function AiProvidersGrid({
                           href={provider.website}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                          className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs transition-colors"
                         >
                           {provider.name}
                           <ExternalLink className="h-2.5 w-2.5" />
@@ -278,19 +280,19 @@ function AiProvidersGrid({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
                         >
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => onEdit(setting, provider)}>
-                          <Edit2 className="h-4 w-4 mr-2" />
+                          <Edit2 className="mr-2 h-4 w-4" />
                           Edit Configuration
                         </DropdownMenuItem>
                         {!setting.isDefault && (
                           <DropdownMenuItem onClick={() => onSetDefault(setting)}>
-                            <Star className="h-4 w-4 mr-2" />
+                            <Star className="mr-2 h-4 w-4" />
                             Set as Default
                           </DropdownMenuItem>
                         )}
@@ -299,7 +301,7 @@ function AiProvidersGrid({
                           onClick={() => onDelete(setting)}
                           className="text-red-500 focus:text-red-500"
                         >
-                          <Trash2 className="h-4 w-4 mr-2" />
+                          <Trash2 className="mr-2 h-4 w-4" />
                           Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -307,48 +309,60 @@ function AiProvidersGrid({
                   </div>
 
                   {/* Model & Settings */}
-                  <div className="space-y-3 mb-4">
+                  <div className="mb-4 space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground uppercase tracking-wide">Model</span>
-                      <code className="text-xs bg-muted/50 px-2 py-0.5 rounded-md font-mono">
+                      <span className="text-muted-foreground text-xs tracking-wide uppercase">
+                        Model
+                      </span>
+                      <code className="bg-muted/50 rounded-md px-2 py-0.5 font-mono text-xs">
                         {modelName}
                       </code>
                     </div>
                     <div className="flex gap-4 text-xs">
                       <div className="flex-1">
                         <span className="text-muted-foreground">Temp</span>
-                        <div className="font-medium">{setting.temperature?.toFixed(1) ?? "0.7"}</div>
+                        <div className="font-medium">
+                          {setting.temperature?.toFixed(1) ?? '0.7'}
+                        </div>
                       </div>
                       <div className="flex-1">
                         <span className="text-muted-foreground">Max Tokens</span>
-                        <div className="font-medium">{setting.maxTokens?.toLocaleString() ?? "1,000"}</div>
+                        <div className="font-medium">
+                          {setting.maxTokens?.toLocaleString() ?? '1,000'}
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Status & Actions */}
-                  <div className="flex items-center justify-between pt-3 border-t border-border/50">
+                  <div className="border-border/50 flex items-center justify-between border-t pt-3">
                     <div className="flex items-center gap-2">
                       {setting.lastTestResult ? (
                         <>
-                          <div className={cn(
-                            "flex items-center gap-1.5 text-xs font-medium",
-                            isConnected ? "text-emerald-500" : "text-red-500"
-                          )}>
-                            <div className={cn(
-                              "h-2 w-2 rounded-full animate-pulse",
-                              isConnected ? "bg-emerald-500" : "bg-red-500"
-                            )} />
-                            {isConnected ? "Connected" : "Failed"}
+                          <div
+                            className={cn(
+                              'flex items-center gap-1.5 text-xs font-medium',
+                              isConnected ? 'text-emerald-500' : 'text-red-500'
+                            )}
+                          >
+                            <div
+                              className={cn(
+                                'h-2 w-2 animate-pulse rounded-full',
+                                isConnected ? 'bg-emerald-500' : 'bg-red-500'
+                              )}
+                            />
+                            {isConnected ? 'Connected' : 'Failed'}
                           </div>
                           {setting.lastTestedAt && (
-                            <span className="text-[10px] text-muted-foreground">
-                              {formatDistanceToNow(new Date(setting.lastTestedAt), { addSuffix: true })}
+                            <span className="text-muted-foreground text-[10px]">
+                              {formatDistanceToNow(new Date(setting.lastTestedAt), {
+                                addSuffix: true,
+                              })}
                             </span>
                           )}
                         </>
                       ) : (
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <span className="text-muted-foreground flex items-center gap-1 text-xs">
                           <Activity className="h-3 w-3" />
                           Not tested
                         </span>
@@ -356,16 +370,16 @@ function AiProvidersGrid({
                     </div>
 
                     <Button
-                      variant={hasFailed ? "destructive" : "outline"}
+                      variant={hasFailed ? 'destructive' : 'outline'}
                       size="sm"
                       className="h-7 text-xs"
                       onClick={() => handleTest(setting)}
                       disabled={isTesting}
                     >
                       {isTesting ? (
-                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                       ) : (
-                        <Zap className="h-3 w-3 mr-1" />
+                        <Zap className="mr-1 h-3 w-3" />
                       )}
                       Test
                     </Button>
@@ -374,42 +388,47 @@ function AiProvidersGrid({
               </div>
             );
           })}
-
         </div>
       )}
 
       {/* Available Providers Section */}
       {unconfiguredProviders.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+          <h3 className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
             <Plus className="h-4 w-4" />
             Add Provider
           </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {unconfiguredProviders.map((provider) => {
-              const meta = providerMeta[provider.id] || { bgColor: "bg-gray-500/10", color: "#888" };
+              const meta = providerMeta[provider.id] || {
+                bgColor: 'bg-gray-500/10',
+                color: '#888',
+              };
               return (
                 <button
                   key={provider.id}
                   onClick={() => onAdd(provider)}
                   className={cn(
-                    "group flex items-center gap-3 p-3 rounded-lg border bg-card/50",
-                    "transition-all duration-200 hover:bg-card hover:shadow-md hover:border-muted-foreground/30",
-                    "text-left"
+                    'group bg-card/50 flex items-center gap-3 rounded-lg border p-3',
+                    'hover:bg-card hover:border-muted-foreground/30 transition-all duration-200 hover:shadow-md',
+                    'text-left'
                   )}
                 >
                   <div
-                    className={cn("p-2 rounded-lg transition-transform group-hover:scale-110", meta.bgColor)}
+                    className={cn(
+                      'rounded-lg p-2 transition-transform group-hover:scale-110',
+                      meta.bgColor
+                    )}
                   >
                     <ProviderIcon providerId={provider.id} size="sm" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm truncate">{provider.name}</div>
-                    <div className="text-[10px] text-muted-foreground">
-                      {provider.requiresApiKey ? "API Key" : "Local"}
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium">{provider.name}</div>
+                    <div className="text-muted-foreground text-[10px]">
+                      {provider.requiresApiKey ? 'API Key' : 'Local'}
                     </div>
                   </div>
-                  <Plus className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                  <Plus className="text-muted-foreground h-4 w-4 shrink-0 opacity-0 transition-opacity group-hover:opacity-100" />
                 </button>
               );
             })}
@@ -451,7 +470,7 @@ function AiUsageDashboard() {
 
   if (!stats) {
     return (
-      <div className="text-center py-12 text-muted-foreground">
+      <div className="text-muted-foreground py-12 text-center">
         No usage data yet. Start using AI features to see stats here.
       </div>
     );
@@ -472,7 +491,7 @@ function AiUsageDashboard() {
 
   // For chart: show last 14 days with proper spacing
   const chartDays = stats.dailyUsage.slice(-14);
-  const maxCount = Math.max(...chartDays.map(d => d.count), 1);
+  const maxCount = Math.max(...chartDays.map((d) => d.count), 1);
 
   return (
     <>
@@ -481,38 +500,38 @@ function AiUsageDashboard() {
         <div className="space-y-4">
           {/* Stats row */}
           <div className="grid grid-cols-4 gap-3">
-            <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+            <div className="bg-muted/30 border-border/50 rounded-lg border p-3">
               <div className="text-xl font-bold">{formatNumber(stats.totalAnalyses)}</div>
-              <div className="text-[11px] text-muted-foreground">Total Analyses</div>
+              <div className="text-muted-foreground text-[11px]">Total Analyses</div>
             </div>
-            <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+            <div className="bg-muted/30 border-border/50 rounded-lg border p-3">
               <div className="text-xl font-bold">{formatNumber(stats.totalTokens)}</div>
-              <div className="text-[11px] text-muted-foreground">Total Tokens</div>
+              <div className="text-muted-foreground text-[11px]">Total Tokens</div>
             </div>
-            <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+            <div className="bg-muted/30 border-border/50 rounded-lg border p-3">
               <div className="text-xl font-bold">{formatNumber(last30DaysCount)}</div>
-              <div className="text-[11px] text-muted-foreground">Last 30 Days</div>
+              <div className="text-muted-foreground text-[11px]">Last 30 Days</div>
             </div>
-            <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+            <div className="bg-muted/30 border-border/50 rounded-lg border p-3">
               <div className="text-xl font-bold">{formatNumber(last30DaysTokens)}</div>
-              <div className="text-[11px] text-muted-foreground">Tokens (30d)</div>
+              <div className="text-muted-foreground text-[11px]">Tokens (30d)</div>
             </div>
           </div>
 
           {/* Chart */}
           <Card className="border-border/50">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-3">
+              <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-sm font-medium">Daily Activity</h3>
-                <span className="text-xs text-muted-foreground">Last 14 days</span>
+                <span className="text-muted-foreground text-xs">Last 14 days</span>
               </div>
               <div className="h-24">
                 {chartDays.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+                  <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
                     No activity yet
                   </div>
                 ) : (
-                  <div className="h-full flex items-end gap-1">
+                  <div className="flex h-full items-end gap-1">
                     {chartDays.map((day, index) => {
                       const height = maxCount > 0 ? (day.count / maxCount) * 100 : 0;
                       const isToday = index === chartDays.length - 1;
@@ -521,17 +540,27 @@ function AiUsageDashboard() {
                           <TooltipTrigger asChild>
                             <div
                               className={cn(
-                                "flex-1 rounded-t-lg transition-all cursor-pointer hover:opacity-80",
-                                isToday ? "bg-primary" : day.count > 0 ? "bg-primary/50" : "bg-muted/30"
+                                'flex-1 cursor-pointer rounded-t-lg transition-all hover:opacity-80',
+                                isToday
+                                  ? 'bg-primary'
+                                  : day.count > 0
+                                    ? 'bg-primary/50'
+                                    : 'bg-muted/30'
                               )}
                               style={{ height: `${Math.max(height, day.count > 0 ? 10 : 3)}%` }}
                             />
                           </TooltipTrigger>
                           <TooltipContent side="top" className="text-xs">
                             <div className="font-medium">
-                              {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                              {new Date(day.date).toLocaleDateString('en-US', {
+                                weekday: 'short',
+                                month: 'short',
+                                day: 'numeric',
+                              })}
                             </div>
-                            <div>{day.count} analyses · {day.tokens.toLocaleString()} tokens</div>
+                            <div>
+                              {day.count} analyses · {day.tokens.toLocaleString()} tokens
+                            </div>
                           </TooltipContent>
                         </Tooltip>
                       );
@@ -540,8 +569,13 @@ function AiUsageDashboard() {
                 )}
               </div>
               {chartDays.length > 0 && (
-                <div className="flex justify-between mt-1 text-[10px] text-muted-foreground">
-                  <span>{new Date(chartDays[0]?.date || '').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                <div className="text-muted-foreground mt-1 flex justify-between text-[10px]">
+                  <span>
+                    {new Date(chartDays[0]?.date || '').toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </span>
                   <span>Today</span>
                 </div>
               )}
@@ -552,24 +586,28 @@ function AiUsageDashboard() {
           {providerEntries.length > 0 && (
             <Card className="border-border/50">
               <CardContent className="p-4">
-                <h3 className="text-sm font-medium mb-3">Usage by Provider</h3>
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                <h3 className="mb-3 text-sm font-medium">Usage by Provider</h3>
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
                   {providerEntries.map(([provider, data]) => {
-                    const percentage = totalFromProviders > 0
-                      ? Math.round((data.count / totalFromProviders) * 100)
-                      : 0;
+                    const percentage =
+                      totalFromProviders > 0
+                        ? Math.round((data.count / totalFromProviders) * 100)
+                        : 0;
                     const meta = providerMeta[provider as AiProviderType];
 
                     return (
-                      <div key={provider} className="flex items-center gap-3 p-2 rounded-lg bg-muted/20">
+                      <div
+                        key={provider}
+                        className="bg-muted/20 flex items-center gap-3 rounded-lg p-2"
+                      >
                         {meta && (
-                          <div className={cn("p-2 rounded-lg", meta.bgColor)}>
+                          <div className={cn('rounded-lg p-2', meta.bgColor)}>
                             <ProviderIcon providerId={provider as AiProviderType} size="sm" />
                           </div>
                         )}
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium capitalize text-sm">{provider}</div>
-                          <div className="text-xs text-muted-foreground">
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium capitalize">{provider}</div>
+                          <div className="text-muted-foreground text-xs">
                             {data.count} ({percentage}%)
                           </div>
                         </div>
@@ -585,33 +623,33 @@ function AiUsageDashboard() {
         {/* Right: Analysis History */}
         <Card className="border-border/50">
           <CardContent className="p-4">
-            <h3 className="text-sm font-medium mb-3">Analysis History</h3>
+            <h3 className="mb-3 text-sm font-medium">Analysis History</h3>
             {!historyData || historyData.data.length === 0 ? (
-              <div className="text-muted-foreground text-sm py-8 text-center">
-                No analyses yet
-              </div>
+              <div className="text-muted-foreground py-8 text-center text-sm">No analyses yet</div>
             ) : (
-              <div className="space-y-1 max-h-[500px] overflow-y-auto">
+              <div className="max-h-[500px] space-y-1 overflow-y-auto">
                 {historyData.data.map((item) => {
                   const meta = providerMeta[item.provider as AiProviderType];
                   return (
                     <button
                       key={item.id}
                       onClick={() => setSelectedAnalysis(item)}
-                      className="w-full text-left p-3 rounded-lg hover:bg-muted/40 transition-colors group"
+                      className="hover:bg-muted/40 group w-full rounded-lg p-3 text-left transition-colors"
                     >
                       <div className="flex items-start gap-3">
                         {meta && (
-                          <div className={cn("p-1.5 rounded shrink-0", meta.bgColor)}>
+                          <div className={cn('shrink-0 rounded p-1.5', meta.bgColor)}>
                             <ProviderIcon providerId={item.provider as AiProviderType} size="sm" />
                           </div>
                         )}
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm line-clamp-2 group-hover:text-foreground transition-colors">
+                        <div className="min-w-0 flex-1">
+                          <div className="group-hover:text-foreground line-clamp-2 text-sm transition-colors">
                             {item.prompt}
                           </div>
-                          <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                            <span>{formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}</span>
+                          <div className="text-muted-foreground mt-1 flex items-center gap-2 text-xs">
+                            <span>
+                              {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
+                            </span>
                             {item.tokensUsed && (
                               <>
                                 <span>·</span>
@@ -632,20 +670,30 @@ function AiUsageDashboard() {
 
       {/* Analysis Detail Modal */}
       <Dialog open={!!selectedAnalysis} onOpenChange={(open) => !open && setSelectedAnalysis(null)}>
-        <DialogContent className="max-w-5xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden">
+        <DialogContent className="max-h-[90vh] w-[95vw] max-w-5xl gap-0 overflow-hidden p-0">
           {selectedAnalysis && (
             <>
               {/* Header */}
-              <div className="flex items-center justify-between p-5 border-b border-border/50">
+              <div className="border-border/50 flex items-center justify-between border-b p-5">
                 <div className="flex items-center gap-4">
                   {providerMeta[selectedAnalysis.provider as AiProviderType] && (
-                    <div className={cn("p-3 rounded-xl", providerMeta[selectedAnalysis.provider as AiProviderType].bgColor)}>
-                      <ProviderIcon providerId={selectedAnalysis.provider as AiProviderType} size="md" />
+                    <div
+                      className={cn(
+                        'rounded-xl p-3',
+                        providerMeta[selectedAnalysis.provider as AiProviderType].bgColor
+                      )}
+                    >
+                      <ProviderIcon
+                        providerId={selectedAnalysis.provider as AiProviderType}
+                        size="md"
+                      />
                     </div>
                   )}
                   <div>
-                    <h2 className="text-lg font-semibold capitalize">{selectedAnalysis.provider} Analysis</h2>
-                    <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                    <h2 className="text-lg font-semibold capitalize">
+                      {selectedAnalysis.provider} Analysis
+                    </h2>
+                    <div className="text-muted-foreground mt-1 flex items-center gap-4 text-sm">
                       <span className="flex items-center gap-1.5">
                         <Clock className="h-3.5 w-3.5" />
                         {new Date(selectedAnalysis.createdAt).toLocaleString()}
@@ -662,10 +710,12 @@ function AiUsageDashboard() {
                             navigator.clipboard.writeText(selectedAnalysis.serverId || '');
                             toast.success('Server ID copied');
                           }}
-                          className="flex items-center gap-1.5 hover:text-foreground transition-colors"
+                          className="hover:text-foreground flex items-center gap-1.5 transition-colors"
                         >
                           <Server className="h-3.5 w-3.5" />
-                          <code className="text-xs bg-muted/50 px-1.5 py-0.5 rounded">{selectedAnalysis.serverId}</code>
+                          <code className="bg-muted/50 rounded px-1.5 py-0.5 text-xs">
+                            {selectedAnalysis.serverId}
+                          </code>
                           <Copy className="h-3 w-3 opacity-50" />
                         </button>
                       )}
@@ -675,11 +725,13 @@ function AiUsageDashboard() {
               </div>
 
               {/* Content */}
-              <div className="flex-1 overflow-y-auto p-5 space-y-6">
+              <div className="flex-1 space-y-6 overflow-y-auto p-5">
                 {/* Prompt */}
                 <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Prompt</h3>
+                  <div className="mb-3 flex items-center justify-between">
+                    <h3 className="text-muted-foreground text-sm font-medium tracking-wide uppercase">
+                      Prompt
+                    </h3>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -689,19 +741,21 @@ function AiUsageDashboard() {
                         toast.success('Prompt copied');
                       }}
                     >
-                      <Copy className="h-3 w-3 mr-1" />
+                      <Copy className="mr-1 h-3 w-3" />
                       Copy
                     </Button>
                   </div>
-                  <div className="p-4 rounded-lg bg-muted/20 border border-border/30 text-sm whitespace-pre-wrap font-mono">
+                  <div className="bg-muted/20 border-border/30 rounded-lg border p-4 font-mono text-sm whitespace-pre-wrap">
                     {selectedAnalysis.prompt}
                   </div>
                 </div>
 
                 {/* Response */}
                 <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Response</h3>
+                  <div className="mb-3 flex items-center justify-between">
+                    <h3 className="text-muted-foreground text-sm font-medium tracking-wide uppercase">
+                      Response
+                    </h3>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -711,11 +765,11 @@ function AiUsageDashboard() {
                         toast.success('Response copied');
                       }}
                     >
-                      <Copy className="h-3 w-3 mr-1" />
+                      <Copy className="mr-1 h-3 w-3" />
                       Copy
                     </Button>
                   </div>
-                  <div className="p-4 rounded-lg bg-muted/20 border border-border/30 prose prose-sm dark:prose-invert max-w-none">
+                  <div className="bg-muted/20 border-border/30 prose prose-sm dark:prose-invert max-w-none rounded-lg border p-4">
                     <Markdown>{selectedAnalysis.response}</Markdown>
                   </div>
                 </div>
@@ -749,10 +803,10 @@ function AddEditProviderDialog({
     isDefault: boolean;
     isEnabled: boolean;
   }>({
-    name: "",
-    apiKey: "",
-    baseUrl: "",
-    model: "",
+    name: '',
+    apiKey: '',
+    baseUrl: '',
+    model: '',
     maxTokens: 1000,
     temperature: 0.7,
     isDefault: false,
@@ -779,16 +833,17 @@ function AddEditProviderDialog({
   if (providerId !== prevProviderIdRef.current) {
     prevProviderIdRef.current = providerId;
     if (provider) {
-      const defaultBaseUrl = provider.id === 'ollama'
-        ? 'http://localhost:11434'
-        : provider.id === 'lmstudio'
-          ? 'http://localhost:1234'
-          : '';
+      const defaultBaseUrl =
+        provider.id === 'ollama'
+          ? 'http://localhost:11434'
+          : provider.id === 'lmstudio'
+            ? 'http://localhost:1234'
+            : '';
       setFormData({
         name: setting?.name || `My ${provider.name}`,
-        apiKey: "",
+        apiKey: '',
         baseUrl: setting?.baseUrl || defaultBaseUrl,
-        model: setting?.model || (provider.models[0]?.id || ""),
+        model: setting?.model || provider.models[0]?.id || '',
         maxTokens: setting?.maxTokens || 1000,
         temperature: setting?.temperature || 0.7,
         isDefault: setting?.isDefault || false,
@@ -808,7 +863,7 @@ function AddEditProviderDialog({
 
     // For providers requiring API key, we need it to fetch
     if (provider.requiresApiKey && !formData.apiKey) {
-      if (showToast) toast.error("API key required to fetch models");
+      if (showToast) toast.error('API key required to fetch models');
       return;
     }
 
@@ -821,18 +876,23 @@ function AddEditProviderDialog({
       setDynamicModels(models);
       setModelsFetched(true);
       // If we got models and current selection isn't in the list, select first
-      if (models.length > 0 && !models.find(m => m.id === formData.model)) {
-        setFormData(prev => ({ ...prev, model: models[0].id }));
+      if (models.length > 0 && !models.find((m) => m.id === formData.model)) {
+        setFormData((prev) => ({ ...prev, model: models[0].id }));
       }
       if (showToast) toast.success(`Found ${models.length} models`);
     } catch (err) {
-      if (showToast) toast.error(err instanceof Error ? err.message : "Failed to fetch models");
+      if (showToast) toast.error(err instanceof Error ? err.message : 'Failed to fetch models');
       setModelsFetched(true);
     }
   };
 
   // Auto-fetch models for local providers when baseUrl is set
-  const shouldAutoFetch = provider && !provider.requiresApiKey && formData.baseUrl && !autoFetchTriggered && !modelsFetched;
+  const shouldAutoFetch =
+    provider &&
+    !provider.requiresApiKey &&
+    formData.baseUrl &&
+    !autoFetchTriggered &&
+    !modelsFetched;
   if (shouldAutoFetch) {
     setAutoFetchTriggered(true);
     handleFetchModels(false);
@@ -847,7 +907,7 @@ function AddEditProviderDialog({
 
   const handleTest = async () => {
     if (!provider || !formData.apiKey) {
-      toast.error("API key is required to test");
+      toast.error('API key is required to test');
       return;
     }
 
@@ -866,7 +926,7 @@ function AddEditProviderDialog({
         toast.error(result.message);
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Test failed");
+      toast.error(error instanceof Error ? error.message : 'Test failed');
     }
   };
 
@@ -887,10 +947,10 @@ function AddEditProviderDialog({
         if (formData.baseUrl) updateData.baseUrl = formData.baseUrl;
 
         await updateMutation.mutateAsync({ id: setting.id, data: updateData });
-        toast.success("Updated");
+        toast.success('Updated');
       } else {
         if (!formData.apiKey && provider.requiresApiKey) {
-          toast.error("API key is required");
+          toast.error('API key is required');
           return;
         }
 
@@ -907,17 +967,17 @@ function AddEditProviderDialog({
         if (formData.baseUrl) createData.baseUrl = formData.baseUrl;
 
         await createMutation.mutateAsync(createData);
-        toast.success("Configured");
+        toast.success('Configured');
       }
       onClose();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed");
+      toast.error(error instanceof Error ? error.message : 'Failed');
     }
   };
 
   if (!provider) return null;
 
-  const meta = providerMeta[provider.id] || { bgColor: "bg-gray-500/10" };
+  const meta = providerMeta[provider.id] || { bgColor: 'bg-gray-500/10' };
   const selectedModel = availableModels.find((m) => m.id === formData.model);
 
   return (
@@ -925,7 +985,7 @@ function AddEditProviderDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
-            <div className={cn("p-2 rounded-lg", meta.bgColor)}>
+            <div className={cn('rounded-lg p-2', meta.bgColor)}>
               <ProviderIcon providerId={provider.id} size="sm" />
             </div>
             {isEditing ? `Edit ${provider.name}` : `Configure ${provider.name}`}
@@ -947,22 +1007,23 @@ function AddEditProviderDialog({
           {provider.requiresApiKey && (
             <div className="space-y-1.5">
               <Label htmlFor="apiKey">
-                API Key {isEditing && <span className="text-muted-foreground">(blank to keep)</span>}
+                API Key{' '}
+                {isEditing && <span className="text-muted-foreground">(blank to keep)</span>}
               </Label>
               <div className="relative">
                 <Input
                   id="apiKey"
-                  type={showApiKey ? "text" : "password"}
+                  type={showApiKey ? 'text' : 'password'}
                   value={formData.apiKey}
                   onChange={(e) => setFormData((prev) => ({ ...prev, apiKey: e.target.value }))}
-                  placeholder={isEditing && setting?.hasApiKey ? "••••••••" : "sk-..."}
+                  placeholder={isEditing && setting?.hasApiKey ? '••••••••' : 'sk-...'}
                   className="pr-10"
                 />
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="absolute right-0 top-0 h-full w-10"
+                  className="absolute top-0 right-0 h-full w-10"
                   onClick={() => setShowApiKey(!showApiKey)}
                 >
                   {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -975,7 +1036,10 @@ function AddEditProviderDialog({
           {provider.supportsBaseUrl && (
             <div className="space-y-1.5">
               <Label htmlFor="baseUrl">
-                Base URL {provider.requiresApiKey && <span className="text-muted-foreground">(optional)</span>}
+                Base URL{' '}
+                {provider.requiresApiKey && (
+                  <span className="text-muted-foreground">(optional)</span>
+                )}
               </Label>
               <Input
                 id="baseUrl"
@@ -990,14 +1054,14 @@ function AddEditProviderDialog({
                 }}
                 placeholder={
                   provider.id === 'ollama'
-                    ? "http://localhost:11434"
+                    ? 'http://localhost:11434'
                     : provider.id === 'lmstudio'
-                      ? "http://localhost:1234"
-                      : "https://api.openai.com/v1"
+                      ? 'http://localhost:1234'
+                      : 'https://api.openai.com/v1'
                 }
               />
               {!provider.requiresApiKey && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   Models will be auto-detected from this endpoint
                 </p>
               )}
@@ -1010,7 +1074,7 @@ function AddEditProviderDialog({
               <Label htmlFor="model">Model</Label>
               <div className="flex items-center gap-2">
                 {dynamicModels && (
-                  <span className="text-xs text-emerald-500 flex items-center gap-1">
+                  <span className="flex items-center gap-1 text-xs text-emerald-500">
                     <CheckCircle className="h-3 w-3" />
                     {dynamicModels.length} detected
                   </span>
@@ -1019,16 +1083,18 @@ function AddEditProviderDialog({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-6 text-xs gap-1"
+                  className="h-6 gap-1 text-xs"
                   onClick={() => handleFetchModels(true)}
-                  disabled={fetchModelsMutation.isPending || (provider?.requiresApiKey && !formData.apiKey)}
+                  disabled={
+                    fetchModelsMutation.isPending || (provider?.requiresApiKey && !formData.apiKey)
+                  }
                 >
                   {fetchModelsMutation.isPending ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
                   ) : (
                     <RefreshCw className="h-3 w-3" />
                   )}
-                  {dynamicModels ? "Refresh" : "Detect"}
+                  {dynamicModels ? 'Refresh' : 'Detect'}
                 </Button>
               </div>
             </div>
@@ -1048,7 +1114,7 @@ function AddEditProviderDialog({
               </SelectContent>
             </Select>
             {selectedModel?.contextWindow && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 {selectedModel.contextWindow.toLocaleString()} tokens context
               </p>
             )}
@@ -1058,7 +1124,9 @@ function AddEditProviderDialog({
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label>Temperature</Label>
-              <span className="text-sm text-muted-foreground">{formData.temperature.toFixed(1)}</span>
+              <span className="text-muted-foreground text-sm">
+                {formData.temperature.toFixed(1)}
+              </span>
             </div>
             <Slider
               value={[formData.temperature]}
@@ -1073,7 +1141,7 @@ function AddEditProviderDialog({
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label>Max Tokens</Label>
-              <span className="text-sm text-muted-foreground">{formData.maxTokens}</span>
+              <span className="text-muted-foreground text-sm">{formData.maxTokens}</span>
             </div>
             <Slider
               value={[formData.maxTokens]}
@@ -1089,7 +1157,9 @@ function AddEditProviderDialog({
             <Label>Set as Default</Label>
             <Switch
               checked={formData.isDefault}
-              onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, isDefault: checked }))}
+              onCheckedChange={(checked) =>
+                setFormData((prev) => ({ ...prev, isDefault: checked }))
+              }
             />
           </div>
 
@@ -1097,10 +1167,8 @@ function AddEditProviderDialog({
           {testResult && (
             <div
               className={cn(
-                "flex items-center gap-2 p-3 rounded-lg text-sm",
-                testResult.success
-                  ? "bg-green-500/10 text-green-500"
-                  : "bg-red-500/10 text-red-500"
+                'flex items-center gap-2 rounded-lg p-3 text-sm',
+                testResult.success ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'
               )}
             >
               {testResult.success ? (
@@ -1114,12 +1182,24 @@ function AddEditProviderDialog({
         </div>
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={handleTest} disabled={isTesting || (!formData.apiKey && provider.requiresApiKey)}>
-            {isTesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4 mr-1" />}
+          <Button
+            variant="outline"
+            onClick={handleTest}
+            disabled={isTesting || (!formData.apiKey && provider.requiresApiKey)}
+          >
+            {isTesting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Zap className="mr-1 h-4 w-4" />
+            )}
             Test
           </Button>
           <Button onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 mr-1" />}
+            {isSubmitting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Check className="mr-1 h-4 w-4" />
+            )}
             Save
           </Button>
         </DialogFooter>
@@ -1162,9 +1242,9 @@ export default function SettingsPage() {
     if (!settingToDelete) return;
     try {
       await deleteMutation.mutateAsync(settingToDelete.id);
-      toast.success("Deleted");
+      toast.success('Deleted');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed");
+      toast.error(error instanceof Error ? error.message : 'Failed');
     }
     setDeleteConfirmOpen(false);
     setSettingToDelete(null);
@@ -1179,7 +1259,7 @@ export default function SettingsPage() {
         toast.error(result.message);
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed");
+      toast.error(error instanceof Error ? error.message : 'Failed');
     }
   };
 
@@ -1189,17 +1269,17 @@ export default function SettingsPage() {
         id: setting.id,
         data: { isDefault: true },
       });
-      toast.success("Set as default");
+      toast.success('Set as default');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed");
+      toast.error(error instanceof Error ? error.message : 'Failed');
     }
   };
 
   const isLoading = providersLoading || settingsLoading;
 
   return (
-    <div className="flex flex-col h-full min-h-0 overflow-hidden">
-      <Tabs defaultValue="providers" className="flex-1 flex flex-col min-h-0 overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <Tabs defaultValue="providers" className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <TabsList className="mb-4 shrink-0">
           <TabsTrigger value="providers" className="gap-2">
             <Zap className="h-4 w-4" />
@@ -1211,7 +1291,7 @@ export default function SettingsPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="providers" className="flex-1 min-h-0 overflow-auto mt-0">
+        <TabsContent value="providers" className="mt-0 min-h-0 flex-1 overflow-auto">
           <AiProvidersGrid
             providers={providers}
             settings={settings}
@@ -1224,7 +1304,7 @@ export default function SettingsPage() {
           />
         </TabsContent>
 
-        <TabsContent value="usage" className="flex-1 min-h-0 overflow-auto mt-0">
+        <TabsContent value="usage" className="mt-0 min-h-0 flex-1 overflow-auto">
           <AiUsageDashboard />
         </TabsContent>
       </Tabs>

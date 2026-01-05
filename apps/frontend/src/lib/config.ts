@@ -27,8 +27,8 @@ function getConfig(): LogarrConfig {
   if (!API_URL || !WS_URL) {
     throw new Error(
       'Missing required configuration.\n' +
-      'Set NEXT_PUBLIC_API_URL and NEXT_PUBLIC_WS_URL environment variables,\n' +
-      'or ensure __LOGARR_CONFIG__ is injected at runtime (Docker).'
+        'Set NEXT_PUBLIC_API_URL and NEXT_PUBLIC_WS_URL environment variables,\n' +
+        'or ensure __LOGARR_CONFIG__ is injected at runtime (Docker).'
     );
   }
 

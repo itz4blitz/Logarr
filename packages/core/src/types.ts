@@ -208,6 +208,9 @@ export interface NowPlayingInfo {
   readonly videoCodec?: string | undefined;
   readonly audioCodec?: string | undefined;
   readonly container?: string | undefined;
+  readonly thumbnailUrl?: string | undefined;
+  readonly seriesName?: string | undefined;
+  readonly seasonName?: string | undefined;
 }
 
 /**

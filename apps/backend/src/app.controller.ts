@@ -33,7 +33,7 @@ export class AppController {
     private readonly db: PostgresJsDatabase,
     @Optional()
     @Inject(REDIS_CLIENT)
-    private readonly redis: Redis | null,
+    private readonly redis: Redis | null
   ) {}
 
   @Get()

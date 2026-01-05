@@ -162,7 +162,5 @@ export const FALLBACK_MODELS: Record<AiProviderType, AiModelInfo[]> = {
     { id: 'mistral', name: 'Mistral', contextWindow: 32000 },
     { id: 'codellama', name: 'Code Llama', contextWindow: 16000 },
   ],
-  lmstudio: [
-    { id: 'local-model', name: 'Local Model', contextWindow: 32000 },
-  ],
+  lmstudio: [{ id: 'local-model', name: 'Local Model', contextWindow: 32000 }],
 };

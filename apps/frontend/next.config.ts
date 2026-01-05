@@ -1,8 +1,8 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   // Only use standalone output for production builds
-  ...(process.env.NODE_ENV === "production" && { output: "standalone" }),
+  ...(process.env.NODE_ENV === 'production' && { output: 'standalone' }),
 
   // Turbopack configuration (required in Next.js 16 when webpack config exists)
   turbopack: {},
@@ -11,12 +11,12 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: "http",
-        hostname: "**",
+        protocol: 'http',
+        hostname: '**',
       },
       {
-        protocol: "https",
-        hostname: "**",
+        protocol: 'https',
+        hostname: '**',
       },
     ],
   },

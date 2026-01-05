@@ -11,8 +11,18 @@ import { AnalysisPromptBuilder } from './analysis-prompt-builder';
 import { parseAnalysisResponse } from './analysis-response-parser';
 import { IssueContextService, type IssueAnalysisContext } from './issue-context.service';
 
-import type { AnalysisResult, FollowUpResult, ConversationMessage } from './analysis-response.types';
-import type { IssueSearchDto, UpdateIssueDto, IssueStatsDto, MergeIssuesDto, IssueSeverity } from './issues.dto';
+import type {
+  AnalysisResult,
+  FollowUpResult,
+  ConversationMessage,
+} from './analysis-response.types';
+import type {
+  IssueSearchDto,
+  UpdateIssueDto,
+  IssueStatsDto,
+  MergeIssuesDto,
+  IssueSeverity,
+} from './issues.dto';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 /**
@@ -33,7 +43,7 @@ export class IssuesService {
     private readonly db: PostgresJsDatabase<typeof schema>,
     private readonly aiProviderService: AiProviderService,
     private readonly issueContextService: IssueContextService,
-    private readonly analysisPromptBuilder: AnalysisPromptBuilder,
+    private readonly analysisPromptBuilder: AnalysisPromptBuilder
   ) {}
 
   /**
@@ -120,7 +130,8 @@ export class IssuesService {
     score += sessionScore;
 
     // Recency factor (0-5) - more recent = higher score
-    const recencyScore = hoursSinceLastSeen < 1 ? 5 : hoursSinceLastSeen < 24 ? 3 : hoursSinceLastSeen < 168 ? 1 : 0;
+    const recencyScore =
+      hoursSinceLastSeen < 1 ? 5 : hoursSinceLastSeen < 24 ? 3 : hoursSinceLastSeen < 168 ? 1 : 0;
     score += recencyScore;
 
     return Math.min(100, Math.round(score));
@@ -133,46 +144,76 @@ export class IssuesService {
     const lowerMessage = message.toLowerCase();
 
     // Authentication/Authorization issues
-    if (lowerMessage.includes('auth') || lowerMessage.includes('login') ||
-        lowerMessage.includes('permission') || lowerMessage.includes('unauthorized') ||
-        lowerMessage.includes('forbidden') || lowerMessage.includes('access denied')) {
+    if (
+      lowerMessage.includes('auth') ||
+      lowerMessage.includes('login') ||
+      lowerMessage.includes('permission') ||
+      lowerMessage.includes('unauthorized') ||
+      lowerMessage.includes('forbidden') ||
+      lowerMessage.includes('access denied')
+    ) {
       return { category: 'authentication', severity: 'high' as any };
     }
 
     // Database issues
-    if (lowerMessage.includes('database') || lowerMessage.includes('sql') ||
-        lowerMessage.includes('connection refused') || lowerMessage.includes('query failed')) {
+    if (
+      lowerMessage.includes('database') ||
+      lowerMessage.includes('sql') ||
+      lowerMessage.includes('connection refused') ||
+      lowerMessage.includes('query failed')
+    ) {
       return { category: 'database', severity: 'critical' as any };
     }
 
     // Network issues
-    if (lowerMessage.includes('timeout') || lowerMessage.includes('connection') ||
-        lowerMessage.includes('network') || lowerMessage.includes('socket') ||
-        lowerMessage.includes('dns') || lowerMessage.includes('unreachable')) {
+    if (
+      lowerMessage.includes('timeout') ||
+      lowerMessage.includes('connection') ||
+      lowerMessage.includes('network') ||
+      lowerMessage.includes('socket') ||
+      lowerMessage.includes('dns') ||
+      lowerMessage.includes('unreachable')
+    ) {
       return { category: 'network', severity: 'high' as any };
     }
 
     // Transcoding issues
-    if (lowerMessage.includes('transcode') || lowerMessage.includes('ffmpeg') ||
-        lowerMessage.includes('codec') || lowerMessage.includes('encoding')) {
+    if (
+      lowerMessage.includes('transcode') ||
+      lowerMessage.includes('ffmpeg') ||
+      lowerMessage.includes('codec') ||
+      lowerMessage.includes('encoding')
+    ) {
       return { category: 'transcoding', severity: 'medium' as any };
     }
 
     // Playback issues
-    if (lowerMessage.includes('playback') || lowerMessage.includes('stream') ||
-        lowerMessage.includes('buffer') || lowerMessage.includes('media')) {
+    if (
+      lowerMessage.includes('playback') ||
+      lowerMessage.includes('stream') ||
+      lowerMessage.includes('buffer') ||
+      lowerMessage.includes('media')
+    ) {
       return { category: 'playback', severity: 'medium' as any };
     }
 
     // File system issues
-    if (lowerMessage.includes('file not found') || lowerMessage.includes('disk') ||
-        lowerMessage.includes('storage') || lowerMessage.includes('permission denied')) {
+    if (
+      lowerMessage.includes('file not found') ||
+      lowerMessage.includes('disk') ||
+      lowerMessage.includes('storage') ||
+      lowerMessage.includes('permission denied')
+    ) {
       return { category: 'filesystem', severity: 'high' as any };
     }
 
     // Memory/performance issues
-    if (lowerMessage.includes('memory') || lowerMessage.includes('out of memory') ||
-        lowerMessage.includes('performance') || lowerMessage.includes('slow')) {
+    if (
+      lowerMessage.includes('memory') ||
+      lowerMessage.includes('out of memory') ||
+      lowerMessage.includes('performance') ||
+      lowerMessage.includes('slow')
+    ) {
       return { category: 'performance', severity: 'high' as any };
     }
 
@@ -212,11 +253,14 @@ export class IssuesService {
 
       // Get all occurrences to count unique users/sessions
       const occurrences = await this.db
-        .select({ userId: schema.issueOccurrences.userId, sessionId: schema.issueOccurrences.sessionId })
+        .select({
+          userId: schema.issueOccurrences.userId,
+          sessionId: schema.issueOccurrences.sessionId,
+        })
         .from(schema.issueOccurrences)
         .where(eq(schema.issueOccurrences.issueId, issue.id));
 
-      occurrences.forEach(o => {
+      occurrences.forEach((o) => {
         if (o.userId) affectedUsers.add(o.userId);
         if (o.sessionId) affectedSessions.add(o.sessionId);
       });
@@ -246,14 +290,17 @@ export class IssuesService {
         .where(eq(schema.issues.id, issue.id));
 
       // Create occurrence
-      await this.db.insert(schema.issueOccurrences).values({
-        issueId: issue.id,
-        logEntryId: logEntry.id,
-        timestamp: logEntry.timestamp,
-        serverId: logEntry.serverId,
-        userId: logEntry.userId,
-        sessionId: logEntry.sessionId,
-      }).onConflictDoNothing();
+      await this.db
+        .insert(schema.issueOccurrences)
+        .values({
+          issueId: issue.id,
+          logEntryId: logEntry.id,
+          timestamp: logEntry.timestamp,
+          serverId: logEntry.serverId,
+          userId: logEntry.userId,
+          sessionId: logEntry.sessionId,
+        })
+        .onConflictDoNothing();
 
       return issue.id;
     } else {
@@ -284,23 +331,26 @@ export class IssuesService {
         0
       );
 
-      const [newIssue] = await this.db.insert(schema.issues).values({
-        fingerprint,
-        title,
-        source,
-        severity,
-        category,
-        serverId: logEntry.serverId,
-        errorPattern: this.generateFingerprint(logEntry.message, logEntry.source || 'unknown'),
-        sampleMessage: logEntry.message,
-        exceptionType: logEntry.exception,
-        firstSeen: logEntry.timestamp,
-        lastSeen: logEntry.timestamp,
-        occurrenceCount: 1,
-        affectedUsersCount: logEntry.userId ? 1 : 0,
-        affectedSessionsCount: logEntry.sessionId ? 1 : 0,
-        impactScore,
-      }).returning();
+      const [newIssue] = await this.db
+        .insert(schema.issues)
+        .values({
+          fingerprint,
+          title,
+          source,
+          severity,
+          category,
+          serverId: logEntry.serverId,
+          errorPattern: this.generateFingerprint(logEntry.message, logEntry.source || 'unknown'),
+          sampleMessage: logEntry.message,
+          exceptionType: logEntry.exception,
+          firstSeen: logEntry.timestamp,
+          lastSeen: logEntry.timestamp,
+          occurrenceCount: 1,
+          affectedUsersCount: logEntry.userId ? 1 : 0,
+          affectedSessionsCount: logEntry.sessionId ? 1 : 0,
+          impactScore,
+        })
+        .returning();
 
       if (!newIssue) {
         return null;
@@ -383,7 +433,7 @@ export class IssuesService {
       .limit(limit)
       .offset(offset);
 
-    return results.map(r => ({
+    return results.map((r) => ({
       ...r.issue,
       serverName: r.serverName,
     }));
@@ -482,17 +532,22 @@ export class IssuesService {
 
     // Calculate combined stats
     const totalOccurrences = issues.reduce((sum, i) => sum + i.occurrenceCount, 0);
-    const firstSeen = new Date(Math.min(...issues.map(i => new Date(i.firstSeen).getTime())));
-    const lastSeen = new Date(Math.max(...issues.map(i => new Date(i.lastSeen).getTime())));
+    const firstSeen = new Date(Math.min(...issues.map((i) => new Date(i.firstSeen).getTime())));
+    const lastSeen = new Date(Math.max(...issues.map((i) => new Date(i.lastSeen).getTime())));
 
     // Get unique affected users/sessions from all issues
     const allOccurrences = await this.db
-      .select({ userId: schema.issueOccurrences.userId, sessionId: schema.issueOccurrences.sessionId })
+      .select({
+        userId: schema.issueOccurrences.userId,
+        sessionId: schema.issueOccurrences.sessionId,
+      })
       .from(schema.issueOccurrences)
       .where(inArray(schema.issueOccurrences.issueId, issueIds));
 
-    const affectedUsers = new Set(allOccurrences.filter(o => o.userId).map(o => o.userId));
-    const affectedSessions = new Set(allOccurrences.filter(o => o.sessionId).map(o => o.sessionId));
+    const affectedUsers = new Set(allOccurrences.filter((o) => o.userId).map((o) => o.userId));
+    const affectedSessions = new Set(
+      allOccurrences.filter((o) => o.sessionId).map((o) => o.sessionId)
+    );
 
     // Move all occurrences to primary issue
     await this.db
@@ -525,9 +580,7 @@ export class IssuesService {
       .where(eq(schema.issues.id, primaryIssue.id));
 
     // Delete the other issues
-    await this.db
-      .delete(schema.issues)
-      .where(inArray(schema.issues.id, otherIssueIds));
+    await this.db.delete(schema.issues).where(inArray(schema.issues.id, otherIssueIds));
 
     return this.findOne(primaryIssue.id);
   }
@@ -646,7 +699,7 @@ export class IssuesService {
       bySource,
       bySeverity,
       byStatus,
-      topCategories: topCategories.map(c => ({
+      topCategories: topCategories.map((c) => ({
         category: c.category || 'uncategorized',
         count: Number(c.count),
       })),
@@ -663,7 +716,7 @@ export class IssuesService {
       .from(schema.issues);
 
     return categories
-      .map(c => c.category)
+      .map((c) => c.category)
       .filter((c): c is string => c !== null)
       .sort();
   }
@@ -760,7 +813,7 @@ export class IssuesService {
 
     // Get existing issue IDs before backfill
     const existingIssueIds = new Set(
-      (await this.db.select({ id: schema.issues.id }).from(schema.issues)).map(i => i.id)
+      (await this.db.select({ id: schema.issues.id }).from(schema.issues)).map((i) => i.id)
     );
 
     // Process in batches - no offset needed since we're always querying unprocessed logs
@@ -916,15 +969,15 @@ export class IssuesService {
       );
 
     return {
-      hourly: hourlyData.map(d => ({
+      hourly: hourlyData.map((d) => ({
         timestamp: d.hour,
         count: Number(d.count),
       })),
-      daily: dailyData.map(d => ({
+      daily: dailyData.map((d) => ({
         timestamp: d.day,
         count: Number(d.count),
       })),
-      affectedUsers: affectedUsers.map(u => u.userId).filter(Boolean),
+      affectedUsers: affectedUsers.map((u) => u.userId).filter(Boolean),
     };
   }
 
@@ -936,7 +989,9 @@ export class IssuesService {
     // Check if AI provider is configured
     const defaultProvider = await this.aiProviderService.getDefaultProvider();
     if (!defaultProvider && !providerId) {
-      throw new BadRequestException('No AI provider configured. Please configure an AI provider in settings.');
+      throw new BadRequestException(
+        'No AI provider configured. Please configure an AI provider in settings.'
+      );
     }
 
     this.logger.log(`Gathering context for deep AI analysis of issue ${issueId}`);
@@ -947,7 +1002,9 @@ export class IssuesService {
     // Build the enhanced prompt with full context
     const { system, user } = this.analysisPromptBuilder.buildPrompt(context);
 
-    this.logger.log(`Generating AI analysis for issue ${issueId} with ${context.sampleOccurrences.length} occurrences, ${context.affectedUsers.length} users, ${context.stackTraces.length} stack traces`);
+    this.logger.log(
+      `Generating AI analysis for issue ${issueId} with ${context.sampleOccurrences.length} occurrences, ${context.affectedUsers.length} users, ${context.stackTraces.length} stack traces`
+    );
 
     // Generate the analysis using system + user prompt
     let result;
@@ -967,12 +1024,21 @@ export class IssuesService {
     try {
       analysis = parseAnalysisResponse(result.analysis);
     } catch (error) {
-      this.logger.error(`Failed to parse AI response for issue ${issueId}:`, result.analysis, error);
+      this.logger.error(
+        `Failed to parse AI response for issue ${issueId}:`,
+        result.analysis,
+        error
+      );
       throw error;
     }
 
     // Create a conversation for follow-ups
-    const firstMessage: { role: 'user' | 'assistant'; content: string; timestamp: string; tokensUsed?: number } = {
+    const firstMessage: {
+      role: 'user' | 'assistant';
+      content: string;
+      timestamp: string;
+      tokensUsed?: number;
+    } = {
       role: 'assistant',
       content: result.analysis,
       timestamp: new Date().toISOString(),
@@ -981,14 +1047,17 @@ export class IssuesService {
       firstMessage.tokensUsed = result.tokensUsed;
     }
 
-    const [conversation] = await this.db.insert(schema.analysisConversations).values({
-      issueId,
-      messages: [firstMessage],
-      contextSnapshot: context as unknown as Record<string, unknown>,
-      provider: result.provider,
-      model: result.model,
-      totalTokens: result.tokensUsed ?? 0,
-    }).returning();
+    const [conversation] = await this.db
+      .insert(schema.analysisConversations)
+      .values({
+        issueId,
+        messages: [firstMessage],
+        contextSnapshot: context as unknown as Record<string, unknown>,
+        provider: result.provider,
+        model: result.model,
+        totalTokens: result.tokensUsed ?? 0,
+      })
+      .returning();
 
     // Update the issue with analysis summary (for backward compatibility)
     await this.db
@@ -996,9 +1065,8 @@ export class IssuesService {
       .set({
         aiAnalysis: JSON.stringify(analysis),
         aiAnalysisAt: new Date(),
-        aiSuggestedFix: analysis.recommendations.length > 0
-          ? analysis.recommendations[0]?.action || null
-          : null,
+        aiSuggestedFix:
+          analysis.recommendations.length > 0 ? analysis.recommendations[0]?.action || null : null,
         updatedAt: new Date(),
       })
       .where(eq(schema.issues.id, issueId));
@@ -1012,7 +1080,9 @@ export class IssuesService {
       tokensUsed: result.tokensUsed ?? null,
     });
 
-    this.logger.log(`AI analysis complete for issue ${issueId}: ${result.tokensUsed ?? 'unknown'} tokens used, confidence: ${analysis.rootCause.confidence}%`);
+    this.logger.log(
+      `AI analysis complete for issue ${issueId}: ${result.tokensUsed ?? 'unknown'} tokens used, confidence: ${analysis.rootCause.confidence}%`
+    );
 
     const analysisResult: AnalysisResult = {
       analysis,
@@ -1065,7 +1135,9 @@ export class IssuesService {
     // Check if AI provider is configured
     const defaultProvider = await this.aiProviderService.getDefaultProvider();
     if (!defaultProvider && !providerId) {
-      throw new BadRequestException('No AI provider configured. Please configure an AI provider in settings.');
+      throw new BadRequestException(
+        'No AI provider configured. Please configure an AI provider in settings.'
+      );
     }
 
     // Get the original context from the snapshot
@@ -1073,7 +1145,7 @@ export class IssuesService {
 
     // Get the previous analysis (first assistant message)
     const previousMessages = conversation.messages as ConversationMessage[];
-    const previousAnalysis = previousMessages.find(m => m.role === 'assistant')?.content || '';
+    const previousAnalysis = previousMessages.find((m) => m.role === 'assistant')?.content || '';
 
     // Build follow-up prompt
     const { system, user } = this.analysisPromptBuilder.buildFollowUpPrompt(
@@ -1082,7 +1154,9 @@ export class IssuesService {
       question
     );
 
-    this.logger.log(`Generating follow-up response for issue ${issueId}, conversation ${conversationId}`);
+    this.logger.log(
+      `Generating follow-up response for issue ${issueId}, conversation ${conversationId}`
+    );
 
     // Generate follow-up response
     const result = await this.aiProviderService.generateAnalysisWithSystemPrompt(
@@ -1092,7 +1166,12 @@ export class IssuesService {
     );
 
     // Add messages to conversation
-    type DbMessage = { role: 'user' | 'assistant'; content: string; timestamp: string; tokensUsed?: number };
+    type DbMessage = {
+      role: 'user' | 'assistant';
+      content: string;
+      timestamp: string;
+      tokensUsed?: number;
+    };
     const userMessage: DbMessage = {
       role: 'user',
       content: question,
@@ -1123,7 +1202,9 @@ export class IssuesService {
       })
       .where(eq(schema.analysisConversations.id, conversationId));
 
-    this.logger.log(`Follow-up response complete for issue ${issueId}: ${result.tokensUsed ?? 'unknown'} tokens used`);
+    this.logger.log(
+      `Follow-up response complete for issue ${issueId}: ${result.tokensUsed ?? 'unknown'} tokens used`
+    );
 
     return {
       conversationId,

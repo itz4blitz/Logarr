@@ -22,7 +22,10 @@ export class CreateServerDto {
   @ApiPropertyOptional({ description: 'Array of log file/directory paths', type: [String] })
   logPaths?: string[];
 
-  @ApiPropertyOptional({ description: 'File patterns to match (e.g., ["*.log", "*.txt"])', type: [String] })
+  @ApiPropertyOptional({
+    description: 'File patterns to match (e.g., ["*.log", "*.txt"])',
+    type: [String],
+  })
   logFilePatterns?: string[];
 }
 
@@ -48,7 +51,10 @@ export class UpdateServerDto {
   @ApiPropertyOptional({ description: 'Array of log file/directory paths', type: [String] })
   logPaths?: string[];
 
-  @ApiPropertyOptional({ description: 'File patterns to match (e.g., ["*.log", "*.txt"])', type: [String] })
+  @ApiPropertyOptional({
+    description: 'File patterns to match (e.g., ["*.log", "*.txt"])',
+    type: [String],
+  })
   logFilePatterns?: string[];
 }
 

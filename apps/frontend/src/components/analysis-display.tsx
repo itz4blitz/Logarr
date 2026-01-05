@@ -104,8 +104,14 @@ function ConfidenceBadge({ confidence }: { confidence: number }) {
 function SeverityBadge({ severity }: { severity: string }) {
   const variants: Record<string, { className: string; icon: typeof AlertCircle }> = {
     critical: { className: 'bg-red-500/20 text-red-400 border-red-500/30', icon: AlertCircle },
-    high: { className: 'bg-orange-500/20 text-orange-400 border-orange-500/30', icon: AlertTriangle },
-    medium: { className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', icon: AlertTriangle },
+    high: {
+      className: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+      icon: AlertTriangle,
+    },
+    medium: {
+      className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+      icon: AlertTriangle,
+    },
     low: { className: 'bg-blue-500/20 text-blue-400 border-blue-500/30', icon: Info },
   };
 
@@ -165,16 +171,8 @@ function FollowUpInput({
         }}
         className="flex-1"
       />
-      <Button
-        onClick={handleSubmit}
-        disabled={disabled || !question.trim()}
-        size="icon"
-      >
-        {disabled ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Send className="h-4 w-4" />
-        )}
+      <Button onClick={handleSubmit} disabled={disabled || !question.trim()} size="icon">
+        {disabled ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
       </Button>
     </div>
   );
@@ -197,20 +195,20 @@ export function AnalysisDisplay({
     <div className="space-y-4">
       {/* Header with confidence badge */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-primary" />
+        <h3 className="flex items-center gap-2 text-lg font-semibold">
+          <Sparkles className="text-primary h-5 w-5" />
           AI Analysis
         </h3>
         <div className="flex items-center gap-3">
           <ConfidenceBadge confidence={analysis.rootCause.confidence} />
-          <span className="text-xs text-muted-foreground">
+          <span className="text-muted-foreground text-xs">
             {metadata.tokensUsed.toLocaleString()} tokens
           </span>
         </div>
       </div>
 
       {/* Context Summary */}
-      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+      <div className="text-muted-foreground flex flex-wrap gap-2 text-xs">
         <div className="flex items-center gap-1">
           <FileText className="h-3 w-3" />
           {metadata.contextSummary.occurrencesIncluded} occurrences analyzed
@@ -235,38 +233,42 @@ export function AnalysisDisplay({
       <Card
         className={cn(
           'border-l-4',
-          analysis.rootCause.identified
-            ? 'border-l-green-500'
-            : 'border-l-yellow-500'
+          analysis.rootCause.identified ? 'border-l-green-500' : 'border-l-yellow-500'
         )}
       >
         <CardContent className="p-4">
-          <div className="flex items-start justify-between mb-2">
-            <h4 className="font-semibold flex items-center gap-2">
-              <Lightbulb className="h-4 w-4 text-primary" />
+          <div className="mb-2 flex items-start justify-between">
+            <h4 className="flex items-center gap-2 font-semibold">
+              <Lightbulb className="text-primary h-4 w-4" />
               Root Cause
             </h4>
             {analysis.rootCause.identified ? (
-              <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/30">
-                <CheckCircle className="h-3 w-3 mr-1" />
+              <Badge
+                variant="outline"
+                className="border-green-500/30 bg-green-500/20 text-green-400"
+              >
+                <CheckCircle className="mr-1 h-3 w-3" />
                 Identified
               </Badge>
             ) : (
-              <Badge variant="outline" className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
-                <AlertTriangle className="h-3 w-3 mr-1" />
+              <Badge
+                variant="outline"
+                className="border-yellow-500/30 bg-yellow-500/20 text-yellow-400"
+              >
+                <AlertTriangle className="mr-1 h-3 w-3" />
                 Uncertain
               </Badge>
             )}
           </div>
-          <p className="text-sm font-medium mb-3">{analysis.rootCause.summary}</p>
+          <p className="mb-3 text-sm font-medium">{analysis.rootCause.summary}</p>
           <MarkdownRenderer content={analysis.rootCause.explanation} />
           {analysis.rootCause.evidence.length > 0 && (
             <div className="mt-4 space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">Evidence:</p>
+              <p className="text-muted-foreground text-xs font-medium">Evidence:</p>
               <ul className="space-y-1">
                 {analysis.rootCause.evidence.map((e, i) => (
                   <li key={i} className="flex items-start gap-2 text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                    <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
                     <span className="text-muted-foreground">{e}</span>
                   </li>
                 ))}
@@ -279,22 +281,22 @@ export function AnalysisDisplay({
       {/* Impact Card */}
       <Card>
         <CardContent className="p-4">
-          <h4 className="font-semibold mb-3 flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-primary" />
+          <h4 className="mb-3 flex items-center gap-2 font-semibold">
+            <AlertTriangle className="text-primary h-4 w-4" />
             Impact Assessment
           </h4>
-          <div className="flex items-center gap-4 mb-3">
+          <div className="mb-3 flex items-center gap-4">
             <SeverityBadge severity={analysis.impact.severity} />
-            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+            <div className="text-muted-foreground flex items-center gap-1 text-sm">
               <Users className="h-4 w-4" />
               {analysis.impact.usersAffected} users affected
             </div>
-            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+            <div className="text-muted-foreground flex items-center gap-1 text-sm">
               <MonitorPlay className="h-4 w-4" />
               {analysis.impact.sessionsAffected} sessions affected
             </div>
           </div>
-          <p className="text-sm text-muted-foreground">{analysis.impact.summary}</p>
+          <p className="text-muted-foreground text-sm">{analysis.impact.summary}</p>
         </CardContent>
       </Card>
 
@@ -302,14 +304,14 @@ export function AnalysisDisplay({
       {analysis.recommendations.length > 0 && (
         <Card>
           <CardContent className="p-4">
-            <h4 className="font-semibold mb-3 flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-primary" />
+            <h4 className="mb-3 flex items-center gap-2 font-semibold">
+              <CheckCircle className="text-primary h-4 w-4" />
               Recommendations ({analysis.recommendations.length})
             </h4>
             <Accordion type="single" collapsible className="space-y-2">
               {analysis.recommendations.map((rec, i) => (
-                <AccordionItem key={i} value={`rec-${i}`} className="border rounded-lg px-3">
-                  <AccordionTrigger className="text-sm hover:no-underline py-3">
+                <AccordionItem key={i} value={`rec-${i}`} className="rounded-lg border px-3">
+                  <AccordionTrigger className="py-3 text-sm hover:no-underline">
                     <div className="flex items-center gap-2 text-left">
                       <Badge variant="outline" className="shrink-0">
                         P{rec.priority}
@@ -319,15 +321,11 @@ export function AnalysisDisplay({
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="pb-3">
-                    <p className="text-sm text-muted-foreground mb-3">
-                      {rec.rationale}
-                    </p>
+                    <p className="text-muted-foreground mb-3 text-sm">{rec.rationale}</p>
                     {rec.commands && rec.commands.length > 0 && (
                       <div className="space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground">
-                          Commands:
-                        </p>
-                        <pre className="bg-muted p-3 rounded-lg text-xs overflow-x-auto font-mono">
+                        <p className="text-muted-foreground text-xs font-medium">Commands:</p>
+                        <pre className="bg-muted overflow-x-auto rounded-lg p-3 font-mono text-xs">
                           {rec.commands.join('\n')}
                         </pre>
                       </div>
@@ -344,8 +342,8 @@ export function AnalysisDisplay({
       {analysis.investigation.length > 0 && (
         <Card>
           <CardContent className="p-4">
-            <h4 className="font-semibold mb-3 flex items-center gap-2">
-              <Search className="h-4 w-4 text-primary" />
+            <h4 className="mb-3 flex items-center gap-2 font-semibold">
+              <Search className="text-primary h-4 w-4" />
               Investigation Steps
             </h4>
             <div className="space-y-3">
@@ -354,7 +352,7 @@ export function AnalysisDisplay({
                   <Checkbox id={`step-${i}`} className="mt-0.5" />
                   <label
                     htmlFor={`step-${i}`}
-                    className="text-sm text-muted-foreground cursor-pointer leading-relaxed"
+                    className="text-muted-foreground cursor-pointer text-sm leading-relaxed"
                   >
                     {step}
                   </label>
@@ -369,8 +367,8 @@ export function AnalysisDisplay({
       {analysis.additionalNotes && (
         <Card>
           <CardContent className="p-4">
-            <h4 className="font-semibold mb-2 flex items-center gap-2">
-              <Info className="h-4 w-4 text-primary" />
+            <h4 className="mb-2 flex items-center gap-2 font-semibold">
+              <Info className="text-primary h-4 w-4" />
               Additional Notes
             </h4>
             <MarkdownRenderer content={analysis.additionalNotes} />
@@ -382,19 +380,17 @@ export function AnalysisDisplay({
       {conversationHistory && conversationHistory.length > 1 && (
         <Card>
           <CardContent className="p-4">
-            <h4 className="font-semibold mb-3">Conversation History</h4>
+            <h4 className="mb-3 font-semibold">Conversation History</h4>
             <div className="space-y-4">
               {conversationHistory.slice(1).map((msg, i) => (
                 <div
                   key={i}
                   className={cn(
-                    'p-3 rounded-lg',
-                    msg.role === 'user'
-                      ? 'bg-primary/10 ml-8'
-                      : 'bg-muted mr-8'
+                    'rounded-lg p-3',
+                    msg.role === 'user' ? 'bg-primary/10 ml-8' : 'bg-muted mr-8'
                   )}
                 >
-                  <p className="text-xs font-medium text-muted-foreground mb-1">
+                  <p className="text-muted-foreground mb-1 text-xs font-medium">
                     {msg.role === 'user' ? 'You' : 'AI'}
                   </p>
                   {msg.role === 'assistant' ? (
@@ -413,20 +409,18 @@ export function AnalysisDisplay({
       {onFollowUp && (
         <Card>
           <CardContent className="p-4">
-            <h4 className="font-semibold mb-3">Ask a Follow-up Question</h4>
+            <h4 className="mb-3 font-semibold">Ask a Follow-up Question</h4>
             <FollowUpInput onSubmit={handleFollowUp} disabled={isLoading} />
           </CardContent>
         </Card>
       )}
 
       {/* Metadata Footer */}
-      <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
+      <div className="text-muted-foreground flex items-center justify-between border-t pt-2 text-xs">
         <span>
           Analyzed by {metadata.provider} ({metadata.model})
         </span>
-        <span>
-          {new Date(metadata.generatedAt).toLocaleString()}
-        </span>
+        <span>{new Date(metadata.generatedAt).toLocaleString()}</span>
       </div>
     </div>
   );
