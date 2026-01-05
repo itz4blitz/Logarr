@@ -8,10 +8,7 @@ import { LogsGateway } from './logs.gateway';
 import { LogsService } from './logs.service';
 
 @Module({
-  imports: [
-    forwardRef(() => FileIngestionModule),
-    forwardRef(() => IngestionModule),
-  ],
+  imports: [forwardRef(() => FileIngestionModule), forwardRef(() => IngestionModule)],
   controllers: [LogsController],
   providers: [LogsService, LogsGateway],
   exports: [LogsService, LogsGateway],

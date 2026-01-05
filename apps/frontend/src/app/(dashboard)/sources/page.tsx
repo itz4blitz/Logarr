@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from 'date-fns';
 import {
   MoreHorizontal,
   Pencil,
@@ -10,23 +10,25 @@ import {
   ExternalLink,
   Server,
   Plus,
-} from "lucide-react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { useState, useEffect, Suspense } from "react";
-import { toast } from "sonner";
+  Bug,
+} from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { toast } from 'sonner';
 
-import type { Server as ServerType } from "@/lib/api";
+import type { Server as ServerType, ConnectionStatus as ConnectionStatusType } from '@/lib/api';
 
-import { AddSourceModal } from "@/components/add-source-modal";
-import { ConnectionStatus } from "@/components/connection-status";
+import { AddSourceModal } from '@/components/add-source-modal';
+import { ConnectionStatus } from '@/components/connection-status';
+import { SourceDiagnosticsDialog } from '@/components/source-diagnostics-dialog';
 import {
   ConnectionTestToastContent,
   getToastType,
   getToastTitle,
-} from "@/components/connection-test-toast";
-import { EditServerDialog } from "@/components/edit-server-dialog";
-import { IntegrationIcon } from "@/components/integration-icon";
-import { TablePagination } from "@/components/table-pagination";
+} from '@/components/connection-test-toast';
+import { EditServerDialog } from '@/components/edit-server-dialog';
+import { IntegrationIcon } from '@/components/integration-icon';
+import { TablePagination } from '@/components/table-pagination';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,24 +38,18 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+} from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Skeleton } from "@/components/ui/skeleton";
+} from '@/components/ui/dropdown-menu';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -61,14 +57,15 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { useServers, useDeleteServer, useTestConnection } from "@/hooks/use-api";
+} from '@/components/ui/table';
 import {
-  useFitToViewport,
-  useFitToViewportPagination,
-} from "@/hooks/use-fit-to-viewport";
-import { getIntegrationById, integrationCategories } from "@/lib/integrations";
-
+  useServers,
+  useDeleteServer,
+  useTestConnection,
+  useTestAllConnections,
+} from '@/hooks/use-api';
+import { useFitToViewport, useFitToViewportPagination } from '@/hooks/use-fit-to-viewport';
+import { getIntegrationById, integrationCategories } from '@/lib/integrations';
 
 // Fixed heights for layout calculations
 const ROW_HEIGHT = 64; // Height of each table row
@@ -82,23 +79,37 @@ function ServersPageContent() {
   const { data: servers, isLoading } = useServers();
   const deleteServer = useDeleteServer();
   const testConnection = useTestConnection();
+  const testAllConnections = useTestAllConnections();
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [serverToDelete, setServerToDelete] = useState<ServerType | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [serverToEdit, setServerToEdit] = useState<ServerType | null>(null);
   const [testingServerId, setTestingServerId] = useState<string | null>(null);
+  const [hasTestedOnLoad, setHasTestedOnLoad] = useState(false);
+  const [diagnosticsDialogOpen, setDiagnosticsDialogOpen] = useState(false);
+  const [diagnosticsServer, setDiagnosticsServer] = useState<ServerType | null>(null);
+  const [diagnosticsResult, setDiagnosticsResult] = useState<ConnectionStatusType | null>(null);
+  const [diagnosticsLoading, setDiagnosticsLoading] = useState(false);
+
+  // Auto-test all connections when servers are first loaded
+  useEffect(() => {
+    if (servers && servers.length > 0 && !hasTestedOnLoad && !testAllConnections.isPending) {
+      setHasTestedOnLoad(true);
+      testAllConnections.mutate();
+    }
+  }, [servers, hasTestedOnLoad, testAllConnections]);
 
   // Handle edit param from URL (e.g., /sources?edit=server-id)
   useEffect(() => {
-    const editId = searchParams.get("edit");
+    const editId = searchParams.get('edit');
     if (editId && servers && !editDialogOpen) {
       const server = servers.find((s) => s.id === editId);
       if (server) {
         setServerToEdit(server);
         setEditDialogOpen(true);
         // Clear the URL param
-        router.replace("/sources", { scroll: false });
+        router.replace('/sources', { scroll: false });
       }
     }
   }, [searchParams, servers, editDialogOpen, router]);
@@ -135,9 +146,7 @@ function ServersPageContent() {
       setDeleteDialogOpen(false);
       setServerToDelete(null);
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to delete server"
-      );
+      toast.error(error instanceof Error ? error.message : 'Failed to delete server');
     }
   };
 
@@ -148,28 +157,74 @@ function ServersPageContent() {
       const toastType = getToastType(result);
       const toastTitle = getToastTitle(result);
 
-      const toastFn = toastType === "success" ? toast.success
-        : toastType === "warning" ? toast.warning
-        : toast.error;
+      const toastFn =
+        toastType === 'success'
+          ? toast.success
+          : toastType === 'warning'
+            ? toast.warning
+            : toast.error;
 
       toastFn(toastTitle, {
         description: <ConnectionTestToastContent result={result} serverName={server.name} />,
-        duration: toastType === "success" ? 5000 : 8000,
+        duration: toastType === 'success' ? 5000 : 8000,
       });
     } catch (error) {
-      toast.error("Connection Test Failed", {
-        description: error instanceof Error ? error.message : "Unknown error occurred",
+      toast.error('Connection Test Failed', {
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
       });
     } finally {
       setTestingServerId(null);
     }
   };
 
+  const handleOpenDiagnostics = async (server: ServerType) => {
+    setDiagnosticsServer(server);
+    setDiagnosticsDialogOpen(true);
+    setDiagnosticsLoading(true);
+    try {
+      const result = await testConnection.mutateAsync(server.id);
+      setDiagnosticsResult(result);
+    } catch (error) {
+      setDiagnosticsResult({
+        connected: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        fileIngestion: null,
+      });
+    } finally {
+      setDiagnosticsLoading(false);
+    }
+  };
+
+  const handleRefreshDiagnostics = async () => {
+    if (!diagnosticsServer) return;
+    setDiagnosticsLoading(true);
+    try {
+      const result = await testConnection.mutateAsync(diagnosticsServer.id);
+      setDiagnosticsResult(result);
+    } catch (error) {
+      setDiagnosticsResult({
+        connected: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        fileIngestion: null,
+      });
+    } finally {
+      setDiagnosticsLoading(false);
+    }
+  };
+
   return (
-    <Card ref={containerRef} className="flex flex-col flex-1 overflow-hidden">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 shrink-0">
+    <Card ref={containerRef} className="flex flex-1 flex-col overflow-hidden">
+      <CardHeader className="flex shrink-0 flex-row items-center justify-between space-y-0">
         <div>
-          <CardTitle>Connected Sources</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            Connected Sources
+            {testAllConnections.isPending && (
+              <span className="text-muted-foreground flex items-center gap-1.5 text-xs font-normal">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Checking status...
+              </span>
+            )}
+          </CardTitle>
           <CardDescription>
             View and manage your media server and service connections
           </CardDescription>
@@ -183,7 +238,7 @@ function ServersPageContent() {
           }
         />
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col overflow-hidden p-0">
+      <CardContent className="flex flex-1 flex-col overflow-hidden p-0">
         {isLoading || !isReady ? (
           <div className="space-y-2 p-6">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -191,7 +246,7 @@ function ServersPageContent() {
             ))}
           </div>
         ) : servers && servers.length > 0 ? (
-          <div className="flex flex-col flex-1 overflow-hidden">
+          <div className="flex flex-1 flex-col overflow-hidden">
             <div className="flex-1 overflow-hidden">
               <Table>
                 <TableHeader>
@@ -213,31 +268,26 @@ function ServersPageContent() {
                           <div className="flex items-center gap-3">
                             {integration ? (
                               <div
-                                className="flex items-center justify-center w-10 h-10 rounded-lg"
+                                className="flex h-10 w-10 items-center justify-center rounded-lg"
                                 style={{
                                   backgroundColor: `${integration.color}15`,
                                 }}
                               >
-                                <IntegrationIcon
-                                  integration={integration}
-                                  size="md"
-                                />
+                                <IntegrationIcon integration={integration} size="md" />
                               </div>
                             ) : (
-                              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-muted">
-                                <Server className="h-5 w-5 text-muted-foreground" />
+                              <div className="bg-muted flex h-10 w-10 items-center justify-center rounded-lg">
+                                <Server className="text-muted-foreground h-5 w-5" />
                               </div>
                             )}
                             <div>
                               <div className="font-medium">{server.name}</div>
                               {(server.serverName || server.version) && (
-                                <div className="text-xs text-muted-foreground">
+                                <div className="text-muted-foreground text-xs">
                                   {server.serverName && server.version
                                     ? `${server.serverName} v${server.version}`
                                     : server.serverName ||
-                                      (server.version
-                                        ? `v${server.version}`
-                                        : "")}
+                                      (server.version ? `v${server.version}` : '')}
                                 </div>
                               )}
                             </div>
@@ -246,17 +296,15 @@ function ServersPageContent() {
                         <TableCell>
                           {(() => {
                             const category = integration
-                              ? integrationCategories.find(
-                                  (c) => c.id === integration.category
-                                )
+                              ? integrationCategories.find((c) => c.id === integration.category)
                               : null;
                             return (
                               <Badge
                                 variant="outline"
                                 className="capitalize"
                                 style={{
-                                  borderColor: integration?.color || "#6B7280",
-                                  color: integration?.color || "#6B7280",
+                                  borderColor: integration?.color || '#6B7280',
+                                  color: integration?.color || '#6B7280',
                                 }}
                               >
                                 {category?.name || server.providerId}
@@ -269,7 +317,7 @@ function ServersPageContent() {
                             href={server.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+                            className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm"
                           >
                             {new URL(server.url).host}
                             <ExternalLink className="h-3 w-3" />
@@ -290,7 +338,7 @@ function ServersPageContent() {
                             ? formatDistanceToNow(new Date(server.lastSeen), {
                                 addSuffix: true,
                               })
-                            : "Never"}
+                            : 'Never'}
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>
@@ -311,6 +359,10 @@ function ServersPageContent() {
                                   <RefreshCw className="mr-2 h-4 w-4" />
                                 )}
                                 Test Connection
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleOpenDiagnostics(server)}>
+                                <Bug className="mr-2 h-4 w-4" />
+                                Diagnostics
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => {
@@ -359,13 +411,11 @@ function ServersPageContent() {
             )}
           </div>
         ) : (
-          <div className="flex items-center justify-center flex-1 rounded-lg border border-dashed m-6">
+          <div className="m-6 flex flex-1 items-center justify-center rounded-lg border border-dashed">
             <div className="text-center">
-              <Server className="mx-auto h-8 w-8 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-semibold">
-                No sources configured
-              </h3>
-              <p className="mt-2 text-sm text-muted-foreground">
+              <Server className="text-muted-foreground mx-auto h-8 w-8" />
+              <h3 className="mt-4 text-lg font-semibold">No sources configured</h3>
+              <p className="text-muted-foreground mt-2 text-sm">
                 Add your first source to start collecting logs
               </p>
               <div className="mt-4">
@@ -389,8 +439,8 @@ function ServersPageContent() {
             <AlertDialogTitle>Delete Server</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete &quot;{serverToDelete?.name}
-              &quot;? This action cannot be undone. All logs associated with
-              this server will be preserved.
+              &quot;? This action cannot be undone. All logs associated with this server will be
+              preserved.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -399,9 +449,7 @@ function ServersPageContent() {
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteServer.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
+              {deleteServer.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -418,13 +466,36 @@ function ServersPageContent() {
           }}
         />
       )}
+
+      {diagnosticsServer && (
+        <SourceDiagnosticsDialog
+          server={diagnosticsServer}
+          connectionStatus={diagnosticsResult}
+          isLoading={diagnosticsLoading}
+          open={diagnosticsDialogOpen}
+          onOpenChange={(open) => {
+            setDiagnosticsDialogOpen(open);
+            if (!open) {
+              setDiagnosticsServer(null);
+              setDiagnosticsResult(null);
+            }
+          }}
+          onRefresh={handleRefreshDiagnostics}
+        />
+      )}
     </Card>
   );
 }
 
 export default function ServersPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center h-full"><Server className="h-8 w-8 animate-pulse text-zinc-600" /></div>}>
+    <Suspense
+      fallback={
+        <div className="flex h-full items-center justify-center">
+          <Server className="h-8 w-8 animate-pulse text-zinc-600" />
+        </div>
+      }
+    >
       <ServersPageContent />
     </Suspense>
   );

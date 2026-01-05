@@ -61,11 +61,7 @@ export class LogFileTailer {
   private readLineInterface: Interface | null = null;
   private watchInterval: NodeJS.Timeout | null = null;
 
-  constructor(
-    options: TailOptions,
-    processor: LogFileProcessor,
-    provider: MediaServerProvider
-  ) {
+  constructor(options: TailOptions, processor: LogFileProcessor, provider: MediaServerProvider) {
     this.serverId = options.serverId;
     this.filePath = options.filePath;
     this.onEntry = options.onEntry;

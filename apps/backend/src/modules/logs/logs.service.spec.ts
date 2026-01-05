@@ -1,7 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-
 import { DATABASE_CONNECTION } from '../../database';
 import { createMockDb, configureMockDb, type MockDb } from '../../test/mock-db';
 
@@ -17,10 +16,7 @@ describe('LogsService', () => {
     mockDb = createMockDb();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        LogsService,
-        { provide: DATABASE_CONNECTION, useValue: mockDb },
-      ],
+      providers: [LogsService, { provide: DATABASE_CONNECTION, useValue: mockDb }],
     }).compile();
 
     service = module.get<LogsService>(LogsService);
@@ -213,11 +209,7 @@ describe('LogsService', () => {
 
   describe('getSources', () => {
     it('should return distinct sources', async () => {
-      const mockSources = [
-        { source: 'jellyfin' },
-        { source: 'sonarr' },
-        { source: 'radarr' },
-      ];
+      const mockSources = [{ source: 'jellyfin' }, { source: 'sonarr' }, { source: 'radarr' }];
       configureMockDb(mockDb, { selectDistinct: mockSources });
 
       const result = await service.getSources();
@@ -234,11 +226,7 @@ describe('LogsService', () => {
     });
 
     it('should filter out null sources', async () => {
-      const mockSources = [
-        { source: 'jellyfin' },
-        { source: null },
-        { source: 'sonarr' },
-      ];
+      const mockSources = [{ source: 'jellyfin' }, { source: null }, { source: 'sonarr' }];
       configureMockDb(mockDb, { selectDistinct: mockSources });
 
       const result = await service.getSources();
@@ -249,15 +237,17 @@ describe('LogsService', () => {
 
   describe('getLogWithRelations', () => {
     it('should return log with server info', async () => {
-      const mockLogResult = [{
-        id: '1',
-        message: 'Error message',
-        level: 'error',
-        serverId: 'server-1',
-        serverName: 'My Jellyfin Server',
-        serverProviderId: 'jellyfin',
-        serverUrl: 'http://localhost:8096',
-      }];
+      const mockLogResult = [
+        {
+          id: '1',
+          message: 'Error message',
+          level: 'error',
+          serverId: 'server-1',
+          serverName: 'My Jellyfin Server',
+          serverProviderId: 'jellyfin',
+          serverUrl: 'http://localhost:8096',
+        },
+      ];
       configureMockDb(mockDb, { select: mockLogResult });
 
       const result = await service.getLogWithRelations('1');
@@ -274,19 +264,23 @@ describe('LogsService', () => {
     });
 
     it('should include related issue if exists', async () => {
-      const mockLogResult = [{
-        id: '1',
-        message: 'Error message',
-        level: 'error',
-      }];
-      const mockIssue = [{
-        id: 'issue-1',
-        title: 'Connection Error',
-        severity: 'high',
-        status: 'open',
-        source: 'jellyfin',
-        occurrenceCount: 5,
-      }];
+      const mockLogResult = [
+        {
+          id: '1',
+          message: 'Error message',
+          level: 'error',
+        },
+      ];
+      const mockIssue = [
+        {
+          id: 'issue-1',
+          title: 'Connection Error',
+          severity: 'high',
+          status: 'open',
+          source: 'jellyfin',
+          occurrenceCount: 5,
+        },
+      ];
 
       let callCount = 0;
       mockDb.select = vi.fn().mockImplementation(() => {

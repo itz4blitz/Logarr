@@ -2,7 +2,6 @@ import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-
 import { DATABASE_CONNECTION } from '../../database';
 import { createMockDb, configureMockDb, type MockDb } from '../../test/mock-db';
 import { FileIngestionService } from '../file-ingestion/file-ingestion.service';
@@ -170,7 +169,9 @@ describe('ServersService', () => {
     it('should throw NotFoundException when updating non-existent server', async () => {
       configureMockDb(mockDb, { select: [], update: [] });
 
-      await expect(service.update('non-existent', { name: 'Test' })).rejects.toThrow(NotFoundException);
+      await expect(service.update('non-existent', { name: 'Test' })).rejects.toThrow(
+        NotFoundException
+      );
     });
 
     it('should restart file ingestion when settings change', async () => {
@@ -210,11 +211,15 @@ describe('ServersService', () => {
         where: vi.fn().mockReturnThis(),
         limit: vi.fn().mockReturnThis(),
         orderBy: vi.fn().mockReturnThis(),
-        then: vi.fn().mockImplementation((resolve) => Promise.resolve([serverWithIngestion]).then(resolve)),
+        then: vi
+          .fn()
+          .mockImplementation((resolve) => Promise.resolve([serverWithIngestion]).then(resolve)),
         [Symbol.toStringTag]: 'Promise',
       }));
       configureMockDb(mockDb, { update: [serverWithIngestion] });
-      mockFileIngestionService.restartServerFileIngestion.mockRejectedValue(new Error('Restart failed'));
+      mockFileIngestionService.restartServerFileIngestion.mockRejectedValue(
+        new Error('Restart failed')
+      );
 
       // Should not throw
       await service.update('server-1', { logPaths: ['/new/path'] });
@@ -234,7 +239,9 @@ describe('ServersService', () => {
         where: vi.fn().mockReturnThis(),
         limit: vi.fn().mockReturnThis(),
         orderBy: vi.fn().mockReturnThis(),
-        then: vi.fn().mockImplementation((resolve) => Promise.resolve([serverWithIngestion]).then(resolve)),
+        then: vi
+          .fn()
+          .mockImplementation((resolve) => Promise.resolve([serverWithIngestion]).then(resolve)),
         [Symbol.toStringTag]: 'Promise',
       }));
       configureMockDb(mockDb, { update: [serverWithIngestion] });
@@ -260,7 +267,11 @@ describe('ServersService', () => {
         where: vi.fn().mockReturnThis(),
         limit: vi.fn().mockReturnThis(),
         orderBy: vi.fn().mockReturnThis(),
-        then: vi.fn().mockImplementation((resolve) => Promise.resolve([{ ...mockServer, fileIngestionEnabled: true }]).then(resolve)),
+        then: vi
+          .fn()
+          .mockImplementation((resolve) =>
+            Promise.resolve([{ ...mockServer, fileIngestionEnabled: true }]).then(resolve)
+          ),
         [Symbol.toStringTag]: 'Promise',
       }));
       configureMockDb(mockDb, { update: [serverWithIngestion] });
@@ -439,7 +450,7 @@ describe('ServersService', () => {
     it('should include jellyfin provider', () => {
       const providers = service.getAvailableProviders();
 
-      const jellyfin = providers.find(p => p.id === 'jellyfin');
+      const jellyfin = providers.find((p) => p.id === 'jellyfin');
       expect(jellyfin).toBeDefined();
       expect(jellyfin?.name).toBeDefined();
     });
@@ -447,21 +458,21 @@ describe('ServersService', () => {
     it('should include sonarr provider', () => {
       const providers = service.getAvailableProviders();
 
-      const sonarr = providers.find(p => p.id === 'sonarr');
+      const sonarr = providers.find((p) => p.id === 'sonarr');
       expect(sonarr).toBeDefined();
     });
 
     it('should include radarr provider', () => {
       const providers = service.getAvailableProviders();
 
-      const radarr = providers.find(p => p.id === 'radarr');
+      const radarr = providers.find((p) => p.id === 'radarr');
       expect(radarr).toBeDefined();
     });
 
     it('should include prowlarr provider', () => {
       const providers = service.getAvailableProviders();
 
-      const prowlarr = providers.find(p => p.id === 'prowlarr');
+      const prowlarr = providers.find((p) => p.id === 'prowlarr');
       expect(prowlarr).toBeDefined();
     });
 

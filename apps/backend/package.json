@@ -26,6 +26,7 @@
     "@logarr/core": "workspace:*",
     "@logarr/provider-arr": "workspace:*",
     "@logarr/provider-jellyfin": "workspace:*",
+    "@logarr/provider-plex": "workspace:*",
     "@logarr/provider-prowlarr": "workspace:*",
     "@logarr/provider-radarr": "workspace:*",
     "@logarr/provider-sonarr": "workspace:*",

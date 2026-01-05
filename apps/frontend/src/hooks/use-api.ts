@@ -1,6 +1,15 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 
-import type { CreateServerDto, UpdateServerDto, LogSearchParams, IssueSearchParams, UpdateIssueDto, CreateAiProviderDto, UpdateAiProviderDto, AiProviderType } from '@/lib/api';
+import type {
+  CreateServerDto,
+  UpdateServerDto,
+  LogSearchParams,
+  IssueSearchParams,
+  UpdateIssueDto,
+  CreateAiProviderDto,
+  UpdateAiProviderDto,
+  AiProviderType,
+} from '@/lib/api';
 
 import { api } from '@/lib/api';
 
@@ -58,6 +67,8 @@ export function useServers() {
     queryKey: queryKeys.servers,
     queryFn: () => api.getServers(),
     placeholderData: keepPreviousData,
+    refetchInterval: 30000, // Refresh server status every 30 seconds
+    staleTime: 10000, // Consider data fresh for 10 seconds
   });
 }
 
@@ -91,8 +102,7 @@ export function useUpdateServer() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateServerDto }) =>
-      api.updateServer(id, data),
+    mutationFn: ({ id, data }: { id: string; data: UpdateServerDto }) => api.updateServer(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.servers });
       queryClient.invalidateQueries({ queryKey: queryKeys.server(id) });
@@ -119,6 +129,18 @@ export function useTestConnection() {
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.servers });
       queryClient.invalidateQueries({ queryKey: queryKeys.server(id) });
+    },
+  });
+}
+
+export function useTestAllConnections() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => api.testAllConnections(),
+    onSuccess: () => {
+      // Invalidate servers to refresh the list with updated status
+      queryClient.invalidateQueries({ queryKey: queryKeys.servers });
     },
   });
 }
@@ -242,8 +264,7 @@ export function useUpdateIssue() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateIssueDto }) =>
-      api.updateIssue(id, data),
+    mutationFn: ({ id, data }: { id: string; data: UpdateIssueDto }) => api.updateIssue(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['issues'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.issue(id) });
@@ -422,8 +443,17 @@ export function useDeleteAiProviderSetting() {
 
 export function useTestAiProvider() {
   return useMutation({
-    mutationFn: ({ provider, apiKey, model, baseUrl }: { provider: AiProviderType; apiKey: string; model: string; baseUrl?: string }) =>
-      api.testAiProvider(provider, apiKey, model, baseUrl),
+    mutationFn: ({
+      provider,
+      apiKey,
+      model,
+      baseUrl,
+    }: {
+      provider: AiProviderType;
+      apiKey: string;
+      model: string;
+      baseUrl?: string;
+    }) => api.testAiProvider(provider, apiKey, model, baseUrl),
   });
 }
 
@@ -441,8 +471,15 @@ export function useTestAiProviderSetting() {
 
 export function useFetchAiProviderModels() {
   return useMutation({
-    mutationFn: ({ provider, apiKey, baseUrl }: { provider: AiProviderType; apiKey: string; baseUrl?: string }) =>
-      api.fetchAiProviderModels(provider, apiKey, baseUrl),
+    mutationFn: ({
+      provider,
+      apiKey,
+      baseUrl,
+    }: {
+      provider: AiProviderType;
+      apiKey: string;
+      baseUrl?: string;
+    }) => api.fetchAiProviderModels(provider, apiKey, baseUrl),
   });
 }
 

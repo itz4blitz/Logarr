@@ -15,9 +15,28 @@ import {
 } from 'drizzle-orm/pg-core';
 
 // Enums for Issues system
-export const issueStatusEnum = pgEnum('issue_status', ['open', 'acknowledged', 'in_progress', 'resolved', 'ignored']);
-export const issueSeverityEnum = pgEnum('issue_severity', ['critical', 'high', 'medium', 'low', 'info']);
-export const issueSourceEnum = pgEnum('issue_source', ['jellyfin', 'sonarr', 'radarr', 'prowlarr', 'docker', 'system']);
+export const issueStatusEnum = pgEnum('issue_status', [
+  'open',
+  'acknowledged',
+  'in_progress',
+  'resolved',
+  'ignored',
+]);
+export const issueSeverityEnum = pgEnum('issue_severity', [
+  'critical',
+  'high',
+  'medium',
+  'low',
+  'info',
+]);
+export const issueSourceEnum = pgEnum('issue_source', [
+  'jellyfin',
+  'sonarr',
+  'radarr',
+  'prowlarr',
+  'docker',
+  'system',
+]);
 
 // Enum for log source tracking
 export const logSourceEnum = pgEnum('log_source', ['api', 'file']);
@@ -125,9 +144,13 @@ export const logFileState = pgTable(
     // Absolute path on the system (for actual file access)
     absolutePath: text('absolute_path').notNull(),
     // Last known file size (for detecting truncation/rotation)
-    fileSize: bigint('file_size', { mode: 'bigint' }).notNull().default(sql`0`),
+    fileSize: bigint('file_size', { mode: 'bigint' })
+      .notNull()
+      .default(sql`0`),
     // Last read byte position
-    byteOffset: bigint('byte_offset', { mode: 'bigint' }).notNull().default(sql`0`),
+    byteOffset: bigint('byte_offset', { mode: 'bigint' })
+      .notNull()
+      .default(sql`0`),
     // Last line number processed (for display/debugging)
     lineNumber: integer('line_number').notNull().default(0),
     // File inode (Unix) or file ID (Windows) for rotation detection
@@ -213,6 +236,9 @@ export const playbackEvents = pgTable(
     videoCodec: text('video_codec'),
     audioCodec: text('audio_codec'),
     container: text('container'),
+    thumbnailUrl: text('thumbnail_url'),
+    seriesName: text('series_name'),
+    seasonName: text('season_name'),
     timestamp: timestamp('timestamp', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -395,12 +421,17 @@ export const analysisConversations = pgTable(
       .notNull()
       .references(() => issues.id, { onDelete: 'cascade' }),
     // Full message history (user questions and AI responses)
-    messages: jsonb('messages').$type<Array<{
-      role: 'user' | 'assistant';
-      content: string;
-      timestamp: string; // ISO date string
-      tokensUsed?: number;
-    }>>().notNull().default([]),
+    messages: jsonb('messages')
+      .$type<
+        Array<{
+          role: 'user' | 'assistant';
+          content: string;
+          timestamp: string; // ISO date string
+          tokensUsed?: number;
+        }>
+      >()
+      .notNull()
+      .default([]),
     // Snapshot of the context at conversation start (for consistent follow-ups)
     contextSnapshot: jsonb('context_snapshot'),
     // AI provider and model used

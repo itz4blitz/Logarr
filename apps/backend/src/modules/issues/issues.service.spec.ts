@@ -2,7 +2,6 @@ import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-
 import { DATABASE_CONNECTION } from '../../database';
 import { createMockDb, configureMockDb, type MockDb } from '../../test/mock-db';
 import { AiProviderService } from '../settings/ai-provider.service';
@@ -95,7 +94,10 @@ describe('IssuesService', () => {
     });
 
     it('should normalize Windows paths', () => {
-      const fp1 = service.generateFingerprint('File not found: C:\\Users\\test\\file.log', 'jellyfin');
+      const fp1 = service.generateFingerprint(
+        'File not found: C:\\Users\\test\\file.log',
+        'jellyfin'
+      );
       const fp2 = service.generateFingerprint('File not found: D:\\Data\\other.txt', 'jellyfin');
       expect(fp1).toBe(fp2);
     });
@@ -113,7 +115,11 @@ describe('IssuesService', () => {
     });
 
     it('should include exception type in fingerprint when provided', () => {
-      const fp1 = service.generateFingerprint('Error occurred', 'jellyfin', 'NullReferenceException');
+      const fp1 = service.generateFingerprint(
+        'Error occurred',
+        'jellyfin',
+        'NullReferenceException'
+      );
       const fp2 = service.generateFingerprint('Error occurred', 'jellyfin', 'ArgumentException');
       expect(fp1).not.toBe(fp2);
     });
@@ -213,9 +219,9 @@ describe('IssuesService', () => {
     it('should give higher score to recent issues', () => {
       // Recency scoring: <1h=5, <24h=3, <168h=1, else 0
       const recentScore = service.calculateImpactScore('medium', 10, 0, 0, 0.5); // 5 bonus
-      const dayOldScore = service.calculateImpactScore('medium', 10, 0, 0, 12);  // 3 bonus (<24h)
+      const dayOldScore = service.calculateImpactScore('medium', 10, 0, 0, 12); // 3 bonus (<24h)
       const weekOldScore = service.calculateImpactScore('medium', 10, 0, 0, 100); // 1 bonus (<168h)
-      const oldScore = service.calculateImpactScore('medium', 10, 0, 0, 500);     // 0 bonus
+      const oldScore = service.calculateImpactScore('medium', 10, 0, 0, 500); // 0 bonus
 
       expect(recentScore).toBeGreaterThan(dayOldScore);
       expect(dayOldScore).toBeGreaterThan(weekOldScore);
@@ -243,7 +249,9 @@ describe('IssuesService', () => {
       it('should categorize auth-related errors', () => {
         expect(service.categorizeError('Authentication failed').category).toBe('authentication');
         expect(service.categorizeError('Login attempt blocked').category).toBe('authentication');
-        expect(service.categorizeError('Permission denied for user').category).toBe('authentication');
+        expect(service.categorizeError('Permission denied for user').category).toBe(
+          'authentication'
+        );
         expect(service.categorizeError('Unauthorized access').category).toBe('authentication');
         expect(service.categorizeError('Forbidden resource').category).toBe('authentication');
         expect(service.categorizeError('Access denied').category).toBe('authentication');
@@ -490,9 +498,10 @@ describe('IssuesService', () => {
       let callCount = 0;
       mockDb.select = vi.fn().mockImplementation(() => {
         callCount++;
-        const result = callCount === 1
-          ? [{ issue: mockIssue, serverName: 'Test Server' }]
-          : [{ id: 'occ-1', timestamp: new Date(), message: 'Error' }];
+        const result =
+          callCount === 1
+            ? [{ issue: mockIssue, serverName: 'Test Server' }]
+            : [{ id: 'occ-1', timestamp: new Date(), message: 'Error' }];
         return {
           from: vi.fn().mockReturnThis(),
           leftJoin: vi.fn().mockReturnThis(),
@@ -547,8 +556,9 @@ describe('IssuesService', () => {
     it('should throw NotFoundException when issue not found', async () => {
       configureMockDb(mockDb, { update: [] });
 
-      await expect(service.update('non-existent', { status: 'acknowledged' as any }))
-        .rejects.toThrow(NotFoundException);
+      await expect(
+        service.update('non-existent', { status: 'acknowledged' as any })
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -558,14 +568,34 @@ describe('IssuesService', () => {
       mockDb.select = vi.fn().mockImplementation(() => {
         callCount++;
         let result: any[] = [];
-        switch(callCount) {
-          case 1: result = [{ status: 'open', count: 5 }, { status: 'resolved', count: 3 }]; break;
-          case 2: result = [{ severity: 'critical', count: 2 }, { severity: 'high', count: 3 }]; break;
-          case 3: result = [{ source: 'jellyfin', count: 6 }]; break;
-          case 4: result = [{ category: 'network', count: 4 }]; break;
-          case 5: result = [{ avg: 50 }]; break;
-          case 6: result = [{ count: 2 }]; break;
-          case 7: result = [{ count: 1 }]; break;
+        switch (callCount) {
+          case 1:
+            result = [
+              { status: 'open', count: 5 },
+              { status: 'resolved', count: 3 },
+            ];
+            break;
+          case 2:
+            result = [
+              { severity: 'critical', count: 2 },
+              { severity: 'high', count: 3 },
+            ];
+            break;
+          case 3:
+            result = [{ source: 'jellyfin', count: 6 }];
+            break;
+          case 4:
+            result = [{ category: 'network', count: 4 }];
+            break;
+          case 5:
+            result = [{ avg: 50 }];
+            break;
+          case 6:
+            result = [{ count: 2 }];
+            break;
+          case 7:
+            result = [{ count: 1 }];
+            break;
         }
         return {
           from: vi.fn().mockReturnThis(),
@@ -602,11 +632,13 @@ describe('IssuesService', () => {
 
   describe('getCategories', () => {
     it('should return sorted list of categories', async () => {
-      configureMockDb(mockDb, { selectDistinct: [
-        { category: 'network' },
-        { category: 'database' },
-        { category: 'authentication' },
-      ] });
+      configureMockDb(mockDb, {
+        selectDistinct: [
+          { category: 'network' },
+          { category: 'database' },
+          { category: 'authentication' },
+        ],
+      });
 
       const result = await service.getCategories();
 
@@ -614,11 +646,9 @@ describe('IssuesService', () => {
     });
 
     it('should filter out null categories', async () => {
-      configureMockDb(mockDb, { selectDistinct: [
-        { category: 'network' },
-        { category: null },
-        { category: 'database' },
-      ] });
+      configureMockDb(mockDb, {
+        selectDistinct: [{ category: 'network' }, { category: null }, { category: 'database' }],
+      });
 
       const result = await service.getCategories();
 
@@ -673,9 +703,13 @@ describe('IssuesService', () => {
       mockDb.select = vi.fn().mockImplementation(() => {
         callCount++;
         let result: any[] = [];
-        switch(callCount) {
-          case 1: result = [{ hour: '2024-01-01 00:00:00', count: 5 }]; break;
-          case 2: result = [{ day: '2024-01-01', count: 10 }]; break;
+        switch (callCount) {
+          case 1:
+            result = [{ hour: '2024-01-01 00:00:00', count: 5 }];
+            break;
+          case 2:
+            result = [{ day: '2024-01-01', count: 10 }];
+            break;
         }
         return {
           from: vi.fn().mockReturnThis(),
@@ -689,7 +723,9 @@ describe('IssuesService', () => {
       mockDb.selectDistinct = vi.fn().mockImplementation(() => ({
         from: vi.fn().mockReturnThis(),
         where: vi.fn().mockReturnThis(),
-        then: vi.fn().mockImplementation((resolve) => Promise.resolve([{ userId: 'user-1' }]).then(resolve)),
+        then: vi
+          .fn()
+          .mockImplementation((resolve) => Promise.resolve([{ userId: 'user-1' }]).then(resolve)),
         [Symbol.toStringTag]: 'Promise',
       }));
 
@@ -744,7 +780,8 @@ describe('IssuesService', () => {
       mockDb.select = vi.fn().mockImplementation(() => {
         callCount++;
         let result: any[] = [];
-        if (callCount === 1) result = [existingIssue]; // existing issue
+        if (callCount === 1)
+          result = [existingIssue]; // existing issue
         else if (callCount === 2) result = [{ userId: 'user-1', sessionId: 'session-1' }]; // occurrences
         return {
           from: vi.fn().mockReturnThis(),
@@ -790,15 +827,17 @@ describe('IssuesService', () => {
 
   describe('mergeIssues', () => {
     it('should throw error when less than 2 issues provided', async () => {
-      await expect(service.mergeIssues({ issueIds: ['issue-1'] }))
-        .rejects.toThrow('Need at least 2 issues to merge');
+      await expect(service.mergeIssues({ issueIds: ['issue-1'] })).rejects.toThrow(
+        'Need at least 2 issues to merge'
+      );
     });
 
     it('should throw NotFoundException when issues not found', async () => {
       configureMockDb(mockDb, { select: [{ id: 'issue-1' }] });
 
-      await expect(service.mergeIssues({ issueIds: ['issue-1', 'issue-2'] }))
-        .rejects.toThrow(NotFoundException);
+      await expect(service.mergeIssues({ issueIds: ['issue-1', 'issue-2'] })).rejects.toThrow(
+        NotFoundException
+      );
     });
   });
 
@@ -810,7 +849,9 @@ describe('IssuesService', () => {
       const result = await service.backfillFromLogs(undefined, progressCallback);
 
       expect(result).toEqual({ processedLogs: 0, issuesCreated: 0, issuesUpdated: 0 });
-      expect(progressCallback).toHaveBeenCalledWith(expect.objectContaining({ status: 'completed' }));
+      expect(progressCallback).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'completed' })
+      );
     });
 
     it('should emit started event', async () => {
@@ -835,8 +876,7 @@ describe('IssuesService', () => {
     it('should throw BadRequestException when no AI provider configured', async () => {
       mockAiProviderService.getDefaultProvider.mockResolvedValue(null);
 
-      await expect(service.analyzeIssue('issue-1'))
-        .rejects.toThrow(BadRequestException);
+      await expect(service.analyzeIssue('issue-1')).rejects.toThrow(BadRequestException);
     });
 
     it('should analyze issue with AI and return structured result', async () => {
@@ -862,7 +902,10 @@ Connection timeout
 
       mockAiProviderService.getDefaultProvider.mockResolvedValue({ id: 'openai' });
       mockIssueContextService.gatherContext.mockResolvedValue(mockContext);
-      mockAnalysisPromptBuilder.buildPrompt.mockReturnValue({ system: 'system prompt', user: 'user prompt' });
+      mockAnalysisPromptBuilder.buildPrompt.mockReturnValue({
+        system: 'system prompt',
+        user: 'user prompt',
+      });
       mockAiProviderService.generateAnalysisWithSystemPrompt.mockResolvedValue({
         analysis: mockAnalysis,
         provider: 'openai',
@@ -891,8 +934,9 @@ Connection timeout
     it('should throw NotFoundException when conversation not found', async () => {
       configureMockDb(mockDb, { select: [] });
 
-      await expect(service.analyzeIssueFollowUp('issue-1', 'conv-1', 'What else?'))
-        .rejects.toThrow(NotFoundException);
+      await expect(service.analyzeIssueFollowUp('issue-1', 'conv-1', 'What else?')).rejects.toThrow(
+        NotFoundException
+      );
     });
 
     it('should throw BadRequestException when no AI provider', async () => {
@@ -905,8 +949,9 @@ Connection timeout
       configureMockDb(mockDb, { select: [mockConversation] });
       mockAiProviderService.getDefaultProvider.mockResolvedValue(null);
 
-      await expect(service.analyzeIssueFollowUp('issue-1', 'conv-1', 'What else?'))
-        .rejects.toThrow(BadRequestException);
+      await expect(service.analyzeIssueFollowUp('issue-1', 'conv-1', 'What else?')).rejects.toThrow(
+        BadRequestException
+      );
     });
   });
 
@@ -933,8 +978,9 @@ Connection timeout
     it('should throw NotFoundException when not found', async () => {
       configureMockDb(mockDb, { select: [] });
 
-      await expect(service.getAnalysisConversation('issue-1', 'non-existent'))
-        .rejects.toThrow(NotFoundException);
+      await expect(service.getAnalysisConversation('issue-1', 'non-existent')).rejects.toThrow(
+        NotFoundException
+      );
     });
   });
 

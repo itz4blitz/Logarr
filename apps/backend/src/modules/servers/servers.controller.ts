@@ -78,4 +78,11 @@ export class ServersController {
   async testConnection(@Param('id') id: string) {
     return this.serversService.testConnection(id);
   }
+
+  @Post('test-all')
+  @ApiOperation({ summary: 'Test all server connections in parallel' })
+  @ApiResponse({ status: 200, description: 'Returns map of server ID to connection status' })
+  async testAllConnections() {
+    return this.serversService.testAllConnections();
+  }
 }

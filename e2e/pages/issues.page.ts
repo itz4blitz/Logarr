@@ -13,15 +13,13 @@ export class IssuesPage extends BasePage {
   constructor(page: Page) {
     super(page);
     this.searchInput = page.getByPlaceholder(/search/i);
-    this.statusFilter = page.getByRole('combobox', { name: /status/i }).or(
-      page.getByRole('button', { name: /status/i })
-    );
-    this.severityFilter = page.locator('[data-testid="severity-filter"]').or(
-      page.getByText(/severity/i).first()
-    );
-    this.issueList = page.locator('[data-testid="issue-list"]').or(
-      page.locator('main').first()
-    );
+    this.statusFilter = page
+      .getByRole('combobox', { name: /status/i })
+      .or(page.getByRole('button', { name: /status/i }));
+    this.severityFilter = page
+      .locator('[data-testid="severity-filter"]')
+      .or(page.getByText(/severity/i).first());
+    this.issueList = page.locator('[data-testid="issue-list"]').or(page.locator('main').first());
     this.emptyState = page.getByText(/no issues found/i);
     this.refreshButton = page.getByRole('button', { name: /refresh/i });
   }
@@ -72,19 +70,32 @@ export class IssuesPage extends BasePage {
     if (emptyStateVisible) return true;
 
     // Check for the "Scan Existing Logs" button (appears in empty state)
-    const scanButton = await this.page.getByRole('button', { name: /scan existing logs/i }).isVisible().catch(() => false);
+    const scanButton = await this.page
+      .getByRole('button', { name: /scan existing logs/i })
+      .isVisible()
+      .catch(() => false);
     if (scanButton) return true;
 
     // Check for loading spinner (page is rendering, just waiting for API)
-    const spinnerVisible = await this.page.locator('.animate-spin').isVisible().catch(() => false);
+    const spinnerVisible = await this.page
+      .locator('.animate-spin')
+      .isVisible()
+      .catch(() => false);
     if (spinnerVisible) return true;
 
     // Check for the page header/title as a fallback
-    const headerVisible = await this.page.getByRole('heading', { name: /issues/i }).isVisible().catch(() => false);
+    const headerVisible = await this.page
+      .getByRole('heading', { name: /issues/i })
+      .isVisible()
+      .catch(() => false);
     if (headerVisible) return true;
 
     // Final fallback - any content in the page
-    const bodyHasContent = await this.page.locator('body').innerHTML().then(html => html.length > 100).catch(() => false);
+    const bodyHasContent = await this.page
+      .locator('body')
+      .innerHTML()
+      .then((html) => html.length > 100)
+      .catch(() => false);
     return bodyHasContent;
   }
 }

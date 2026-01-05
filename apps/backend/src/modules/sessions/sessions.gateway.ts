@@ -33,10 +33,7 @@ export class SessionsGateway {
   private subscriptions = new Map<string, SessionSubscription>();
 
   @SubscribeMessage('subscribe')
-  handleSubscribe(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() data: SessionSubscription
-  ) {
+  handleSubscribe(@ConnectedSocket() client: Socket, @MessageBody() data: SessionSubscription) {
     this.subscriptions.set(client.id, data);
 
     // Join appropriate rooms

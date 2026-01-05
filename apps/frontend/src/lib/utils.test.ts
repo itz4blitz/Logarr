@@ -28,9 +28,9 @@ describe('cn (classname utility)', () => {
   describe('conditional classes', () => {
     it('should handle conditional class objects', () => {
       const result = cn({
-        'class1': true,
-        'class2': false,
-        'class3': true,
+        class1: true,
+        class2: false,
+        class3: true,
       });
       expect(result).toBe('class1 class3');
     });
@@ -80,10 +80,7 @@ describe('cn (classname utility)', () => {
     });
 
     it('should handle complex tailwind overrides', () => {
-      const result = cn(
-        'text-sm font-medium text-gray-900',
-        'text-base text-white'
-      );
+      const result = cn('text-sm font-medium text-gray-900', 'text-base text-white');
       expect(result).toBe('font-medium text-base text-white');
     });
   });
@@ -104,14 +101,11 @@ describe('cn (classname utility)', () => {
     it('should handle button variant pattern', () => {
       const isPrimary = true;
       const isDisabled = false;
-      const result = cn(
-        'px-4 py-2 rounded font-medium',
-        {
-          'bg-blue-500 text-white': isPrimary,
-          'bg-gray-200 text-gray-700': !isPrimary,
-          'opacity-50 cursor-not-allowed': isDisabled,
-        }
-      );
+      const result = cn('px-4 py-2 rounded font-medium', {
+        'bg-blue-500 text-white': isPrimary,
+        'bg-gray-200 text-gray-700': !isPrimary,
+        'opacity-50 cursor-not-allowed': isDisabled,
+      });
       expect(result).toContain('bg-blue-500');
       expect(result).toContain('text-white');
       expect(result).not.toContain('opacity-50');

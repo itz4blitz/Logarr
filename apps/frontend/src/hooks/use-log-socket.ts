@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState, useCallback } from "react";
-import { io } from "socket.io-client";
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { io } from 'socket.io-client';
 
-import type { LogEntry } from "@/lib/api";
-import type { Socket } from "socket.io-client";
+import type { LogEntry } from '@/lib/api';
+import type { Socket } from 'socket.io-client';
 
-import { config } from "@/lib/config";
+import { config } from '@/lib/config';
 
 const SOCKET_URL = config.wsUrl;
 
@@ -45,7 +45,7 @@ export function useLogSocket(options: UseLogSocketOptions = {}) {
     }
 
     const socket = io(`${SOCKET_URL}/logs`, {
-      transports: ["websocket", "polling"],
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
@@ -53,19 +53,19 @@ export function useLogSocket(options: UseLogSocketOptions = {}) {
 
     socketRef.current = socket;
 
-    socket.on("connect", () => {
+    socket.on('connect', () => {
       setConnected(true);
       // Subscribe to logs with all filters
       const subscription: LogSubscription = { serverId, levels, logSources };
-      socket.emit("subscribe", subscription);
+      socket.emit('subscribe', subscription);
       subscriptionRef.current = subscription;
     });
 
-    socket.on("disconnect", () => {
+    socket.on('disconnect', () => {
       setConnected(false);
     });
 
-    socket.on("log", (log: LogEntry) => {
+    socket.on('log', (log: LogEntry) => {
       // Server-side filtering handles levels and logSources
       // We just add the log to the list
       setLogs((prev) => {
@@ -77,12 +77,12 @@ export function useLogSocket(options: UseLogSocketOptions = {}) {
       onLog?.(log);
     });
 
-    socket.on("connect_error", (error) => {
-      console.error("Socket connection error:", error);
+    socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
     });
 
     return () => {
-      socket.emit("unsubscribe");
+      socket.emit('unsubscribe');
       socket.disconnect();
       socketRef.current = null;
     };
@@ -103,8 +103,8 @@ export function useLogSocket(options: UseLogSocketOptions = {}) {
       JSON.stringify(newSubscription.logSources) !== JSON.stringify(currentSub.logSources);
 
     if (filtersChanged) {
-      socket.emit("unsubscribe");
-      socket.emit("subscribe", newSubscription);
+      socket.emit('unsubscribe');
+      socket.emit('subscribe', newSubscription);
       subscriptionRef.current = newSubscription;
     }
   }, [connected, serverId, levels, logSources]);

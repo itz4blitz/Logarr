@@ -185,9 +185,7 @@ export class LogFileProcessor {
 
       return {
         ...entry,
-        stackTrace: entry.stackTrace
-          ? `${entry.stackTrace}\n${stackTrace}`
-          : stackTrace,
+        stackTrace: entry.stackTrace ? `${entry.stackTrace}\n${stackTrace}` : stackTrace,
         raw: entry.raw + '\n' + this.continuationLines.join('\n'),
       };
     }

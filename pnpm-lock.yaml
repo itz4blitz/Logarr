@@ -65,6 +65,9 @@ importers:
       '@logarr/provider-jellyfin':
         specifier: workspace:*
         version: link:../../packages/provider-jellyfin
+      '@logarr/provider-plex':
+        specifier: workspace:*
+        version: link:../../packages/provider-plex
       '@logarr/provider-prowlarr':
         specifier: workspace:*
         version: link:../../packages/provider-prowlarr
@@ -388,6 +391,22 @@ importers:
         version: 5.9.3
 
   packages/provider-jellyfin:
+    dependencies:
+      '@logarr/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.19.3
+      tsup:
+        specifier: ^8.3.5
+        version: 8.5.1(@swc/core@1.15.8)(jiti@2.6.1)(postcss@8.5.6)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+
+  packages/provider-plex:
     dependencies:
       '@logarr/core':
         specifier: workspace:*

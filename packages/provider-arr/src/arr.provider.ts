@@ -3,7 +3,6 @@
  * Implements common functionality shared by Sonarr, Radarr, etc.
  */
 
-
 import { ArrClient } from './arr.client.js';
 import {
   parseArrLogLine,
@@ -104,7 +103,10 @@ export abstract class ArrBaseProvider implements MediaServerProvider {
       return {
         connected: true,
         serverInfo: {
-          name: status.instanceName !== undefined && status.instanceName !== '' ? status.instanceName : status.appName,
+          name:
+            status.instanceName !== undefined && status.instanceName !== ''
+              ? status.instanceName
+              : status.appName,
           version: status.version,
           id: `${status.appName}-${status.branch}`,
         },
@@ -186,7 +188,9 @@ export abstract class ArrBaseProvider implements MediaServerProvider {
     // Get history and convert to activities
     try {
       const historyResponse = await this.getHistoryRecords(since);
-      const historyActivities = historyResponse.map((record) => this.normalizeHistoryRecord(record));
+      const historyActivities = historyResponse.map((record) =>
+        this.normalizeHistoryRecord(record)
+      );
       activities.push(...historyActivities);
     } catch (error) {
       console.error(`[${this.id}] Failed to get history:`, error);
@@ -208,7 +212,10 @@ export abstract class ArrBaseProvider implements MediaServerProvider {
     const client = this.getClient();
     const status = await client.getSystemStatus();
     return {
-      name: status.instanceName !== undefined && status.instanceName !== '' ? status.instanceName : status.appName,
+      name:
+        status.instanceName !== undefined && status.instanceName !== ''
+          ? status.instanceName
+          : status.appName,
       version: status.version,
       id: `${status.appName}-${status.branch}`,
     };
@@ -274,7 +281,8 @@ export abstract class ArrBaseProvider implements MediaServerProvider {
         id: `queue-${item.downloadId}-${Date.now()}`,
         type: 'queue_warning' as const,
         name: `Queue issue: ${item.title}`,
-        overview: item.errorMessage ?? item.statusMessages.map((m) => m.messages.join(', ')).join('; '),
+        overview:
+          item.errorMessage ?? item.statusMessages.map((m) => m.messages.join(', ')).join('; '),
         severity: 'warn' as const,
         timestamp: new Date(),
       }));

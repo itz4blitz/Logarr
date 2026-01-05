@@ -71,6 +71,9 @@ export class NowPlayingDto {
 
   @ApiPropertyOptional()
   playMethod?: string | null;
+
+  @ApiPropertyOptional({ description: 'Full URL to the media thumbnail (provider-specific)' })
+  thumbnailUrl?: string | null;
 }
 
 export class SessionDto {

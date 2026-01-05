@@ -96,10 +96,7 @@ export class FileDiscoveryService {
   /**
    * Discover files in a directory matching patterns
    */
-  private async discoverFilesInDirectory(
-    dirPath: string,
-    patterns: string[]
-  ): Promise<string[]> {
+  private async discoverFilesInDirectory(dirPath: string, patterns: string[]): Promise<string[]> {
     const files: string[] = [];
 
     try {
@@ -161,7 +158,9 @@ export class FileDiscoveryService {
   /**
    * Expand a single path
    */
-  private expandPath(path: string): string {
+  private expandPath(inputPath: string): string {
+    let path = inputPath;
+
     // Expand ~ to home directory
     if (path.startsWith('~')) {
       path = join(homedir(), path.slice(1));
@@ -170,6 +169,17 @@ export class FileDiscoveryService {
     // Expand environment variables (basic support)
     path = path.replace(/%(\w+)%/g, (_, name) => process.env[name] ?? _);
     path = path.replace(/\$(\w+)/g, (_, name) => process.env[name] ?? _);
+
+    // Check if this is already an absolute path
+    // Windows: starts with drive letter (e.g., C:/, D:\, Z:/)
+    // Unix: starts with /
+    const isWindowsAbsolute = /^[A-Za-z]:[\\/]/.test(path);
+    const isUnixAbsolute = path.startsWith('/');
+
+    if (isWindowsAbsolute || isUnixAbsolute) {
+      // Already absolute, just normalize separators for Windows paths
+      return path.replace(/\\/g, '/');
+    }
 
     return resolve(path);
   }
@@ -238,15 +248,20 @@ export class FileDiscoveryService {
   /**
    * Validate that a path is accessible
    */
-  async validatePath(path: string): Promise<{
+  async validatePath(inputPath: string): Promise<{
     accessible: boolean;
     error?: string;
     files?: string[];
   }> {
-    const expandedPath = this.expandPath(path);
+    const expandedPath = this.expandPath(inputPath);
+    this.logger.debug(`Validating path: input="${inputPath}", expanded="${expandedPath}"`);
 
     try {
-      if (!existsSync(expandedPath)) {
+      const exists = existsSync(expandedPath);
+      this.logger.debug(`Path exists check: ${exists}`);
+
+      if (!exists) {
+        this.logger.warn(`Path validation failed: "${expandedPath}" does not exist`);
         return {
           accessible: false,
           error: `Path does not exist: ${expandedPath}`,

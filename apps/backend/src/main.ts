@@ -19,7 +19,7 @@ async function bootstrap() {
 
   // Enable CORS - support multiple origins via comma-separated string
   const origins = env.CORS_ORIGIN.includes(',')
-    ? env.CORS_ORIGIN.split(',').map(o => o.trim())
+    ? env.CORS_ORIGIN.split(',').map((o) => o.trim())
     : env.CORS_ORIGIN;
 
   app.enableCors({
@@ -48,7 +48,10 @@ async function bootstrap() {
 
   const logger = app.get(Logger);
   logger.log(`Logarr API running on http://localhost:${env.BACKEND_PORT}`, 'Bootstrap');
-  logger.log(`Swagger docs available at http://localhost:${env.BACKEND_PORT}/api/docs`, 'Bootstrap');
+  logger.log(
+    `Swagger docs available at http://localhost:${env.BACKEND_PORT}/api/docs`,
+    'Bootstrap'
+  );
 }
 
 bootstrap();
