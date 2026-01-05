@@ -1,3 +1,4 @@
+import { EmbyProvider } from '@logarr/provider-emby';
 import { JellyfinProvider } from '@logarr/provider-jellyfin';
 import { PlexProvider } from '@logarr/provider-plex';
 import { ProwlarrProvider } from '@logarr/provider-prowlarr';
@@ -31,6 +32,9 @@ export class ServersService {
     // Register available providers
     const jellyfinProvider = new JellyfinProvider();
     this.providers.set(jellyfinProvider.id, jellyfinProvider);
+
+    const embyProvider = new EmbyProvider();
+    this.providers.set(embyProvider.id, embyProvider);
 
     const plexProvider = new PlexProvider();
     this.providers.set(plexProvider.id, plexProvider);

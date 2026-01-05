@@ -111,6 +111,26 @@ export class ProwlarrProvider extends ArrBaseProvider {
     return response.records;
   }
 
+  /**
+   * Override getActivity to skip queue (Prowlarr doesn't have a queue endpoint)
+   */
+  override async getActivity(since?: Date): Promise<readonly NormalizedActivity[]> {
+    const activities: NormalizedActivity[] = [];
+
+    // Get history records only (no queue for Prowlarr)
+    try {
+      const historyResponse = await this.getHistoryRecords(since);
+      const historyActivities = historyResponse.map((record) =>
+        this.normalizeHistoryRecord(record)
+      );
+      activities.push(...historyActivities);
+    } catch (error) {
+      console.error(`[${this.id}] Failed to get history:`, error);
+    }
+
+    return activities;
+  }
+
   protected override normalizeHistoryRecord(record: ArrHistoryRecordBase): NormalizedActivity {
     const prowlarrRecord = record as ProwlarrHistoryRecord;
     const eventTypeName =

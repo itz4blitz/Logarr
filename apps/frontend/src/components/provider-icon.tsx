@@ -274,6 +274,17 @@ function PlexIcon({ className }: { className?: string }) {
   );
 }
 
+// Emby logo - Uses external CDN icon
+function EmbyIcon({ className }: { className?: string }) {
+  return (
+    <img
+      src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/emby.svg"
+      alt="Emby"
+      className={className}
+    />
+  );
+}
+
 // Default server icon for unknown providers
 function DefaultServerIcon({ className }: { className?: string }) {
   return (
@@ -289,6 +300,7 @@ function DefaultServerIcon({ className }: { className?: string }) {
 
 const providerIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   jellyfin: JellyfinIcon,
+  emby: EmbyIcon,
   plex: PlexIcon,
   sonarr: SonarrIcon,
   radarr: RadarrIcon,
@@ -311,6 +323,7 @@ export function ProviderIcon({ providerId, className, size = 'md' }: ProviderIco
 // This now pulls from the integration registry for consistency
 export const providerMeta: Record<string, { name: string; color: string; bgColor: string }> = {
   jellyfin: { name: 'Jellyfin', color: '#00A4DC', bgColor: 'bg-cyan-500/10' },
+  emby: { name: 'Emby', color: '#52B54B', bgColor: 'bg-green-500/10' },
   plex: { name: 'Plex', color: '#E5A00D', bgColor: 'bg-yellow-500/10' },
   sonarr: { name: 'Sonarr', color: '#00CCFF', bgColor: 'bg-sky-500/10' },
   radarr: { name: 'Radarr', color: '#FFC230', bgColor: 'bg-yellow-500/10' },

@@ -11,7 +11,7 @@
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Unified logging, intelligent issue detection, and AI-powered analysis for Jellyfin, Sonarr, Radarr, Prowlarr, and more.
+Unified logging, intelligent issue detection, and AI-powered analysis for Plex, Jellyfin, Emby, Sonarr, Radarr, Prowlarr, and more.
 
 [Quick Start](#quick-start) · [Features](#features) · [Screenshots](#screenshots) · [Documentation](#documentation)
 
@@ -95,12 +95,12 @@ _Configure multiple AI providers for issue analysis (Anthropic, OpenAI, Google, 
 
 ## Supported Servers
 
-| Server       | Status       | Server   | Status     |
-| ------------ | ------------ | -------- | ---------- |
-| **Jellyfin** | ✅ Supported | **Plex** | 🚧 Planned |
-| **Sonarr**   | ✅ Supported | **Emby** | 🚧 Planned |
-| **Radarr**   | ✅ Supported | **Kodi** | 🚧 Planned |
-| **Prowlarr** | ✅ Supported |          |            |
+| Server       | Status       | Server   | Status       |
+| ------------ | ------------ | -------- | ------------ |
+| **Jellyfin** | ✅ Supported | **Plex** | ✅ Supported |
+| **Sonarr**   | ✅ Supported | **Emby** | ✅ Supported |
+| **Radarr**   | ✅ Supported | **Kodi** | 🚧 Planned   |
+| **Prowlarr** | ✅ Supported |          |              |
 
 > Logarr uses a provider architecture—adding support for new servers is straightforward. [Contributions welcome!](#contributing)
 
@@ -230,7 +230,9 @@ logarr/
 │   └── frontend/          # Next.js app
 ├── packages/
 │   ├── core/              # Shared types
+│   ├── provider-plex/     # Plex integration
 │   ├── provider-jellyfin/ # Jellyfin integration
+│   ├── provider-emby/     # Emby integration
 │   ├── provider-sonarr/   # Sonarr integration
 │   ├── provider-radarr/   # Radarr integration
 │   ├── provider-prowlarr/ # Prowlarr integration
@@ -292,7 +294,7 @@ This project is under active development and we're looking for contributors to h
 
 Some ideas on the table:
 
-- Additional providers (Plex, Emby, Kodi)
+- Additional providers (Kodi, Lidarr, Readarr)
 - Alerting integrations (Slack, Discord, email)
 - Log retention policies
 - Custom dashboards

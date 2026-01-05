@@ -17,10 +17,19 @@ describe('SourceDiagnosticsDialog', () => {
     name: 'Plex Server',
     url: 'http://192.168.1.100:32400',
     providerId: 'plex',
-    enabled: true,
+    apiKey: 'test-api-key',
+    logPath: null,
+    isConnected: true,
+    lastSeen: '2024-01-01T00:00:00Z',
+    lastError: null,
+    version: '1.32.0',
+    serverName: 'Plex Media Server',
     fileIngestionEnabled: true,
+    fileIngestionConnected: true,
+    fileIngestionError: null,
     logPaths: ['/plex-logs', '/var/log/plex'],
     logFilePatterns: ['*.log', '*.txt'],
+    lastFileSync: null,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
   };
@@ -30,6 +39,7 @@ describe('SourceDiagnosticsDialog', () => {
     serverInfo: {
       name: 'Plex Media Server',
       version: '1.32.0',
+      id: 'plex-server-id',
     },
     fileIngestion: {
       enabled: true,

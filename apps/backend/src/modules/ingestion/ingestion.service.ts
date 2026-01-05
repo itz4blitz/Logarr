@@ -1,3 +1,4 @@
+import { EmbyProvider, EmbyClient } from '@logarr/provider-emby';
 import { JellyfinProvider, JellyfinClient } from '@logarr/provider-jellyfin';
 import { PlexProvider, PlexClient } from '@logarr/provider-plex';
 import { ProwlarrProvider } from '@logarr/provider-prowlarr';
@@ -15,6 +16,7 @@ import { LogsGateway } from '../logs/logs.gateway';
 import { SessionsGateway } from '../sessions/sessions.gateway';
 
 import type { MediaServerProvider, NormalizedSession, NormalizedActivity } from '@logarr/core';
+import type { EmbySession, EmbyPlaybackProgressData, EmbyPlaybackEventData } from '@logarr/provider-emby';
 import type {
   JellyfinSession,
   JellyfinPlaybackProgressData,
@@ -37,6 +39,7 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
   private pollingInterval: NodeJS.Timeout | null = null;
   private sessionPollingInterval: NodeJS.Timeout | null = null;
   private jellyfinClients: Map<string, JellyfinClient> = new Map();
+  private embyClients: Map<string, EmbyClient> = new Map();
   private plexClients: Map<string, PlexClient> = new Map();
   private plexRefreshTimers: Map<string, NodeJS.Timeout> = new Map();
   private plexLastRefresh: Map<string, number> = new Map();
@@ -53,6 +56,9 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
     // Register available providers
     const jellyfinProvider = new JellyfinProvider();
     this.providers.set(jellyfinProvider.id, jellyfinProvider);
+
+    const embyProvider = new EmbyProvider();
+    this.providers.set(embyProvider.id, embyProvider);
 
     const sonarrProvider = new SonarrProvider();
     this.providers.set(sonarrProvider.id, sonarrProvider);
@@ -93,6 +99,7 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
 
     // Connect WebSockets for real-time session updates
     await this.connectJellyfinWebSockets();
+    await this.connectEmbyWebSockets();
     await this.connectPlexWebSockets();
 
     // Start file-based log ingestion for servers that have it enabled
@@ -130,6 +137,11 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
       client.disconnectWebSocket();
     }
     this.jellyfinClients.clear();
+    // Disconnect all Emby WebSockets
+    for (const client of this.embyClients.values()) {
+      client.disconnectWebSocket();
+    }
+    this.embyClients.clear();
     // Disconnect all Plex WebSockets
     for (const client of this.plexClients.values()) {
       client.disconnectWebSocket();
@@ -607,6 +619,125 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
     }));
 
     // Sync to database (same as polling but real-time)
+    await this.syncSessions(serverId, normalizedSessions);
+
+    // Broadcast updated sessions to frontend
+    this.sessionsGateway.broadcastSessions(serverId, normalizedSessions);
+  }
+
+  // ===========================================================================
+  // Emby WebSocket Integration
+  // ===========================================================================
+
+  /**
+   * Connect WebSockets to all enabled Emby servers
+   */
+  private async connectEmbyWebSockets() {
+    const servers = await this.db
+      .select()
+      .from(schema.servers)
+      .where(eq(schema.servers.isEnabled, true));
+
+    for (const server of servers) {
+      if (server.providerId === 'emby') {
+        this.connectEmbyWebSocket(server);
+      }
+    }
+  }
+
+  /**
+   * Connect WebSocket to a single Emby server
+   */
+  private connectEmbyWebSocket(server: typeof schema.servers.$inferSelect) {
+    // Disconnect existing connection if any
+    const existingClient = this.embyClients.get(server.id);
+    if (existingClient) {
+      existingClient.disconnectWebSocket();
+      this.embyClients.delete(server.id);
+    }
+
+    const client = new EmbyClient(server.url, server.apiKey);
+    this.embyClients.set(server.id, client);
+
+    // Set up event handlers
+    client.on('connected', () => {
+      this.logger.log(`WebSocket connected to Emby server: ${server.name}`);
+    });
+
+    client.on('disconnected', () => {
+      this.logger.warn(`WebSocket disconnected from Emby server: ${server.name}`);
+    });
+
+    client.on('error', (error: Error) => {
+      this.logger.error(`WebSocket error for Emby server ${server.name}:`, error.message);
+    });
+
+    // Handle real-time session updates
+    client.on('sessions', (sessions: readonly EmbySession[]) => {
+      this.handleEmbySessionsUpdate(server.id, sessions).catch((err) => {
+        this.logger.error(`Error handling Emby sessions update for ${server.name}:`, err);
+      });
+    });
+
+    client.on('playbackStart', (data: EmbyPlaybackEventData) => {
+      this.sessionsGateway.broadcastPlaybackStart(server.id, data);
+    });
+
+    client.on('playbackStop', (data: EmbyPlaybackEventData) => {
+      this.sessionsGateway.broadcastPlaybackStop(server.id, data);
+    });
+
+    client.on('playbackProgress', (data: EmbyPlaybackProgressData) => {
+      this.sessionsGateway.broadcastPlaybackProgress(server.id, data);
+    });
+
+    // Connect to WebSocket
+    client.connectWebSocket();
+  }
+
+  /**
+   * Handle real-time sessions update from Emby WebSocket
+   */
+  private async handleEmbySessionsUpdate(
+    serverId: string,
+    embySessions: readonly EmbySession[]
+  ) {
+    // Convert Emby sessions to normalized format (same as Jellyfin since APIs are similar)
+    const normalizedSessions: NormalizedSession[] = embySessions.map((session) => ({
+      id: session.Id,
+      externalId: session.Id,
+      userId: session.UserId,
+      userName: session.UserName,
+      deviceId: session.DeviceId,
+      deviceName: session.DeviceName,
+      clientName: session.Client,
+      clientVersion: session.ApplicationVersion,
+      ipAddress: session.RemoteEndPoint,
+      startedAt: new Date(session.LastActivityDate),
+      lastActivity: new Date(session.LastActivityDate),
+      isActive: session.IsActive,
+      nowPlaying: session.NowPlayingItem
+        ? {
+            itemId: session.NowPlayingItem.Id,
+            itemName: session.NowPlayingItem.Name,
+            itemType: session.NowPlayingItem.Type,
+            seriesName: session.NowPlayingItem.SeriesName,
+            seasonName: session.NowPlayingItem.SeasonName,
+            positionTicks: session.PlayState?.PositionTicks ?? 0,
+            durationTicks: session.NowPlayingItem.RunTimeTicks,
+            isPaused: session.PlayState?.IsPaused ?? false,
+            isMuted: session.PlayState?.IsMuted ?? false,
+            isTranscoding: session.TranscodingInfo !== undefined && !session.TranscodingInfo.IsVideoDirect,
+            transcodeReasons: session.TranscodingInfo?.TranscodeReasons ?? undefined,
+            playMethod: session.PlayState?.PlayMethod,
+            videoCodec: session.TranscodingInfo?.VideoCodec,
+            audioCodec: session.TranscodingInfo?.AudioCodec,
+            container: session.TranscodingInfo?.Container ?? session.NowPlayingItem.Container,
+          }
+        : undefined,
+    }));
+
+    // Sync to database
     await this.syncSessions(serverId, normalizedSessions);
 
     // Broadcast updated sessions to frontend

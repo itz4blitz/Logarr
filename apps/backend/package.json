@@ -25,6 +25,7 @@
   "dependencies": {
     "@logarr/core": "workspace:*",
     "@logarr/provider-arr": "workspace:*",
+    "@logarr/provider-emby": "workspace:*",
     "@logarr/provider-jellyfin": "workspace:*",
     "@logarr/provider-plex": "workspace:*",
     "@logarr/provider-prowlarr": "workspace:*",

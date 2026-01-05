@@ -54,6 +54,8 @@ COPY --from=builder --chown=nestjs:nodejs /app/packages/provider-prowlarr/packag
 COPY --from=builder --chown=nestjs:nodejs /app/packages/provider-prowlarr/dist ./packages/provider-prowlarr/dist
 COPY --from=builder --chown=nestjs:nodejs /app/packages/provider-plex/package.json ./packages/provider-plex/
 COPY --from=builder --chown=nestjs:nodejs /app/packages/provider-plex/dist ./packages/provider-plex/dist
+COPY --from=builder --chown=nestjs:nodejs /app/packages/provider-emby/package.json ./packages/provider-emby/
+COPY --from=builder --chown=nestjs:nodejs /app/packages/provider-emby/dist ./packages/provider-emby/dist
 
 # Copy backend
 COPY --from=builder --chown=nestjs:nodejs /app/apps/backend/package.json ./apps/backend/

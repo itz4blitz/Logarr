@@ -1,6 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "daemon": false,
+  "concurrency": "20",
   "globalEnv": [
     "NODE_ENV",
     "DATABASE_URL",

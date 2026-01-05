@@ -268,15 +268,23 @@ export const integrations: Integration[] = [
     name: 'Emby',
     description: 'Personal media server with live TV and DVR',
     category: 'media_servers',
-    status: 'coming_soon',
+    status: 'available',
     connectionType: 'api',
     icon: 'emby',
     iconType: 'dashboard-icons',
     color: '#52B54B',
     bgColor: 'bg-green-500/10',
     website: 'https://emby.media',
+    docsUrl: 'https://support.emby.media/',
     defaultPort: 8096,
-    configFields: [...standardApiFields, standardLogPathField],
+    configFields: [
+      ...standardApiFields,
+      {
+        ...standardLogPathField,
+        placeholder: '/config/logs',
+        description: 'Path to Emby log directory',
+      },
+    ],
     capabilities: {
       realTimeLogs: true,
       activityLog: true,
@@ -1473,5 +1481,5 @@ export function searchIntegrations(query: string): Integration[] {
 
 // Dashboard Icons CDN URL helper
 export function getDashboardIconUrl(slug: string, format: 'svg' | 'png' = 'svg'): string {
-  return `https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/${format}/${slug}.${format}`;
+  return `https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/${format}/${slug}.${format}`;
 }
