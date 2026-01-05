@@ -17,12 +17,7 @@ import { RedisModule } from './redis/redis.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: [
-        '.env.local',
-        '.env',
-        '../../.env.local',
-        '../../.env',
-      ],
+      envFilePath: ['.env.local', '.env', '../../.env.local', '../../.env'],
     }),
     LoggerModule,
     DatabaseModule,

@@ -1,13 +1,9 @@
-"use client";
+'use client';
 
-import { Wifi, FileText, Check, X, Minus } from "lucide-react";
+import { Wifi, FileText, Check, X, Minus } from 'lucide-react';
 
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 interface ConnectionStatusProps {
   apiConnected: boolean;
@@ -15,7 +11,7 @@ interface ConnectionStatusProps {
   fileIngestionConnected: boolean;
   lastSeen?: string | null;
   lastFileSync?: string | null;
-  variant?: "dot" | "badge" | "compact";
+  variant?: 'dot' | 'badge' | 'compact';
   showLabels?: boolean;
   className?: string;
 }
@@ -30,35 +26,36 @@ export function ConnectionStatus({
   fileIngestionConnected,
   lastSeen,
   lastFileSync,
-  variant = "dot",
+  variant = 'dot',
   showLabels = false,
   className,
 }: ConnectionStatusProps) {
   // Calculate connected count for display
   const maxSources = fileIngestionEnabled ? 2 : 1;
   const connectedCount =
-    (apiConnected ? 1 : 0) +
-    (fileIngestionEnabled && fileIngestionConnected ? 1 : 0);
+    (apiConnected ? 1 : 0) + (fileIngestionEnabled && fileIngestionConnected ? 1 : 0);
 
-  if (variant === "badge") {
+  if (variant === 'badge') {
     return (
       <Tooltip>
         <TooltipTrigger asChild>
           <div
             className={cn(
-              "inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium",
+              'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium',
               connectedCount === maxSources
-                ? "bg-emerald-500/10 text-emerald-500"
+                ? 'bg-emerald-500/10 text-emerald-500'
                 : connectedCount > 0
-                  ? "bg-amber-500/10 text-amber-500"
-                  : "bg-red-500/10 text-red-500",
+                  ? 'bg-amber-500/10 text-amber-500'
+                  : 'bg-red-500/10 text-red-500',
               className
             )}
           >
-            <span className="tabular-nums">{connectedCount}/{maxSources}</span>
+            <span className="tabular-nums">
+              {connectedCount}/{maxSources}
+            </span>
             {showLabels && (
               <span className="text-xs opacity-80">
-                {connectedCount === maxSources ? "All Connected" : "Partial"}
+                {connectedCount === maxSources ? 'All Connected' : 'Partial'}
               </span>
             )}
           </div>
@@ -76,24 +73,24 @@ export function ConnectionStatus({
     );
   }
 
-  if (variant === "compact") {
+  if (variant === 'compact') {
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className={cn("flex items-center gap-1", className)}>
+          <div className={cn('flex items-center gap-1', className)}>
             {/* API Status */}
             <div
               className={cn(
-                "h-1.5 w-1.5 rounded-full",
-                apiConnected ? "bg-emerald-500" : "bg-red-500"
+                'h-1.5 w-1.5 rounded-full',
+                apiConnected ? 'bg-emerald-500' : 'bg-red-500'
               )}
             />
             {/* File Status - only show if enabled */}
             {fileIngestionEnabled && (
               <div
                 className={cn(
-                  "h-1.5 w-1.5 rounded-full",
-                  fileIngestionConnected ? "bg-emerald-500" : "bg-zinc-600"
+                  'h-1.5 w-1.5 rounded-full',
+                  fileIngestionConnected ? 'bg-emerald-500' : 'bg-zinc-600'
                 )}
               />
             )}
@@ -116,30 +113,27 @@ export function ConnectionStatus({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className={cn("relative", className)}>
+        <div className={cn('relative', className)}>
           {fileIngestionEnabled ? (
             // Dual status: split circle or stacked dots
             <div className="flex items-center gap-0.5">
               <div
                 className={cn(
-                  "h-2 w-2 rounded-full",
-                  apiConnected ? "bg-emerald-500" : "bg-red-500"
+                  'h-2 w-2 rounded-full',
+                  apiConnected ? 'bg-emerald-500' : 'bg-red-500'
                 )}
               />
               <div
                 className={cn(
-                  "h-2 w-2 rounded-full",
-                  fileIngestionConnected ? "bg-emerald-500" : "bg-zinc-600"
+                  'h-2 w-2 rounded-full',
+                  fileIngestionConnected ? 'bg-emerald-500' : 'bg-zinc-600'
                 )}
               />
             </div>
           ) : (
             // Single status dot
             <div
-              className={cn(
-                "h-2 w-2 rounded-full",
-                apiConnected ? "bg-emerald-500" : "bg-red-500"
-              )}
+              className={cn('h-2 w-2 rounded-full', apiConnected ? 'bg-emerald-500' : 'bg-red-500')}
             />
           )}
         </div>
@@ -174,7 +168,7 @@ function ConnectionStatusDetails({
 }: ConnectionStatusDetailsProps) {
   return (
     <div className="space-y-2 py-1">
-      <div className="text-xs font-medium text-zinc-300 border-b border-zinc-700 pb-1 mb-2">
+      <div className="mb-2 border-b border-zinc-700 pb-1 text-xs font-medium text-zinc-300">
         Connection Status
       </div>
 
@@ -221,7 +215,7 @@ function ConnectionStatusDetails({
 
       {/* Last seen info */}
       {(lastSeen || lastFileSync) && (
-        <div className="pt-1 mt-1 border-t border-zinc-700 space-y-1">
+        <div className="mt-1 space-y-1 border-t border-zinc-700 pt-1">
           {lastSeen && (
             <div className="text-xs text-zinc-500">
               API: Last seen {new Date(lastSeen).toLocaleString()}
@@ -246,21 +240,23 @@ export function ConnectionStatusBadge({
   fileIngestionEnabled,
   fileIngestionConnected,
   className,
-}: Pick<ConnectionStatusProps, "apiConnected" | "fileIngestionEnabled" | "fileIngestionConnected" | "className">) {
+}: Pick<
+  ConnectionStatusProps,
+  'apiConnected' | 'fileIngestionEnabled' | 'fileIngestionConnected' | 'className'
+>) {
   const maxSources = fileIngestionEnabled ? 2 : 1;
   const connectedCount =
-    (apiConnected ? 1 : 0) +
-    (fileIngestionEnabled && fileIngestionConnected ? 1 : 0);
+    (apiConnected ? 1 : 0) + (fileIngestionEnabled && fileIngestionConnected ? 1 : 0);
 
   return (
     <span
       className={cn(
-        "inline-flex items-center justify-center min-w-[2rem] px-1.5 py-0.5 rounded text-xs font-semibold tabular-nums",
+        'inline-flex min-w-[2rem] items-center justify-center rounded px-1.5 py-0.5 text-xs font-semibold tabular-nums',
         connectedCount === maxSources
-          ? "bg-emerald-500/15 text-emerald-400"
+          ? 'bg-emerald-500/15 text-emerald-400'
           : connectedCount > 0
-            ? "bg-amber-500/15 text-amber-400"
-            : "bg-red-500/15 text-red-400",
+            ? 'bg-amber-500/15 text-amber-400'
+            : 'bg-red-500/15 text-red-400',
         className
       )}
     >

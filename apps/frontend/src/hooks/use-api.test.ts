@@ -121,13 +121,13 @@ describe('useHealth', () => {
 
   it('should fetch health data', async () => {
     const mockHealth = {
-      status: 'ok',
+      status: 'ok' as const,
       service: 'logarr',
       timestamp: '2024-01-01T00:00:00Z',
       services: {
-        api: { status: 'ok' },
-        database: { status: 'ok' },
-        redis: { status: 'ok' },
+        api: { status: 'ok' as const },
+        database: { status: 'ok' as const },
+        redis: { status: 'ok' as const },
       },
     };
     vi.mocked(api.getHealth).mockResolvedValue(mockHealth);
@@ -152,11 +152,21 @@ describe('useDashboardStats', () => {
 
   it('should fetch dashboard data', async () => {
     const mockDashboard = {
-      health: { status: 'healthy', sources: { online: 2, total: 2 }, issues: { critical: 0, high: 1, open: 3 }, activeStreams: 1 },
+      health: {
+        status: 'healthy' as const,
+        sources: { online: 2, total: 2 },
+        issues: { critical: 0, high: 1, open: 3 },
+        activeStreams: 1,
+      },
       activityChart: [],
       activityHeatmap: [],
       logDistribution: { error: 0, warn: 0, info: 0, debug: 0, total: 0, topSources: [] },
-      metrics: { errorRate: { current: 0, trend: [], change: 0 }, logVolume: { today: 0, average: 0, trend: [] }, sessionCount: { today: 0, trend: [] }, issueCount: { open: 0, trend: [] } },
+      metrics: {
+        errorRate: { current: 0, trend: [], change: 0 },
+        logVolume: { today: 0, average: 0, trend: [] },
+        sessionCount: { today: 0, trend: [] },
+        issueCount: { open: 0, trend: [] },
+      },
       topIssues: [],
       sources: [],
       nowPlaying: [],
@@ -332,9 +342,7 @@ describe('useIssues', () => {
   });
 
   it('should fetch issues with params', async () => {
-    const mockIssues = [
-      { id: '1', title: 'Connection Error', severity: 'high', status: 'open' },
-    ];
+    const mockIssues = [{ id: '1', title: 'Connection Error', severity: 'high', status: 'open' }];
     vi.mocked(api.getIssues).mockResolvedValue(mockIssues as any);
 
     const params = { severities: ['high'] as any, search: 'connection' };
@@ -420,9 +428,7 @@ describe('useAiProviderSettings', () => {
   });
 
   it('should fetch AI provider settings', async () => {
-    const mockSettings = [
-      { id: '1', provider: 'openai', name: 'GPT-4', isEnabled: true },
-    ];
+    const mockSettings = [{ id: '1', provider: 'openai', name: 'GPT-4', isEnabled: true }];
     vi.mocked(api.getAiProviderSettings).mockResolvedValue(mockSettings as any);
 
     const { result } = renderHook(() => useAiProviderSettings(), {

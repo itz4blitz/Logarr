@@ -20,7 +20,7 @@ export class IssuesController {
 
   constructor(
     private readonly issuesService: IssuesService,
-    private readonly issuesGateway: IssuesGateway,
+    private readonly issuesGateway: IssuesGateway
   ) {}
 
   @Get()
@@ -44,10 +44,7 @@ export class IssuesController {
   }
 
   @Patch(':id')
-  async update(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() updateDto: UpdateIssueDto
-  ) {
+  async update(@Param('id', ParseUUIDPipe) id: string, @Body() updateDto: UpdateIssueDto) {
     return this.issuesService.update(id, updateDto);
   }
 
@@ -62,10 +59,7 @@ export class IssuesController {
   }
 
   @Post(':id/resolve')
-  async resolve(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: { resolvedBy?: string }
-  ) {
+  async resolve(@Param('id', ParseUUIDPipe) id: string, @Body() body: { resolvedBy?: string }) {
     const updateData: UpdateIssueDto = { status: 'resolved' };
     if (body.resolvedBy) {
       updateData.resolvedBy = body.resolvedBy;
@@ -102,7 +96,9 @@ export class IssuesController {
     };
 
     const result = await this.issuesService.backfillFromLogs(serverId, progressCallback);
-    this.logger.log(`Backfill complete: ${result.processedLogs} logs processed, ${result.issuesCreated} issues created, ${result.issuesUpdated} issues updated`);
+    this.logger.log(
+      `Backfill complete: ${result.processedLogs} logs processed, ${result.issuesCreated} issues created, ${result.issuesUpdated} issues updated`
+    );
     return result;
   }
 
@@ -125,7 +121,9 @@ export class IssuesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: { providerId?: string }
   ) {
-    this.logger.log(`Analyzing issue ${id}${body.providerId ? ` with provider ${body.providerId}` : ''}`);
+    this.logger.log(
+      `Analyzing issue ${id}${body.providerId ? ` with provider ${body.providerId}` : ''}`
+    );
     try {
       return await this.issuesService.analyzeIssue(id, body.providerId);
     } catch (error) {

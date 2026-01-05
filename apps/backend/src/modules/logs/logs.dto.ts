@@ -10,7 +10,10 @@ export class LogSearchDto {
   @ApiPropertyOptional({ description: 'Filter by log levels', type: [String] })
   levels?: string | string[];
 
-  @ApiPropertyOptional({ description: 'Filter by log sources (e.g., MediaBrowser.Controller)', type: [String] })
+  @ApiPropertyOptional({
+    description: 'Filter by log sources (e.g., MediaBrowser.Controller)',
+    type: [String],
+  })
   sources?: string | string[];
 
   @ApiPropertyOptional({ description: 'Filter by log source type (api or file)', type: [String] })

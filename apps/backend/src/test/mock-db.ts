@@ -27,9 +27,20 @@ function createChainableQuery(resolvedValue: unknown = []): ChainableQuery {
 
   // All chainable methods return the same query object
   const chainMethods = [
-    'from', 'where', 'leftJoin', 'innerJoin', 'orderBy',
-    'limit', 'offset', 'groupBy', 'having', 'returning',
-    'onConflictDoNothing', 'onConflictDoUpdate', 'set', 'values'
+    'from',
+    'where',
+    'leftJoin',
+    'innerJoin',
+    'orderBy',
+    'limit',
+    'offset',
+    'groupBy',
+    'having',
+    'returning',
+    'onConflictDoNothing',
+    'onConflictDoUpdate',
+    'set',
+    'values',
   ] as const;
 
   for (const method of chainMethods) {
@@ -37,7 +48,9 @@ function createChainableQuery(resolvedValue: unknown = []): ChainableQuery {
   }
 
   // Make it awaitable
-  query.then = vi.fn().mockImplementation((resolve) => Promise.resolve(resolvedValue).then(resolve));
+  query.then = vi
+    .fn()
+    .mockImplementation((resolve) => Promise.resolve(resolvedValue).then(resolve));
   query[Symbol.toStringTag] = 'Promise';
 
   return query as ChainableQuery;
@@ -93,15 +106,19 @@ export function createMockDb(): MockDb {
 /**
  * Helper to configure mock database to return specific results for operations
  */
-export function configureMockDb(mockDb: MockDb, config: {
-  select?: unknown;
-  selectDistinct?: unknown;
-  insert?: unknown;
-  update?: unknown;
-  delete?: unknown;
-}) {
+export function configureMockDb(
+  mockDb: MockDb,
+  config: {
+    select?: unknown;
+    selectDistinct?: unknown;
+    insert?: unknown;
+    update?: unknown;
+    delete?: unknown;
+  }
+) {
   if (config.select !== undefined) mockDb._setResult('select', config.select);
-  if (config.selectDistinct !== undefined) mockDb._setResult('selectDistinct', config.selectDistinct);
+  if (config.selectDistinct !== undefined)
+    mockDb._setResult('selectDistinct', config.selectDistinct);
   if (config.insert !== undefined) mockDb._setResult('insert', config.insert);
   if (config.update !== undefined) mockDb._setResult('update', config.update);
   if (config.delete !== undefined) mockDb._setResult('delete', config.delete);

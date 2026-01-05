@@ -1,7 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-
 import { DATABASE_CONNECTION } from '../../database';
 import { createMockDb, configureMockDb, type MockDb } from '../../test/mock-db';
 
@@ -17,10 +16,7 @@ describe('DashboardService', () => {
     mockDb = createMockDb();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        DashboardService,
-        { provide: DATABASE_CONNECTION, useValue: mockDb },
-      ],
+      providers: [DashboardService, { provide: DATABASE_CONNECTION, useValue: mockDb }],
     }).compile();
 
     service = module.get<DashboardService>(DashboardService);
@@ -158,8 +154,26 @@ describe('DashboardService', () => {
 
     it('should return correct health status with servers', async () => {
       const mockServers = [
-        { id: '1', name: 'Server 1', providerId: 'jellyfin', isConnected: true, lastSeen: new Date(), version: '10.8.0', fileIngestionEnabled: false, fileIngestionConnected: false },
-        { id: '2', name: 'Server 2', providerId: 'sonarr', isConnected: true, lastSeen: new Date(), version: '3.0.0', fileIngestionEnabled: false, fileIngestionConnected: false },
+        {
+          id: '1',
+          name: 'Server 1',
+          providerId: 'jellyfin',
+          isConnected: true,
+          lastSeen: new Date(),
+          version: '10.8.0',
+          fileIngestionEnabled: false,
+          fileIngestionConnected: false,
+        },
+        {
+          id: '2',
+          name: 'Server 2',
+          providerId: 'sonarr',
+          isConnected: true,
+          lastSeen: new Date(),
+          version: '3.0.0',
+          fileIngestionEnabled: false,
+          fileIngestionConnected: false,
+        },
       ];
 
       let callCount = 0;
@@ -244,7 +258,7 @@ describe('DashboardService', () => {
 
       const result = await service.getDashboardData();
 
-      const days = result.activityHeatmap.map(d => d.day);
+      const days = result.activityHeatmap.map((d) => d.day);
       expect(days).toEqual(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
     });
 
@@ -402,9 +416,7 @@ describe('DashboardService', () => {
         fileIngestionEnabled: false,
         fileIngestionConnected: false,
       };
-      const mockIssueStats = [
-        { status: 'open', severity: 'critical', count: 1 },
-      ];
+      const mockIssueStats = [{ status: 'open', severity: 'critical', count: 1 }];
 
       let callCount = 0;
       mockDb.select = vi.fn().mockImplementation(() => {
@@ -471,9 +483,7 @@ describe('DashboardService', () => {
         fileIngestionEnabled: false,
         fileIngestionConnected: false,
       };
-      const mockIssueStats = [
-        { status: 'open', severity: 'high', count: 2 },
-      ];
+      const mockIssueStats = [{ status: 'open', severity: 'high', count: 2 }];
 
       let callCount = 0;
       mockDb.select = vi.fn().mockImplementation(() => {
@@ -499,8 +509,26 @@ describe('DashboardService', () => {
 
     it('should return warning when some servers are offline', async () => {
       const mockServers = [
-        { id: 'server-1', name: 'Server 1', providerId: 'jellyfin', isConnected: true, lastSeen: new Date(), version: '10.8.0', fileIngestionEnabled: false, fileIngestionConnected: false },
-        { id: 'server-2', name: 'Server 2', providerId: 'sonarr', isConnected: false, lastSeen: new Date(), version: '3.0.0', fileIngestionEnabled: false, fileIngestionConnected: false },
+        {
+          id: 'server-1',
+          name: 'Server 1',
+          providerId: 'jellyfin',
+          isConnected: true,
+          lastSeen: new Date(),
+          version: '10.8.0',
+          fileIngestionEnabled: false,
+          fileIngestionConnected: false,
+        },
+        {
+          id: 'server-2',
+          name: 'Server 2',
+          providerId: 'sonarr',
+          isConnected: false,
+          lastSeen: new Date(),
+          version: '3.0.0',
+          fileIngestionEnabled: false,
+          fileIngestionConnected: false,
+        },
       ];
 
       let callCount = 0;
@@ -686,7 +714,7 @@ describe('DashboardService', () => {
       const result = await service.getDashboardData();
 
       // Check that at least one recent event was mapped correctly
-      const resolvedEvents = result.recentEvents.filter(e => e.type === 'issue_resolved');
+      const resolvedEvents = result.recentEvents.filter((e) => e.type === 'issue_resolved');
       expect(resolvedEvents.length).toBeGreaterThan(0);
       expect(resolvedEvents[0]?.title).toBe('Fixed Bug');
     });
@@ -715,7 +743,7 @@ describe('DashboardService', () => {
       const result = await service.getDashboardData();
 
       // Check that at least one recent event was mapped correctly
-      const newEvents = result.recentEvents.filter(e => e.type === 'issue_new');
+      const newEvents = result.recentEvents.filter((e) => e.type === 'issue_new');
       expect(newEvents.length).toBeGreaterThan(0);
       expect(newEvents[0]?.title).toBe('New Bug');
     });

@@ -21,7 +21,11 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 // Strategy interface for AI providers
 interface AiProviderStrategy {
   generateText(prompt: string, options: AiGenerationOptions): Promise<AiGenerationResult>;
-  generateTextWithSystemPrompt(systemPrompt: string, userPrompt: string, options: AiGenerationOptions): Promise<AiGenerationResult>;
+  generateTextWithSystemPrompt(
+    systemPrompt: string,
+    userPrompt: string,
+    options: AiGenerationOptions
+  ): Promise<AiGenerationResult>;
   testConnection(apiKey: string, model: string, baseUrl?: string): Promise<TestProviderResultDto>;
   fetchModels(apiKey: string, baseUrl?: string): Promise<AiModelInfo[]>;
 }
@@ -85,7 +89,10 @@ interface ApiErrorResponse {
 }
 
 // Helper to build modelInfo without undefined values
-function buildModelInfo(model: string, tokensUsed?: number): { model: string; tokensUsed?: number } {
+function buildModelInfo(
+  model: string,
+  tokensUsed?: number
+): { model: string; tokensUsed?: number } {
   const info: { model: string; tokensUsed?: number } = { model };
   if (tokensUsed !== undefined) {
     info.tokensUsed = tokensUsed;
@@ -99,14 +106,18 @@ class OpenAiStrategy implements AiProviderStrategy {
     return this.generateTextWithSystemPrompt('You are a helpful assistant.', prompt, options);
   }
 
-  async generateTextWithSystemPrompt(systemPrompt: string, userPrompt: string, options: AiGenerationOptions): Promise<AiGenerationResult> {
+  async generateTextWithSystemPrompt(
+    systemPrompt: string,
+    userPrompt: string,
+    options: AiGenerationOptions
+  ): Promise<AiGenerationResult> {
     const baseUrl = options.baseUrl ?? 'https://api.openai.com/v1';
 
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${options.apiKey}`,
+        Authorization: `Bearer ${options.apiKey}`,
       },
       body: JSON.stringify({
         model: options.model,
@@ -120,11 +131,11 @@ class OpenAiStrategy implements AiProviderStrategy {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({})) as ApiErrorResponse;
+      const errorData = (await response.json().catch(() => ({}))) as ApiErrorResponse;
       throw new Error(errorData.error?.message ?? `OpenAI API error: ${response.status}`);
     }
 
-    const data = await response.json() as OpenAiResponse;
+    const data = (await response.json()) as OpenAiResponse;
     const result: AiGenerationResult = {
       text: data.choices?.[0]?.message?.content ?? '',
     };
@@ -137,7 +148,11 @@ class OpenAiStrategy implements AiProviderStrategy {
     return result;
   }
 
-  async testConnection(apiKey: string, model: string, baseUrl?: string): Promise<TestProviderResultDto> {
+  async testConnection(
+    apiKey: string,
+    model: string,
+    baseUrl?: string
+  ): Promise<TestProviderResultDto> {
     const start = Date.now();
     try {
       const opts: AiGenerationOptions = {
@@ -171,7 +186,7 @@ class OpenAiStrategy implements AiProviderStrategy {
 
     const response = await fetch(`${url}/models`, {
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
       },
     });
 
@@ -179,19 +194,21 @@ class OpenAiStrategy implements AiProviderStrategy {
       throw new Error(`Failed to fetch models: ${response.statusText}`);
     }
 
-    const data = await response.json() as OpenAiModelsResponse;
+    const data = (await response.json()) as OpenAiModelsResponse;
 
     // Filter for chat models only and sort by creation date (newest first)
     const chatModels = (data.data ?? [])
       .filter((m) => {
         const id = m.id.toLowerCase();
         // Include GPT models that support chat
-        return (id.includes('gpt-4') || id.includes('gpt-3.5')) &&
-               !id.includes('instruct') &&
-               !id.includes('vision') && // Vision is deprecated, use gpt-4o
-               !id.includes('0125') && // Skip old dated versions
-               !id.includes('0613') &&
-               !id.includes('1106');
+        return (
+          (id.includes('gpt-4') || id.includes('gpt-3.5')) &&
+          !id.includes('instruct') &&
+          !id.includes('vision') && // Vision is deprecated, use gpt-4o
+          !id.includes('0125') && // Skip old dated versions
+          !id.includes('0613') &&
+          !id.includes('1106')
+        );
       })
       .sort((a, b) => (b.created ?? 0) - (a.created ?? 0))
       .slice(0, 10); // Limit to top 10 models
@@ -222,7 +239,10 @@ class OpenAiStrategy implements AiProviderStrategy {
     if (id === 'gpt-4-turbo-preview') return 'GPT-4 Turbo Preview';
     if (id === 'gpt-4') return 'GPT-4';
     if (id === 'gpt-3.5-turbo') return 'GPT-3.5 Turbo';
-    return id.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
+    return id
+      .split('-')
+      .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+      .join(' ');
   }
 }
 
@@ -232,7 +252,11 @@ class AnthropicStrategy implements AiProviderStrategy {
     return this.generateTextWithSystemPrompt('You are a helpful assistant.', prompt, options);
   }
 
-  async generateTextWithSystemPrompt(systemPrompt: string, userPrompt: string, options: AiGenerationOptions): Promise<AiGenerationResult> {
+  async generateTextWithSystemPrompt(
+    systemPrompt: string,
+    userPrompt: string,
+    options: AiGenerationOptions
+  ): Promise<AiGenerationResult> {
     const baseUrl = options.baseUrl ?? 'https://api.anthropic.com';
 
     const response = await fetch(`${baseUrl}/v1/messages`, {
@@ -251,11 +275,11 @@ class AnthropicStrategy implements AiProviderStrategy {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({})) as ApiErrorResponse;
+      const errorData = (await response.json().catch(() => ({}))) as ApiErrorResponse;
       throw new Error(errorData.error?.message ?? `Anthropic API error: ${response.status}`);
     }
 
-    const data = await response.json() as AnthropicResponse;
+    const data = (await response.json()) as AnthropicResponse;
     const inputTokens = data.usage?.input_tokens ?? 0;
     const outputTokens = data.usage?.output_tokens ?? 0;
 
@@ -269,7 +293,11 @@ class AnthropicStrategy implements AiProviderStrategy {
     return result;
   }
 
-  async testConnection(apiKey: string, model: string, baseUrl?: string): Promise<TestProviderResultDto> {
+  async testConnection(
+    apiKey: string,
+    model: string,
+    baseUrl?: string
+  ): Promise<TestProviderResultDto> {
     const start = Date.now();
     try {
       const opts: AiGenerationOptions = {
@@ -317,7 +345,11 @@ class OllamaStrategy implements AiProviderStrategy {
     return this.generateTextWithSystemPrompt('You are a helpful assistant.', prompt, options);
   }
 
-  async generateTextWithSystemPrompt(systemPrompt: string, userPrompt: string, options: AiGenerationOptions): Promise<AiGenerationResult> {
+  async generateTextWithSystemPrompt(
+    systemPrompt: string,
+    userPrompt: string,
+    options: AiGenerationOptions
+  ): Promise<AiGenerationResult> {
     const baseUrl = options.baseUrl ?? 'http://localhost:11434';
 
     const response = await fetch(`${baseUrl}/api/chat`, {
@@ -340,11 +372,11 @@ class OllamaStrategy implements AiProviderStrategy {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({})) as ApiErrorResponse;
+      const errorData = (await response.json().catch(() => ({}))) as ApiErrorResponse;
       throw new Error(errorData.error?.message ?? `Ollama API error: ${response.status}`);
     }
 
-    const data = await response.json() as {
+    const data = (await response.json()) as {
       message?: { content?: string };
       eval_count?: number;
       prompt_eval_count?: number;
@@ -359,7 +391,11 @@ class OllamaStrategy implements AiProviderStrategy {
     return result;
   }
 
-  async testConnection(_apiKey: string, model: string, baseUrl?: string): Promise<TestProviderResultDto> {
+  async testConnection(
+    _apiKey: string,
+    model: string,
+    baseUrl?: string
+  ): Promise<TestProviderResultDto> {
     const start = Date.now();
     try {
       const result = await this.generateText('Say "Hello" in exactly one word.', {
@@ -395,7 +431,7 @@ class OllamaStrategy implements AiProviderStrategy {
         throw new Error(`Failed to fetch models: ${response.statusText}`);
       }
 
-      const data = await response.json() as {
+      const data = (await response.json()) as {
         models?: Array<{
           name: string;
           size?: number;
@@ -427,7 +463,7 @@ class OllamaStrategy implements AiProviderStrategy {
     const baseName = id.split(':')[0] ?? id;
     return baseName
       .split(/[-_]/)
-      .map(s => s.charAt(0).toUpperCase() + s.slice(1))
+      .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
       .join(' ');
   }
 }
@@ -438,7 +474,11 @@ class LmStudioStrategy implements AiProviderStrategy {
     return this.generateTextWithSystemPrompt('You are a helpful assistant.', prompt, options);
   }
 
-  async generateTextWithSystemPrompt(systemPrompt: string, userPrompt: string, options: AiGenerationOptions): Promise<AiGenerationResult> {
+  async generateTextWithSystemPrompt(
+    systemPrompt: string,
+    userPrompt: string,
+    options: AiGenerationOptions
+  ): Promise<AiGenerationResult> {
     const baseUrl = options.baseUrl ?? 'http://localhost:1234/v1';
 
     const response = await fetch(`${baseUrl}/chat/completions`, {
@@ -458,11 +498,11 @@ class LmStudioStrategy implements AiProviderStrategy {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({})) as ApiErrorResponse;
+      const errorData = (await response.json().catch(() => ({}))) as ApiErrorResponse;
       throw new Error(errorData.error?.message ?? `LM Studio API error: ${response.status}`);
     }
 
-    const data = await response.json() as OpenAiResponse;
+    const data = (await response.json()) as OpenAiResponse;
     const result: AiGenerationResult = {
       text: data.choices?.[0]?.message?.content ?? '',
     };
@@ -475,7 +515,11 @@ class LmStudioStrategy implements AiProviderStrategy {
     return result;
   }
 
-  async testConnection(_apiKey: string, model: string, baseUrl?: string): Promise<TestProviderResultDto> {
+  async testConnection(
+    _apiKey: string,
+    model: string,
+    baseUrl?: string
+  ): Promise<TestProviderResultDto> {
     const start = Date.now();
     try {
       const result = await this.generateText('Say "Hello" in exactly one word.', {
@@ -511,7 +555,7 @@ class LmStudioStrategy implements AiProviderStrategy {
         throw new Error(`Failed to fetch models: ${response.statusText}`);
       }
 
-      const data = await response.json() as OpenAiModelsResponse;
+      const data = (await response.json()) as OpenAiModelsResponse;
 
       return (data.data ?? []).map((m) => ({
         id: m.id,
@@ -530,7 +574,7 @@ class LmStudioStrategy implements AiProviderStrategy {
       .replace(/\.gguf$/i, '')
       .replace(/-/g, ' ')
       .split(' ')
-      .map(s => s.charAt(0).toUpperCase() + s.slice(1))
+      .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
       .join(' ');
   }
 }
@@ -541,7 +585,11 @@ class GoogleAiStrategy implements AiProviderStrategy {
     return this.generateTextWithSystemPrompt('You are a helpful assistant.', prompt, options);
   }
 
-  async generateTextWithSystemPrompt(systemPrompt: string, userPrompt: string, options: AiGenerationOptions): Promise<AiGenerationResult> {
+  async generateTextWithSystemPrompt(
+    systemPrompt: string,
+    userPrompt: string,
+    options: AiGenerationOptions
+  ): Promise<AiGenerationResult> {
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${options.model}:generateContent?key=${options.apiKey}`,
       {
@@ -561,11 +609,11 @@ class GoogleAiStrategy implements AiProviderStrategy {
     );
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({})) as ApiErrorResponse;
+      const errorData = (await response.json().catch(() => ({}))) as ApiErrorResponse;
       throw new Error(errorData.error?.message ?? `Google AI API error: ${response.status}`);
     }
 
-    const data = await response.json() as GoogleAiResponse;
+    const data = (await response.json()) as GoogleAiResponse;
     const result: AiGenerationResult = {
       text: data.candidates?.[0]?.content?.parts?.[0]?.text ?? '',
     };
@@ -612,15 +660,17 @@ class GoogleAiStrategy implements AiProviderStrategy {
       throw new Error(`Failed to fetch models: ${response.statusText}`);
     }
 
-    const data = await response.json() as GoogleModelsResponse;
+    const data = (await response.json()) as GoogleModelsResponse;
 
     // Filter for generative models that support generateContent
     const generativeModels = (data.models ?? [])
       .filter((m) => {
         const methods = m.supportedGenerationMethods ?? [];
         const name = m.name ?? '';
-        return methods.includes('generateContent') &&
-               (name.includes('gemini') || name.includes('Gemini'));
+        return (
+          methods.includes('generateContent') &&
+          (name.includes('gemini') || name.includes('Gemini'))
+        );
       })
       .slice(0, 10);
 
@@ -641,7 +691,10 @@ class GoogleAiStrategy implements AiProviderStrategy {
   }
 
   private formatModelName(id: string): string {
-    return id.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
+    return id
+      .split('-')
+      .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+      .join(' ');
   }
 }
 
@@ -668,7 +721,7 @@ export class AiProviderService {
    * Get available AI providers with fallback models
    */
   getAvailableProviders(): AiProviderInfo[] {
-    return Object.values(AI_PROVIDER_BASE).map(provider => ({
+    return Object.values(AI_PROVIDER_BASE).map((provider) => ({
       ...provider,
       models: FALLBACK_MODELS[provider.id] ?? [],
     }));
@@ -797,7 +850,10 @@ export class AiProviderService {
   /**
    * Update a provider setting
    */
-  async updateProviderSetting(id: string, dto: UpdateAiProviderDto): Promise<AiProviderSettingsDto> {
+  async updateProviderSetting(
+    id: string,
+    dto: UpdateAiProviderDto
+  ): Promise<AiProviderSettingsDto> {
     // Check if exists
     await this.getProviderSettingById(id);
 
@@ -835,9 +891,7 @@ export class AiProviderService {
   async deleteProviderSetting(id: string): Promise<void> {
     await this.getProviderSettingById(id);
 
-    await this.db
-      .delete(schema.aiProviderSettings)
-      .where(eq(schema.aiProviderSettings.id, id));
+    await this.db.delete(schema.aiProviderSettings).where(eq(schema.aiProviderSettings.id, id));
 
     this.logger.log(`Deleted AI provider setting: ${id}`);
   }
@@ -906,10 +960,7 @@ export class AiProviderService {
   /**
    * Generate analysis using the default or specified provider
    */
-  async generateAnalysis(
-    prompt: string,
-    providerId?: string
-  ): Promise<AnalysisResultDto> {
+  async generateAnalysis(prompt: string, providerId?: string): Promise<AnalysisResultDto> {
     let setting: AiProviderSettingsDto | null;
 
     if (providerId) {
@@ -919,7 +970,9 @@ export class AiProviderService {
     }
 
     if (!setting) {
-      throw new BadRequestException('No AI provider configured. Please configure an AI provider in settings.');
+      throw new BadRequestException(
+        'No AI provider configured. Please configure an AI provider in settings.'
+      );
     }
 
     // Get the actual API key
@@ -979,7 +1032,9 @@ export class AiProviderService {
     }
 
     if (!setting) {
-      throw new BadRequestException('No AI provider configured. Please configure an AI provider in settings.');
+      throw new BadRequestException(
+        'No AI provider configured. Please configure an AI provider in settings.'
+      );
     }
 
     // Get the actual API key
@@ -1178,10 +1233,7 @@ Keep the response concise and actionable.`;
         .orderBy(desc(schema.aiAnalyses.createdAt))
         .limit(limit)
         .offset(offset),
-      this.db
-        .select({ count: count() })
-        .from(schema.aiAnalyses)
-        .where(whereClause),
+      this.db.select({ count: count() }).from(schema.aiAnalyses).where(whereClause),
     ]);
 
     return {

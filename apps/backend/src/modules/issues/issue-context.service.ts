@@ -91,7 +91,7 @@ export interface IssueAnalysisContext {
 export class IssueContextService {
   constructor(
     @Inject(DATABASE_CONNECTION)
-    private readonly db: PostgresJsDatabase<typeof schema>,
+    private readonly db: PostgresJsDatabase<typeof schema>
   ) {}
 
   /**
@@ -99,21 +99,15 @@ export class IssueContextService {
    */
   async gatherContext(issueId: string): Promise<IssueAnalysisContext> {
     // Fetch all data in parallel for performance
-    const [
-      issue,
-      timeline,
-      affectedUsers,
-      affectedSessions,
-      sampleOccurrences,
-      server,
-    ] = await Promise.all([
-      this.getIssue(issueId),
-      this.getTimeline(issueId),
-      this.getAffectedUsers(issueId),
-      this.getAffectedSessions(issueId),
-      this.getSampleOccurrences(issueId, 10),
-      this.getServerContext(issueId),
-    ]);
+    const [issue, timeline, affectedUsers, affectedSessions, sampleOccurrences, server] =
+      await Promise.all([
+        this.getIssue(issueId),
+        this.getTimeline(issueId),
+        this.getAffectedUsers(issueId),
+        this.getAffectedSessions(issueId),
+        this.getSampleOccurrences(issueId, 10),
+        this.getServerContext(issueId),
+      ]);
 
     // Extract unique stack traces from occurrences
     const stackTraces = this.extractStackTraces(sampleOccurrences);
@@ -211,11 +205,11 @@ export class IssueContextService {
       .orderBy(asc(sql`date_trunc('day', ${schema.issueOccurrences.timestamp})`));
 
     return {
-      hourly: hourlyData.map(d => ({
+      hourly: hourlyData.map((d) => ({
         hour: d.hour,
         count: Number(d.count),
       })),
-      daily: dailyData.map(d => ({
+      daily: dailyData.map((d) => ({
         date: d.date,
         count: Number(d.count),
       })),
@@ -228,7 +222,11 @@ export class IssueContextService {
   private analyzeTimelinePatterns(
     hourly: { hour: string; count: number }[],
     daily: { date: string; count: number }[]
-  ): { trend: 'increasing' | 'decreasing' | 'stable' | 'sporadic'; peakHours: number[]; burstDetected: boolean } {
+  ): {
+    trend: 'increasing' | 'decreasing' | 'stable' | 'sporadic';
+    peakHours: number[];
+    burstDetected: boolean;
+  } {
     // Detect trend from daily data
     let trend: 'increasing' | 'decreasing' | 'stable' | 'sporadic' = 'stable';
 
@@ -246,7 +244,7 @@ export class IssueContextService {
       }
 
       // Check for sporadic pattern (high variance)
-      const counts = daily.map(d => d.count);
+      const counts = daily.map((d) => d.count);
       const avg = counts.reduce((a, b) => a + b, 0) / counts.length;
       const variance = counts.reduce((sum, c) => sum + Math.pow(c - avg, 2), 0) / counts.length;
       const stdDev = Math.sqrt(variance);
@@ -263,12 +261,15 @@ export class IssueContextService {
       hourCounts[hour] = (hourCounts[hour] || 0) + h.count;
     }
 
-    const hourEntries = Object.entries(hourCounts).map(([hour, count]) => ({ hour: parseInt(hour, 10), count }));
+    const hourEntries = Object.entries(hourCounts).map(([hour, count]) => ({
+      hour: parseInt(hour, 10),
+      count,
+    }));
     hourEntries.sort((a, b) => b.count - a.count);
-    const peakHours = hourEntries.slice(0, 3).map(e => e.hour);
+    const peakHours = hourEntries.slice(0, 3).map((e) => e.hour);
 
     // Detect bursts (3+ occurrences in a single hour)
-    const burstDetected = hourly.some(h => h.count >= 3);
+    const burstDetected = hourly.some((h) => h.count >= 3);
 
     return { trend, peakHours, burstDetected };
   }
@@ -317,7 +318,7 @@ export class IssueContextService {
       result.push({
         userId: user.userId,
         occurrenceCount: Number(user.count),
-        devices: devices.map(d => d.deviceId).filter((d): d is string => d !== null),
+        devices: devices.map((d) => d.deviceId).filter((d): d is string => d !== null),
         lastSeen: user.lastSeen,
       });
     }
@@ -328,7 +329,9 @@ export class IssueContextService {
   /**
    * Get affected sessions with playback context
    */
-  private async getAffectedSessions(issueId: string): Promise<IssueAnalysisContext['affectedSessions']> {
+  private async getAffectedSessions(
+    issueId: string
+  ): Promise<IssueAnalysisContext['affectedSessions']> {
     // Get unique session IDs from occurrences
     const sessionOccurrences = await this.db
       .selectDistinct({
@@ -361,7 +364,9 @@ export class IssueContextService {
         .limit(1);
 
       // Try to find playback context
-      let playbackContext: IssueAnalysisContext['affectedSessions'][0]['playbackContext'] | undefined;
+      let playbackContext:
+        | IssueAnalysisContext['affectedSessions'][0]['playbackContext']
+        | undefined;
 
       if (session) {
         // Get most recent playback event for this session
@@ -426,14 +431,15 @@ export class IssueContextService {
       .orderBy(desc(schema.issueOccurrences.timestamp))
       .limit(limit);
 
-    return occurrences.map(o => {
+    return occurrences.map((o) => {
       const entry: IssueAnalysisContext['sampleOccurrences'][0] = {
         timestamp: o.timestamp,
         message: o.message,
       };
       if (o.userId !== null && o.userId !== undefined) entry.userId = o.userId;
       if (o.stackTrace !== null && o.stackTrace !== undefined) entry.stackTrace = o.stackTrace;
-      if (o.metadata !== null && o.metadata !== undefined) entry.metadata = o.metadata as Record<string, unknown>;
+      if (o.metadata !== null && o.metadata !== undefined)
+        entry.metadata = o.metadata as Record<string, unknown>;
       return entry;
     });
   }
@@ -473,7 +479,11 @@ export class IssueContextService {
       if (!occ.stackTrace) continue;
 
       // Hash the stack trace for deduplication
-      const hash = crypto.createHash('sha256').update(occ.stackTrace).digest('hex').substring(0, 16);
+      const hash = crypto
+        .createHash('sha256')
+        .update(occ.stackTrace)
+        .digest('hex')
+        .substring(0, 16);
 
       const existing = traceMap.get(hash);
       if (existing) {

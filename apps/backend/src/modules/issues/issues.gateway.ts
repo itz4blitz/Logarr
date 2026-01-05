@@ -134,7 +134,9 @@ export class IssuesGateway {
    * Broadcast backfill progress
    */
   broadcastBackfillProgress(progress: BackfillProgressPayload, serverId?: string) {
-    this.logger.log(`Broadcasting backfill progress: ${progress.status} - ${progress.processedLogs}/${progress.totalLogs}`);
+    this.logger.log(
+      `Broadcasting backfill progress: ${progress.status} - ${progress.processedLogs}/${progress.totalLogs}`
+    );
     this.server.to('issues:all').emit('backfill:progress', progress);
     if (serverId) {
       this.server.to(`issues:${serverId}`).emit('backfill:progress', progress);

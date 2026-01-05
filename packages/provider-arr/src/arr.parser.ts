@@ -42,20 +42,13 @@ interface LogParseResult {
 export const SONARR_LOG_FILE_CONFIG: LogFileConfig = {
   defaultPaths: {
     docker: ['/config/logs'],
-    linux: [
-      '~/.config/Sonarr/logs',
-      '/var/lib/sonarr/logs',
-      '~/.local/share/Sonarr/logs',
-    ],
+    linux: ['~/.config/Sonarr/logs', '/var/lib/sonarr/logs', '~/.local/share/Sonarr/logs'],
     windows: [
       '%APPDATA%\\Sonarr\\logs',
       '%LOCALAPPDATA%\\Sonarr\\logs',
       'C:\\ProgramData\\Sonarr\\logs',
     ],
-    macos: [
-      '~/.config/Sonarr/logs',
-      '~/Library/Application Support/Sonarr/logs',
-    ],
+    macos: ['~/.config/Sonarr/logs', '~/Library/Application Support/Sonarr/logs'],
   },
   filePatterns: ['sonarr.txt', 'sonarr.*.txt', '*.log'],
   encoding: 'utf-8',
@@ -69,20 +62,13 @@ export const SONARR_LOG_FILE_CONFIG: LogFileConfig = {
 export const RADARR_LOG_FILE_CONFIG: LogFileConfig = {
   defaultPaths: {
     docker: ['/config/logs'],
-    linux: [
-      '~/.config/Radarr/logs',
-      '/var/lib/radarr/logs',
-      '~/.local/share/Radarr/logs',
-    ],
+    linux: ['~/.config/Radarr/logs', '/var/lib/radarr/logs', '~/.local/share/Radarr/logs'],
     windows: [
       '%APPDATA%\\Radarr\\logs',
       '%LOCALAPPDATA%\\Radarr\\logs',
       'C:\\ProgramData\\Radarr\\logs',
     ],
-    macos: [
-      '~/.config/Radarr/logs',
-      '~/Library/Application Support/Radarr/logs',
-    ],
+    macos: ['~/.config/Radarr/logs', '~/Library/Application Support/Radarr/logs'],
   },
   filePatterns: ['radarr.txt', 'radarr.*.txt', '*.log'],
   encoding: 'utf-8',
@@ -96,20 +82,13 @@ export const RADARR_LOG_FILE_CONFIG: LogFileConfig = {
 export const LIDARR_LOG_FILE_CONFIG: LogFileConfig = {
   defaultPaths: {
     docker: ['/config/logs'],
-    linux: [
-      '~/.config/Lidarr/logs',
-      '/var/lib/lidarr/logs',
-      '~/.local/share/Lidarr/logs',
-    ],
+    linux: ['~/.config/Lidarr/logs', '/var/lib/lidarr/logs', '~/.local/share/Lidarr/logs'],
     windows: [
       '%APPDATA%\\Lidarr\\logs',
       '%LOCALAPPDATA%\\Lidarr\\logs',
       'C:\\ProgramData\\Lidarr\\logs',
     ],
-    macos: [
-      '~/.config/Lidarr/logs',
-      '~/Library/Application Support/Lidarr/logs',
-    ],
+    macos: ['~/.config/Lidarr/logs', '~/Library/Application Support/Lidarr/logs'],
   },
   filePatterns: ['lidarr.txt', 'lidarr.*.txt', '*.log'],
   encoding: 'utf-8',
@@ -123,20 +102,13 @@ export const LIDARR_LOG_FILE_CONFIG: LogFileConfig = {
 export const READARR_LOG_FILE_CONFIG: LogFileConfig = {
   defaultPaths: {
     docker: ['/config/logs'],
-    linux: [
-      '~/.config/Readarr/logs',
-      '/var/lib/readarr/logs',
-      '~/.local/share/Readarr/logs',
-    ],
+    linux: ['~/.config/Readarr/logs', '/var/lib/readarr/logs', '~/.local/share/Readarr/logs'],
     windows: [
       '%APPDATA%\\Readarr\\logs',
       '%LOCALAPPDATA%\\Readarr\\logs',
       'C:\\ProgramData\\Readarr\\logs',
     ],
-    macos: [
-      '~/.config/Readarr/logs',
-      '~/Library/Application Support/Readarr/logs',
-    ],
+    macos: ['~/.config/Readarr/logs', '~/Library/Application Support/Readarr/logs'],
   },
   filePatterns: ['readarr.txt', 'readarr.*.txt', '*.log'],
   encoding: 'utf-8',
@@ -150,20 +122,13 @@ export const READARR_LOG_FILE_CONFIG: LogFileConfig = {
 export const PROWLARR_LOG_FILE_CONFIG: LogFileConfig = {
   defaultPaths: {
     docker: ['/config/logs'],
-    linux: [
-      '~/.config/Prowlarr/logs',
-      '/var/lib/prowlarr/logs',
-      '~/.local/share/Prowlarr/logs',
-    ],
+    linux: ['~/.config/Prowlarr/logs', '/var/lib/prowlarr/logs', '~/.local/share/Prowlarr/logs'],
     windows: [
       '%APPDATA%\\Prowlarr\\logs',
       '%LOCALAPPDATA%\\Prowlarr\\logs',
       'C:\\ProgramData\\Prowlarr\\logs',
     ],
-    macos: [
-      '~/.config/Prowlarr/logs',
-      '~/Library/Application Support/Prowlarr/logs',
-    ],
+    macos: ['~/.config/Prowlarr/logs', '~/Library/Application Support/Prowlarr/logs'],
   },
   filePatterns: ['prowlarr.txt', 'prowlarr.*.txt', '*.log'],
   encoding: 'utf-8',
@@ -190,7 +155,8 @@ export const ARR_LOG_FILE_CONFIG: LogFileConfig = {
  * NLog timestamp + metadata regex
  * Matches: 2024-01-15 10:30:45.123|Level|Component|Message
  */
-const NLOG_LINE_REGEX = /^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:\.\d{3})?)\|(\w+)\|([^|]+)\|(.*)$/;
+const NLOG_LINE_REGEX =
+  /^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:\.\d{3})?)\|(\w+)\|([^|]+)\|(.*)$/;
 
 /**
  * Log level mapping from NLog format
@@ -220,7 +186,12 @@ export function parseArrLogLine(line: string): ParsedLogEntry | null {
   const source = match[3];
   const message = match[4];
 
-  if (timestampStr === undefined || levelStr === undefined || source === undefined || message === undefined) {
+  if (
+    timestampStr === undefined ||
+    levelStr === undefined ||
+    source === undefined ||
+    message === undefined
+  ) {
     return null;
   }
 
@@ -277,10 +248,7 @@ export function isArrLogContinuation(line: string): boolean {
  * - Multi-line entries with stack traces
  * - Exception details spanning multiple lines
  */
-export function parseArrLogLineWithContext(
-  line: string,
-  context: LogParseContext
-): LogParseResult {
+export function parseArrLogLineWithContext(line: string, context: LogParseContext): LogParseResult {
   const trimmed = line.trim();
 
   // Check if this is a continuation line
@@ -311,7 +279,11 @@ export function parseArrLogLineWithContext(
       exception = exceptionMatch[1];
       // Append exception message to the main message if it's different
       const exceptionMessage = exceptionMatch[2];
-      if (exceptionMessage !== undefined && exceptionMessage !== '' && !message.includes(exceptionMessage)) {
+      if (
+        exceptionMessage !== undefined &&
+        exceptionMessage !== '' &&
+        !message.includes(exceptionMessage)
+      ) {
         message = `${message} - ${exceptionMatch[2]}`;
       }
     }

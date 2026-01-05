@@ -5,7 +5,13 @@
  * RSS syncs, and grab events across all configured indexers.
  */
 
-import { ArrBaseProvider, ArrClient, PROWLARR_LOG_FILE_CONFIG, type ArrHistoryRecordBase, type ArrPaginatedResponse } from '@logarr/provider-arr';
+import {
+  ArrBaseProvider,
+  ArrClient,
+  PROWLARR_LOG_FILE_CONFIG,
+  type ArrHistoryRecordBase,
+  type ArrPaginatedResponse,
+} from '@logarr/provider-arr';
 
 import { ProwlarrEventTypeNames } from './prowlarr.types.js';
 
@@ -91,7 +97,9 @@ export class ProwlarrProvider extends ArrBaseProvider {
     return PROWLARR_LOG_FILE_CONFIG;
   }
 
-  protected override async getHistoryRecords(since?: Date): Promise<readonly ArrHistoryRecordBase[]> {
+  protected override async getHistoryRecords(
+    since?: Date
+  ): Promise<readonly ArrHistoryRecordBase[]> {
     const client = this.getClient();
 
     if (since) {
@@ -105,7 +113,9 @@ export class ProwlarrProvider extends ArrBaseProvider {
 
   protected override normalizeHistoryRecord(record: ArrHistoryRecordBase): NormalizedActivity {
     const prowlarrRecord = record as ProwlarrHistoryRecord;
-    const eventTypeName = ProwlarrEventTypeNames[this.parseEventType(prowlarrRecord.eventType)] ?? prowlarrRecord.eventType;
+    const eventTypeName =
+      ProwlarrEventTypeNames[this.parseEventType(prowlarrRecord.eventType)] ??
+      prowlarrRecord.eventType;
     const activityType = this.mapProwlarrEventType(eventTypeName);
     const severity = this.mapProwlarrSeverity(activityType);
 
@@ -130,7 +140,10 @@ export class ProwlarrProvider extends ArrBaseProvider {
         break;
       case 'Auth':
         title = `Auth: ${indexerName}`;
-        description = prowlarrRecord.successful === false ? 'Authentication failed' : 'Authentication successful';
+        description =
+          prowlarrRecord.successful === false
+            ? 'Authentication failed'
+            : 'Authentication successful';
         break;
       default:
         title = `${eventTypeName}: ${indexerName}`;

@@ -2,7 +2,6 @@ import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-
 import { DATABASE_CONNECTION } from '../../database';
 import { createMockDb, configureMockDb, type MockDb } from '../../test/mock-db';
 
@@ -33,10 +32,7 @@ describe('SessionsService', () => {
     mockDb = createMockDb();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        SessionsService,
-        { provide: DATABASE_CONNECTION, useValue: mockDb },
-      ],
+      providers: [SessionsService, { provide: DATABASE_CONNECTION, useValue: mockDb }],
     }).compile();
 
     service = module.get<SessionsService>(SessionsService);
@@ -240,11 +236,7 @@ describe('SessionsService', () => {
 
   describe('pruneUnknownSessions', () => {
     it('should delete incomplete sessions', async () => {
-      const deletedSessions = [
-        { id: 'session-1' },
-        { id: 'session-2' },
-        { id: 'session-3' },
-      ];
+      const deletedSessions = [{ id: 'session-1' }, { id: 'session-2' }, { id: 'session-3' }];
       configureMockDb(mockDb, { delete: deletedSessions });
 
       const result = await service.pruneUnknownSessions();
@@ -264,22 +256,24 @@ describe('SessionsService', () => {
   describe('enrichSessionsWithPlayback', () => {
     it('should add nowPlaying data to sessions', async () => {
       const sessions = [mockSession];
-      const playbackEvents = [{
-        sessionId: 'session-1',
-        itemId: 'item-1',
-        itemName: 'Movie Title',
-        itemType: 'Movie',
-        positionTicks: BigInt(1000000),
-        durationTicks: BigInt(5000000),
-        isPaused: false,
-        isMuted: false,
-        isTranscoding: true,
-        transcodeReasons: ['Video'],
-        videoCodec: 'h264',
-        audioCodec: 'aac',
-        container: 'mkv',
-        timestamp: new Date(),
-      }];
+      const playbackEvents = [
+        {
+          sessionId: 'session-1',
+          itemId: 'item-1',
+          itemName: 'Movie Title',
+          itemType: 'Movie',
+          positionTicks: BigInt(1000000),
+          durationTicks: BigInt(5000000),
+          isPaused: false,
+          isMuted: false,
+          isTranscoding: true,
+          transcodeReasons: ['Video'],
+          videoCodec: 'h264',
+          audioCodec: 'aac',
+          container: 'mkv',
+          timestamp: new Date(),
+        },
+      ];
 
       let callCount = 0;
       mockDb.select = vi.fn().mockImplementation(() => {

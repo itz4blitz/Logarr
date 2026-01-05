@@ -14,7 +14,6 @@ import { FileStateService } from './file-state.service';
 import { LogFileProcessor } from './log-file-processor';
 import { LogFileTailer } from './log-file-tailer';
 
-
 import type { MediaServerProvider, ParsedLogEntry } from '@logarr/core';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
@@ -106,10 +105,7 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
       .select()
       .from(schema.servers)
       .where(
-        and(
-          eq(schema.servers.isEnabled, true),
-          eq(schema.servers.fileIngestionEnabled, true)
-        )
+        and(eq(schema.servers.isEnabled, true), eq(schema.servers.fileIngestionEnabled, true))
       );
 
     this.logger.log(`Found ${servers.length} servers with file ingestion enabled`);
@@ -154,9 +150,10 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
       paths = await this.fileDiscoveryService.getDefaultPaths(logFileConfig);
     }
 
-    const patterns = server.logFilePatterns && server.logFilePatterns.length > 0
-      ? [...server.logFilePatterns]
-      : [...logFileConfig.filePatterns];
+    const patterns =
+      server.logFilePatterns && server.logFilePatterns.length > 0
+        ? [...server.logFilePatterns]
+        : [...logFileConfig.filePatterns];
 
     this.logger.log(`Starting file ingestion for ${server.name}`);
     this.logger.log(`  Paths: ${paths.join(', ')}`);
@@ -174,12 +171,14 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
     const logFiles = await this.fileDiscoveryService.discoverLogFiles(paths, patterns);
 
     if (logFiles.length === 0) {
-      this.logger.warn(`No log files found for server ${server.name} in paths: ${paths.join(', ')}`);
+      this.logger.warn(
+        `No log files found for server ${server.name} in paths: ${paths.join(', ')}`
+      );
       return;
     }
 
     this.logger.log(`Found ${logFiles.length} log files for ${server.name}:`);
-    logFiles.forEach(f => this.logger.debug(`  - ${f}`));
+    logFiles.forEach((f) => this.logger.debug(`  - ${f}`));
 
     // Start tailing each file
     for (const filePath of logFiles) {
@@ -214,46 +213,50 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
     processor.setFilePath(filePath);
 
     // Create tailer
-    const tailer = new LogFileTailer({
-      serverId,
-      filePath,
-      resumeFromState: state ?? undefined,
-      onEntry: async (entry: ParsedLogEntry) => {
-        await this.processEntry(serverId, entry, filePath);
-      },
-      onError: (error: Error) => {
-        this.logger.error(`Error tailing ${filePath}:`, error.message);
-        this.fileStateService.updateError(serverId, filePath, error.message);
-      },
-      onRotation: () => {
-        this.logger.log(`Log rotation detected for ${filePath}`);
-        this.fileStateService.resetState(serverId, filePath);
-      },
-      onStateChange: async (newState) => {
-        // Persist state to database
-        const updates: {
-          byteOffset?: bigint;
-          lineNumber?: number;
-          fileSize?: bigint;
-          fileInode?: string | null;
-        } = {};
+    const tailer = new LogFileTailer(
+      {
+        serverId,
+        filePath,
+        resumeFromState: state ?? undefined,
+        onEntry: async (entry: ParsedLogEntry) => {
+          await this.processEntry(serverId, entry, filePath);
+        },
+        onError: (error: Error) => {
+          this.logger.error(`Error tailing ${filePath}:`, error.message);
+          this.fileStateService.updateError(serverId, filePath, error.message);
+        },
+        onRotation: () => {
+          this.logger.log(`Log rotation detected for ${filePath}`);
+          this.fileStateService.resetState(serverId, filePath);
+        },
+        onStateChange: async (newState) => {
+          // Persist state to database
+          const updates: {
+            byteOffset?: bigint;
+            lineNumber?: number;
+            fileSize?: bigint;
+            fileInode?: string | null;
+          } = {};
 
-        if (newState.byteOffset !== undefined) {
-          updates.byteOffset = newState.byteOffset;
-        }
-        if (newState.lineNumber !== undefined) {
-          updates.lineNumber = newState.lineNumber;
-        }
-        if (newState.fileSize !== undefined) {
-          updates.fileSize = newState.fileSize;
-        }
-        if (newState.fileInode !== undefined) {
-          updates.fileInode = newState.fileInode;
-        }
+          if (newState.byteOffset !== undefined) {
+            updates.byteOffset = newState.byteOffset;
+          }
+          if (newState.lineNumber !== undefined) {
+            updates.lineNumber = newState.lineNumber;
+          }
+          if (newState.fileSize !== undefined) {
+            updates.fileSize = newState.fileSize;
+          }
+          if (newState.fileInode !== undefined) {
+            updates.fileInode = newState.fileInode;
+          }
 
-        await this.fileStateService.updateState(serverId, filePath, updates);
+          await this.fileStateService.updateState(serverId, filePath, updates);
+        },
       },
-    }, processor, provider);
+      processor,
+      provider
+    );
 
     this.tailers.set(tailerId, tailer);
 
@@ -289,8 +292,9 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
    * Stop file ingestion for a specific server
    */
   async stopServerFileIngestion(serverId: string) {
-    const serverTailers = Array.from(this.tailers.entries())
-      .filter(([id]) => id.startsWith(`${serverId}:`));
+    const serverTailers = Array.from(this.tailers.entries()).filter(([id]) =>
+      id.startsWith(`${serverId}:`)
+    );
 
     for (const [tailerId, tailer] of serverTailers) {
       try {
@@ -305,11 +309,7 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
   /**
    * Process a parsed log entry
    */
-  private async processEntry(
-    serverId: string,
-    entry: ParsedLogEntry,
-    filePath: string
-  ) {
+  private async processEntry(serverId: string, entry: ParsedLogEntry, filePath: string) {
     // Generate deduplication key
     const dedupKey = this.generateDeduplicationKey(entry, serverId);
 
@@ -403,10 +403,7 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
   /**
    * Restart file ingestion for a server (e.g., after config change)
    */
-  async restartServerFileIngestion(
-    serverId: string,
-    providers: Map<string, MediaServerProvider>
-  ) {
+  async restartServerFileIngestion(serverId: string, providers: Map<string, MediaServerProvider>) {
     await this.stopServerFileIngestion(serverId);
 
     const [server] = await this.db
@@ -537,23 +534,30 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
     // Process each file
     for (const filePath of logFiles) {
       try {
-        const result = await this.backfillSingleFile(serverId, filePath, provider, (lineProgress) => {
-          progressCallback?.({
-            status: 'progress',
-            totalFiles: logFiles.length,
-            processedFiles: totalProcessedFiles,
-            totalLines: lineProgress.totalLines,
-            processedLines: totalProcessedLines + lineProgress.processedLines,
-            entriesIngested: totalEntriesIngested + lineProgress.entriesIngested,
-            currentFile: filePath,
-          });
-        });
+        const result = await this.backfillSingleFile(
+          serverId,
+          filePath,
+          provider,
+          (lineProgress) => {
+            progressCallback?.({
+              status: 'progress',
+              totalFiles: logFiles.length,
+              processedFiles: totalProcessedFiles,
+              totalLines: lineProgress.totalLines,
+              processedLines: totalProcessedLines + lineProgress.processedLines,
+              entriesIngested: totalEntriesIngested + lineProgress.entriesIngested,
+              currentFile: filePath,
+            });
+          }
+        );
 
         totalProcessedFiles++;
         totalProcessedLines += result.processedLines;
         totalEntriesIngested += result.entriesIngested;
 
-        this.logger.log(`Backfilled ${filePath}: ${result.processedLines} lines, ${result.entriesIngested} entries`);
+        this.logger.log(
+          `Backfilled ${filePath}: ${result.processedLines} lines, ${result.entriesIngested} entries`
+        );
       } catch (error) {
         this.logger.error(`Error backfilling ${filePath}:`, error);
         progressCallback?.({
@@ -670,7 +674,9 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
-    this.logger.log(`Backfill complete for ${filePath}: ${lineNumber} lines, ${pendingEntries.length} parsed, ${entriesIngested} ingested, ${parseFailures} parse failures`);
+    this.logger.log(
+      `Backfill complete for ${filePath}: ${lineNumber} lines, ${pendingEntries.length} parsed, ${entriesIngested} ingested, ${parseFailures} parse failures`
+    );
     return { processedLines: lineNumber, entriesIngested };
   }
 }

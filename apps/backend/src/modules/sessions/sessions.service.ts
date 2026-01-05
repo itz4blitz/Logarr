@@ -19,7 +19,7 @@ export class SessionsService {
   private async enrichSessionsWithPlayback(sessions: (typeof schema.sessions.$inferSelect)[]) {
     if (sessions.length === 0) return [];
 
-    const sessionIds = sessions.map(s => s.id);
+    const sessionIds = sessions.map((s) => s.id);
 
     // Get all playback events for these sessions, ordered by timestamp desc
     const allEvents = await this.db
@@ -29,32 +29,35 @@ export class SessionsService {
       .orderBy(desc(schema.playbackEvents.timestamp));
 
     // Get the latest event for each session
-    const eventMap = new Map<string, typeof allEvents[0]>();
+    const eventMap = new Map<string, (typeof allEvents)[0]>();
     for (const event of allEvents) {
       if (!eventMap.has(event.sessionId)) {
         eventMap.set(event.sessionId, event);
       }
     }
 
-    return sessions.map(session => {
+    return sessions.map((session) => {
       const event = eventMap.get(session.id);
-      const nowPlaying: NowPlayingDto | null = event ? {
-        itemId: event.itemId,
-        itemName: event.itemName,
-        itemType: event.itemType,
-        seriesName: null,
-        seasonName: null,
-        positionTicks: event.positionTicks?.toString() ?? null,
-        runTimeTicks: event.durationTicks?.toString() ?? null,
-        isPaused: event.isPaused,
-        isMuted: event.isMuted,
-        isTranscoding: event.isTranscoding,
-        transcodeReasons: event.transcodeReasons,
-        videoCodec: event.videoCodec,
-        audioCodec: event.audioCodec,
-        container: event.container,
-        playMethod: event.isTranscoding ? 'Transcode' : 'DirectPlay',
-      } : null;
+      const nowPlaying: NowPlayingDto | null = event
+        ? {
+            itemId: event.itemId,
+            itemName: event.itemName,
+            itemType: event.itemType,
+            seriesName: event.seriesName ?? null,
+            seasonName: event.seasonName ?? null,
+            positionTicks: event.positionTicks?.toString() ?? null,
+            runTimeTicks: event.durationTicks?.toString() ?? null,
+            isPaused: event.isPaused,
+            isMuted: event.isMuted,
+            isTranscoding: event.isTranscoding,
+            transcodeReasons: event.transcodeReasons,
+            videoCodec: event.videoCodec,
+            audioCodec: event.audioCodec,
+            container: event.container,
+            playMethod: event.isTranscoding ? 'Transcode' : 'DirectPlay',
+            thumbnailUrl: event.thumbnailUrl ?? null,
+          }
+        : null;
 
       return {
         ...session,
@@ -144,10 +147,7 @@ export class SessionsService {
 
   async getActiveSessions(serverId?: string) {
     const condition = serverId
-      ? and(
-          eq(schema.sessions.isActive, true),
-          eq(schema.sessions.serverId, serverId)
-        )
+      ? and(eq(schema.sessions.isActive, true), eq(schema.sessions.serverId, serverId))
       : eq(schema.sessions.isActive, true);
 
     const results = await this.db
@@ -208,10 +208,7 @@ export class SessionsService {
           // System user
           eq(schema.sessions.userId, systemUserId),
           // Incomplete playback data: no item name AND not currently active
-          and(
-            isNull(schema.sessions.nowPlayingItemName),
-            eq(schema.sessions.isActive, false)
-          )
+          and(isNull(schema.sessions.nowPlayingItemName), eq(schema.sessions.isActive, false))
         )
       )
       .returning({ id: schema.sessions.id });

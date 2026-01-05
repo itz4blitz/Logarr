@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { format, differenceInMinutes, differenceInHours, differenceInDays } from "date-fns";
+import { format, differenceInMinutes, differenceInHours, differenceInDays } from 'date-fns';
 import {
   Search,
   RefreshCw,
@@ -22,40 +22,40 @@ import {
   Hash,
   User,
   Tv,
-} from "lucide-react";
-import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
-import { useState, useMemo, useRef, useEffect, Suspense } from "react";
+} from 'lucide-react';
+import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { useState, useMemo, useRef, useEffect, Suspense } from 'react';
 
-import type { LogEntry, Server as ServerType, LogEntryDetails } from "@/lib/api";
+import type { LogEntry, Server as ServerType, LogEntryDetails } from '@/lib/api';
 
-import { ProviderIcon } from "@/components/provider-icon";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { ProviderIcon } from '@/components/provider-icon';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useLogs, useServers, useLogDetails } from "@/hooks/use-api";
-import { useLogSocket } from "@/hooks/use-log-socket";
-import { getActivityTypeInfo } from "@/lib/activity-types";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useLogs, useServers, useLogDetails } from '@/hooks/use-api';
+import { useLogSocket } from '@/hooks/use-log-socket';
+import { getActivityTypeInfo } from '@/lib/activity-types';
+import { cn } from '@/lib/utils';
 
-const LOG_LEVELS = ["debug", "info", "warn", "error"] as const;
-const LOG_SOURCE_TYPES = ["api", "file"] as const;
+const LOG_LEVELS = ['debug', 'info', 'warn', 'error'] as const;
+const LOG_SOURCE_TYPES = ['api', 'file'] as const;
 const ROW_HEIGHT = 40;
 const PAGINATION_HEIGHT = 48;
 
@@ -66,42 +66,57 @@ function formatShortTime(date: Date): string {
   const diffHours = differenceInHours(now, date);
   const diffDays = differenceInDays(now, date);
 
-  if (diffMins < 1) return "now";
+  if (diffMins < 1) return 'now';
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
-  return format(date, "MMM d");
+  return format(date, 'MMM d');
 }
 
 // Level color utilities
 const levelColors: Record<string, string> = {
-  error: "bg-red-500",
-  warn: "bg-yellow-500",
-  info: "bg-blue-500",
-  debug: "bg-gray-500",
+  error: 'bg-red-500',
+  warn: 'bg-yellow-500',
+  info: 'bg-blue-500',
+  debug: 'bg-gray-500',
 };
 
 const levelBgColors: Record<string, string> = {
-  error: "bg-red-500/10 text-red-500 border-red-500/30",
-  warn: "bg-yellow-500/10 text-yellow-500 border-yellow-500/30",
-  info: "bg-blue-500/10 text-blue-500 border-blue-500/30",
-  debug: "bg-gray-500/10 text-gray-400 border-gray-500/30",
+  error: 'bg-red-500/10 text-red-500 border-red-500/30',
+  warn: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30',
+  info: 'bg-blue-500/10 text-blue-500 border-blue-500/30',
+  debug: 'bg-gray-500/10 text-gray-400 border-gray-500/30',
 };
 
 // Severity badge for related issues
 function SeverityBadge({ severity }: { severity: string }) {
   const severityConfig: Record<string, { color: string; icon: React.ReactNode }> = {
-    critical: { color: "bg-red-500/10 text-red-500 border-red-500/30", icon: <AlertCircle className="h-3 w-3" /> },
-    high: { color: "bg-orange-500/10 text-orange-500 border-orange-500/30", icon: <AlertTriangle className="h-3 w-3" /> },
-    medium: { color: "bg-yellow-500/10 text-yellow-500 border-yellow-500/30", icon: <AlertTriangle className="h-3 w-3" /> },
-    low: { color: "bg-blue-500/10 text-blue-500 border-blue-500/30", icon: <AlertCircle className="h-3 w-3" /> },
-    info: { color: "bg-gray-500/10 text-gray-400 border-gray-500/30", icon: <AlertCircle className="h-3 w-3" /> },
+    critical: {
+      color: 'bg-red-500/10 text-red-500 border-red-500/30',
+      icon: <AlertCircle className="h-3 w-3" />,
+    },
+    high: {
+      color: 'bg-orange-500/10 text-orange-500 border-orange-500/30',
+      icon: <AlertTriangle className="h-3 w-3" />,
+    },
+    medium: {
+      color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30',
+      icon: <AlertTriangle className="h-3 w-3" />,
+    },
+    low: {
+      color: 'bg-blue-500/10 text-blue-500 border-blue-500/30',
+      icon: <AlertCircle className="h-3 w-3" />,
+    },
+    info: {
+      color: 'bg-gray-500/10 text-gray-400 border-gray-500/30',
+      icon: <AlertCircle className="h-3 w-3" />,
+    },
   };
 
   const config = severityConfig[severity] || severityConfig.info;
 
   return (
-    <Badge variant="outline" className={cn("text-xs gap-1", config.color)}>
+    <Badge variant="outline" className={cn('gap-1 text-xs', config.color)}>
       {config.icon}
       {severity}
     </Badge>
@@ -119,7 +134,7 @@ function LogDetailModal({
   onClose: () => void;
 }) {
   const [copied, setCopied] = useState<string | null>(null);
-  const { data: log, isLoading } = useLogDetails(logId || "");
+  const { data: log, isLoading } = useLogDetails(logId || '');
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -132,15 +147,15 @@ function LogDetailModal({
   const getExternalLink = (log: LogEntryDetails) => {
     if (!log.serverUrl || !log.serverProviderId) return null;
 
-    const baseUrl = log.serverUrl.replace(/\/$/, "");
+    const baseUrl = log.serverUrl.replace(/\/$/, '');
 
     switch (log.serverProviderId) {
-      case "jellyfin":
+      case 'jellyfin':
         // Jellyfin dashboard - activity log
         return `${baseUrl}/web/index.html#!/dashboard/activity`;
-      case "radarr":
-      case "sonarr":
-      case "prowlarr":
+      case 'radarr':
+      case 'sonarr':
+      case 'prowlarr':
         // *arr apps: system/events shows searchable event log
         return `${baseUrl}/system/events`;
       default:
@@ -150,18 +165,23 @@ function LogDetailModal({
 
   // Get provider display name
   const getProviderName = (providerId: string | null) => {
-    if (!providerId) return "Source";
+    if (!providerId) return 'Source';
     return providerId.charAt(0).toUpperCase() + providerId.slice(1);
   };
 
   // Get level-based gradient for header
   const getLevelGradient = (level: string) => {
     switch (level.toLowerCase()) {
-      case "error": return "from-red-500/20 via-red-500/5 to-transparent";
-      case "warn": return "from-amber-500/20 via-amber-500/5 to-transparent";
-      case "info": return "from-blue-500/20 via-blue-500/5 to-transparent";
-      case "debug": return "from-zinc-500/20 via-zinc-500/5 to-transparent";
-      default: return "from-zinc-500/20 via-zinc-500/5 to-transparent";
+      case 'error':
+        return 'from-red-500/20 via-red-500/5 to-transparent';
+      case 'warn':
+        return 'from-amber-500/20 via-amber-500/5 to-transparent';
+      case 'info':
+        return 'from-blue-500/20 via-blue-500/5 to-transparent';
+      case 'debug':
+        return 'from-zinc-500/20 via-zinc-500/5 to-transparent';
+      default:
+        return 'from-zinc-500/20 via-zinc-500/5 to-transparent';
     }
   };
 
@@ -169,54 +189,71 @@ function LogDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-3xl max-w-[95vw] w-full max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden border-white/10 bg-linear-to-b from-background to-background/95">
+      <DialogContent className="from-background to-background/95 flex max-h-[85vh] w-full max-w-[95vw] flex-col gap-0 overflow-hidden border-white/10 bg-linear-to-b p-0 sm:max-w-3xl">
         {isLoading ? (
-          <div className="p-12 flex flex-col items-center justify-center gap-3">
+          <div className="flex flex-col items-center justify-center gap-3 p-12">
             <DialogTitle className="sr-only">Loading Log</DialogTitle>
-            <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Loading log details...</p>
+            <Loader2 className="text-primary h-10 w-10 animate-spin" />
+            <p className="text-muted-foreground text-sm">Loading log details...</p>
           </div>
         ) : log ? (
           <>
             {/* Header with level-based gradient */}
-            <div className={cn("relative overflow-hidden", `bg-linear-to-b ${getLevelGradient(log.level)}`)}>
+            <div
+              className={cn(
+                'relative overflow-hidden',
+                `bg-linear-to-b ${getLevelGradient(log.level)}`
+              )}
+            >
               {/* Subtle pattern overlay */}
               <div className="absolute inset-0 opacity-5">
-                <div className="absolute inset-0" style={{
-                  backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
-                  backgroundSize: '20px 20px'
-                }} />
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
+                    backgroundSize: '20px 20px',
+                  }}
+                />
               </div>
               <DialogHeader className="relative p-6 pb-4">
-                <div className="flex items-center gap-3 mb-3">
+                <div className="mb-3 flex items-center gap-3">
                   <div className="relative">
-                    <ProviderIcon providerId={log.serverProviderId || "unknown"} size="lg" />
+                    <ProviderIcon providerId={log.serverProviderId || 'unknown'} size="lg" />
                     {/* Level indicator dot */}
-                    <div className={cn(
-                      "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-background",
-                      log.level === "error" && "bg-red-500",
-                      log.level === "warn" && "bg-amber-500",
-                      log.level === "info" && "bg-blue-500",
-                      log.level === "debug" && "bg-zinc-500",
-                    )} />
+                    <div
+                      className={cn(
+                        'border-background absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2',
+                        log.level === 'error' && 'bg-red-500',
+                        log.level === 'warn' && 'bg-amber-500',
+                        log.level === 'info' && 'bg-blue-500',
+                        log.level === 'debug' && 'bg-zinc-500'
+                      )}
+                    />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="outline" className={cn("text-xs font-medium", levelBgColors[log.level] || levelBgColors.info)}>
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex items-center gap-2">
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          'text-xs font-medium',
+                          levelBgColors[log.level] || levelBgColors.info
+                        )}
+                      >
                         {log.level.toUpperCase()}
                       </Badge>
                       {log.source && (
-                        <Badge variant="outline" className="text-xs bg-white/5 border-white/10">
+                        <Badge variant="outline" className="border-white/10 bg-white/5 text-xs">
                           {log.source}
                         </Badge>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      {log.serverName || "Unknown Server"} &bull; {format(new Date(log.timestamp), "PPpp")}
+                    <p className="text-muted-foreground text-xs">
+                      {log.serverName || 'Unknown Server'} &bull;{' '}
+                      {format(new Date(log.timestamp), 'PPpp')}
                     </p>
                   </div>
                 </div>
-                <DialogTitle className="text-base font-semibold leading-relaxed pr-8">
+                <DialogTitle className="pr-8 text-base leading-relaxed font-semibold">
                   {log.message}
                 </DialogTitle>
                 <DialogDescription className="sr-only">
@@ -226,30 +263,32 @@ function LogDetailModal({
             </div>
 
             {/* Content */}
-            <ScrollArea className="flex-1 min-h-0">
-              <div className="p-6 space-y-5">
+            <ScrollArea className="min-h-0 flex-1">
+              <div className="space-y-5 p-6">
                 {/* Related Issue - Spotify green accent */}
                 {log.relatedIssue && (
                   <Link
                     href={`/issues?id=${log.relatedIssue.id}`}
-                    className="block rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4 hover:bg-emerald-500/10 transition-colors group"
+                    className="group block rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4 transition-colors hover:bg-emerald-500/10"
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20">
                           <AlertTriangle className="h-4 w-4 text-emerald-500" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">{log.relatedIssue.title}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-foreground truncate text-sm font-medium">
+                            {log.relatedIssue.title}
+                          </p>
+                          <div className="mt-0.5 flex items-center gap-2">
                             <SeverityBadge severity={log.relatedIssue.severity} />
-                            <span className="text-xs text-muted-foreground">
+                            <span className="text-muted-foreground text-xs">
                               {log.relatedIssue.occurrenceCount} occurrences
                             </span>
                           </div>
                         </div>
                       </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-emerald-500 transition-colors shrink-0" />
+                      <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0 transition-colors group-hover:text-emerald-500" />
                     </div>
                   </Link>
                 )}
@@ -257,52 +296,58 @@ function LogDetailModal({
                 {/* Context info - compact pills */}
                 <div className="flex flex-wrap gap-2">
                   {log.userId && (
-                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10">
-                      <User className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs font-mono">{log.userId}</span>
+                    <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+                      <User className="text-muted-foreground h-3 w-3" />
+                      <span className="font-mono text-xs">{log.userId}</span>
                     </div>
                   )}
                   {log.sessionId && (
-                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10">
-                      <Tv className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs font-mono">{log.sessionId}</span>
+                    <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+                      <Tv className="text-muted-foreground h-3 w-3" />
+                      <span className="font-mono text-xs">{log.sessionId}</span>
                     </div>
                   )}
                   {log.deviceId && (
-                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10">
-                      <Tv className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs font-mono">{log.deviceId}</span>
+                    <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+                      <Tv className="text-muted-foreground h-3 w-3" />
+                      <span className="font-mono text-xs">{log.deviceId}</span>
                     </div>
                   )}
                   {log.itemId && (
-                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10">
-                      <Hash className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs font-mono">{log.itemId}</span>
+                    <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+                      <Hash className="text-muted-foreground h-3 w-3" />
+                      <span className="font-mono text-xs">{log.itemId}</span>
                     </div>
                   )}
                   {log.threadId && (
-                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10">
-                      <Hash className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs font-mono">Thread: {log.threadId}</span>
+                    <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+                      <Hash className="text-muted-foreground h-3 w-3" />
+                      <span className="font-mono text-xs">Thread: {log.threadId}</span>
                     </div>
                   )}
                 </div>
 
                 {/* Exception - show prominently if present */}
                 {(log.exception || log.stackTrace) && (
-                  <div className="rounded-lg border border-red-500/20 bg-red-500/5 overflow-hidden">
-                    <div className="flex items-center justify-between px-4 py-2 border-b border-red-500/10">
+                  <div className="overflow-hidden rounded-lg border border-red-500/20 bg-red-500/5">
+                    <div className="flex items-center justify-between border-b border-red-500/10 px-4 py-2">
                       <span className="text-xs font-medium text-red-400">Exception</span>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
-                        onClick={() => copyToClipboard(log.stackTrace || log.exception || "", "exception")}
+                        className="text-muted-foreground hover:text-foreground h-6 px-2 text-xs"
+                        onClick={() =>
+                          copyToClipboard(log.stackTrace || log.exception || '', 'exception')
+                        }
                       >
-                        {copied === "exception" ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                        {copied === 'exception' ? (
+                          <Check className="h-3 w-3" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
                       </Button>
                     </div>
-                    <pre className="p-4 text-xs font-mono text-red-300/90 overflow-x-auto whitespace-pre-wrap max-h-40">
+                    <pre className="max-h-40 overflow-x-auto p-4 font-mono text-xs whitespace-pre-wrap text-red-300/90">
                       {log.exception || log.stackTrace}
                     </pre>
                   </div>
@@ -310,8 +355,10 @@ function LogDetailModal({
 
                 {/* Raw log - collapsible */}
                 <details className="group">
-                  <summary className="flex items-center justify-between cursor-pointer list-none">
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Raw Log</span>
+                  <summary className="flex cursor-pointer list-none items-center justify-between">
+                    <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                      Raw Log
+                    </span>
                     <div className="flex items-center gap-2">
                       <Button
                         variant="ghost"
@@ -319,15 +366,19 @@ function LogDetailModal({
                         className="h-6 px-2 text-xs"
                         onClick={(e) => {
                           e.preventDefault();
-                          copyToClipboard(log.raw, "raw");
+                          copyToClipboard(log.raw, 'raw');
                         }}
                       >
-                        {copied === "raw" ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                        {copied === 'raw' ? (
+                          <Check className="h-3 w-3" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
                       </Button>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
+                      <ChevronRight className="text-muted-foreground h-4 w-4 transition-transform group-open:rotate-90" />
                     </div>
                   </summary>
-                  <pre className="mt-3 p-4 rounded-lg bg-zinc-900/50 border border-white/5 text-xs font-mono text-zinc-400 overflow-x-auto whitespace-pre-wrap break-all max-h-48">
+                  <pre className="mt-3 max-h-48 overflow-x-auto rounded-lg border border-white/5 bg-zinc-900/50 p-4 font-mono text-xs break-all whitespace-pre-wrap text-zinc-400">
                     {log.raw}
                   </pre>
                 </details>
@@ -335,8 +386,10 @@ function LogDetailModal({
                 {/* Metadata - collapsible, only if present */}
                 {log.metadata && Object.keys(log.metadata).length > 0 && (
                   <details className="group">
-                    <summary className="flex items-center justify-between cursor-pointer list-none">
-                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Metadata</span>
+                    <summary className="flex cursor-pointer list-none items-center justify-between">
+                      <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                        Metadata
+                      </span>
                       <div className="flex items-center gap-2">
                         <Button
                           variant="ghost"
@@ -344,15 +397,19 @@ function LogDetailModal({
                           className="h-6 px-2 text-xs"
                           onClick={(e) => {
                             e.preventDefault();
-                            copyToClipboard(JSON.stringify(log.metadata, null, 2), "metadata");
+                            copyToClipboard(JSON.stringify(log.metadata, null, 2), 'metadata');
                           }}
                         >
-                          {copied === "metadata" ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                          {copied === 'metadata' ? (
+                            <Check className="h-3 w-3" />
+                          ) : (
+                            <Copy className="h-3 w-3" />
+                          )}
                         </Button>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
+                        <ChevronRight className="text-muted-foreground h-4 w-4 transition-transform group-open:rotate-90" />
                       </div>
                     </summary>
-                    <pre className="mt-3 p-4 rounded-lg bg-zinc-900/50 border border-white/5 text-xs font-mono text-zinc-400 overflow-x-auto max-h-48">
+                    <pre className="mt-3 max-h-48 overflow-x-auto rounded-lg border border-white/5 bg-zinc-900/50 p-4 font-mono text-xs text-zinc-400">
                       {JSON.stringify(log.metadata, null, 2)}
                     </pre>
                   </details>
@@ -362,12 +419,12 @@ function LogDetailModal({
 
             {/* Footer with external link */}
             {getExternalLink(log) && (
-              <div className="p-4 border-t border-white/10 bg-muted/20">
+              <div className="bg-muted/20 border-t border-white/10 p-4">
                 <a
-                  href={getExternalLink(log) || ""}
+                  href={getExternalLink(log) || ''}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary flex items-center justify-center gap-2 text-sm transition-colors"
                 >
                   <ExternalLink className="h-4 w-4" />
                   View activity in {getProviderName(log.serverProviderId)}
@@ -376,10 +433,10 @@ function LogDetailModal({
             )}
           </>
         ) : (
-          <div className="p-12 flex flex-col items-center justify-center gap-3">
+          <div className="flex flex-col items-center justify-center gap-3 p-12">
             <DialogTitle className="sr-only">Log Not Found</DialogTitle>
-            <AlertCircle className="h-10 w-10 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Log entry not found</p>
+            <AlertCircle className="text-muted-foreground h-10 w-10" />
+            <p className="text-muted-foreground text-sm">Log entry not found</p>
           </div>
         )}
       </DialogContent>
@@ -404,46 +461,53 @@ function ActivityRow({
 
   return (
     <div
-      className="flex items-center gap-2 px-3 cursor-pointer border-b last:border-b-0 hover:bg-muted/50 transition-colors group"
+      className="hover:bg-muted/50 group flex cursor-pointer items-center gap-2 border-b px-3 transition-colors last:border-b-0"
       style={{ height: ROW_HEIGHT }}
       onClick={onClick}
     >
       {/* Level indicator as colored left border accent */}
-      <div className={cn(
-        "w-0.5 h-6 rounded-full shrink-0 -ml-1",
-        levelColors[log.level] || levelColors.info
-      )} />
+      <div
+        className={cn(
+          '-ml-1 h-6 w-0.5 shrink-0 rounded-full',
+          levelColors[log.level] || levelColors.info
+        )}
+      />
 
       {/* Provider Icon - smaller */}
-      <ProviderIcon providerId={server?.providerId || "unknown"} size="sm" className="shrink-0" />
+      <ProviderIcon providerId={server?.providerId || 'unknown'} size="sm" className="shrink-0" />
 
       {/* Activity Type - compact badge style */}
-      <span className={cn(
-        "text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0 bg-muted/50 truncate max-w-[100px]",
-        activityInfo.color
-      )}>
+      <span
+        className={cn(
+          'bg-muted/50 max-w-[100px] shrink-0 truncate rounded px-1.5 py-0.5 text-[10px] font-medium',
+          activityInfo.color
+        )}
+      >
         {activityInfo.label}
       </span>
 
       {/* Message - takes remaining space with better truncation */}
-      <p className="text-xs text-foreground truncate flex-1 min-w-0" title={itemName || log.message}>
+      <p
+        className="text-foreground min-w-0 flex-1 truncate text-xs"
+        title={itemName || log.message}
+      >
         {itemName || log.message}
       </p>
 
       {/* User (if any) - more compact */}
       {userName && (
-        <span className="text-[10px] text-muted-foreground shrink-0 hidden xl:block max-w-[80px] truncate">
+        <span className="text-muted-foreground hidden max-w-[80px] shrink-0 truncate text-[10px] xl:block">
           {userName}
         </span>
       )}
 
       {/* Timestamp - slightly narrower */}
-      <span className="text-[10px] text-muted-foreground shrink-0 w-14 text-right tabular-nums">
+      <span className="text-muted-foreground w-14 shrink-0 text-right text-[10px] tabular-nums">
         {formatShortTime(new Date(log.timestamp))}
       </span>
 
       {/* View icon - only on hover */}
-      <Eye className="h-3 w-3 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+      <Eye className="text-muted-foreground h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100" />
     </div>
   );
 }
@@ -453,11 +517,11 @@ function LogsPageContent() {
   const router = useRouter();
 
   // Initialize state from URL params
-  const initialLevel = searchParams.get("level");
-  const initialLive = searchParams.get("live");
-  const initialSource = searchParams.get("source");
+  const initialLevel = searchParams.get('level');
+  const initialLive = searchParams.get('live');
+  const initialSource = searchParams.get('source');
 
-  const [serverId, setServerId] = useState<string>("all");
+  const [serverId, setServerId] = useState<string>('all');
   const [selectedLevels, setSelectedLevels] = useState<string[]>(
     initialLevel ? [initialLevel] : []
   );
@@ -465,16 +529,16 @@ function LogsPageContent() {
     initialSource ? [initialSource] : []
   );
   const [selectedLogSources, setSelectedLogSources] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
-  const [liveMode, setLiveMode] = useState(initialLive !== "false");
+  const [liveMode, setLiveMode] = useState(initialLive !== 'false');
   const [page, setPage] = useState(0);
   const [initialized, setInitialized] = useState(false);
 
   // Clear URL params after reading them (one-time)
   useEffect(() => {
     if (!initialized && (initialLevel || initialLive || initialSource)) {
-      router.replace("/logs", { scroll: false });
+      router.replace('/logs', { scroll: false });
       setInitialized(true);
     }
   }, [initialized, initialLevel, initialLive, initialSource, router]);
@@ -501,20 +565,29 @@ function LogsPageContent() {
   }, []);
 
   // Convert "all" to undefined for API calls
-  const actualServerId = serverId === "all" ? undefined : serverId;
+  const actualServerId = serverId === 'all' ? undefined : serverId;
 
   const { data: servers } = useServers();
 
   // Create a map of server ID to server object for quick lookup
   const serverMap = useMemo(() => {
-    return servers?.reduce((acc, server) => {
-      acc[server.id] = server;
-      return acc;
-    }, {} as Record<string, ServerType>) || {};
+    return (
+      servers?.reduce(
+        (acc, server) => {
+          acc[server.id] = server;
+          return acc;
+        },
+        {} as Record<string, ServerType>
+      ) || {}
+    );
   }, [servers]);
 
   // Fetch logs with pagination
-  const { data: logsResult, isLoading, refetch } = useLogs({
+  const {
+    data: logsResult,
+    isLoading,
+    refetch,
+  } = useLogs({
     serverId: actualServerId,
     levels: selectedLevels.length > 0 ? selectedLevels : undefined,
     sources: selectedSources.length > 0 ? selectedSources : undefined,
@@ -530,14 +603,12 @@ function LogsPageContent() {
   const totalPages = Math.max(1, Math.ceil(totalLogs / pageSize));
   const hasMore = page < totalPages - 1;
 
-  const {
-    connected,
-    logs: liveLogs,
-  } = useLogSocket({
+  const { connected, logs: liveLogs } = useLogSocket({
     enabled: liveMode,
     serverId: actualServerId,
     levels: selectedLevels.length > 0 ? selectedLevels : undefined,
-    logSources: selectedLogSources.length > 0 ? selectedLogSources as ('api' | 'file')[] : undefined,
+    logSources:
+      selectedLogSources.length > 0 ? (selectedLogSources as ('api' | 'file')[]) : undefined,
   });
 
   // Combine live logs with historical logs
@@ -545,9 +616,7 @@ function LogsPageContent() {
     if (liveMode && liveLogs.length > 0) {
       // Filter live logs by search if needed
       const filteredLive = searchQuery
-        ? liveLogs.filter((log) =>
-            log.message.toLowerCase().includes(searchQuery.toLowerCase())
-          )
+        ? liveLogs.filter((log) => log.message.toLowerCase().includes(searchQuery.toLowerCase()))
         : liveLogs;
 
       // Merge with historical, avoiding duplicates
@@ -560,38 +629,39 @@ function LogsPageContent() {
 
   const toggleLevel = (level: string) => {
     setSelectedLevels((prev) =>
-      prev.includes(level)
-        ? prev.filter((l) => l !== level)
-        : [...prev, level]
+      prev.includes(level) ? prev.filter((l) => l !== level) : [...prev, level]
     );
   };
 
   const toggleLogSource = (source: string) => {
     setSelectedLogSources((prev) =>
-      prev.includes(source)
-        ? prev.filter((s) => s !== source)
-        : [...prev, source]
+      prev.includes(source) ? prev.filter((s) => s !== source) : [...prev, source]
     );
   };
 
   const clearFilters = () => {
-    setServerId("all");
+    setServerId('all');
     setSelectedLevels([]);
     setSelectedSources([]);
     setSelectedLogSources([]);
-    setSearchQuery("");
+    setSearchQuery('');
     setPage(0);
   };
 
-  const hasFilters = serverId !== "all" || selectedLevels.length > 0 || selectedSources.length > 0 || selectedLogSources.length > 0 || searchQuery;
+  const hasFilters =
+    serverId !== 'all' ||
+    selectedLevels.length > 0 ||
+    selectedSources.length > 0 ||
+    selectedLogSources.length > 0 ||
+    searchQuery;
 
   return (
-    <div className="flex flex-col h-full gap-2 min-h-0">
+    <div className="flex h-full min-h-0 flex-col gap-2">
       {/* Filter bar */}
-      <div className="flex items-center gap-3 shrink-0">
+      <div className="flex shrink-0 items-center gap-3">
         {/* Server filter */}
         <Select value={serverId} onValueChange={setServerId}>
-          <SelectTrigger className="w-[140px] h-8 text-xs">
+          <SelectTrigger className="h-8 w-[140px] text-xs">
             <SelectValue placeholder="All Servers" />
           </SelectTrigger>
           <SelectContent>
@@ -605,16 +675,16 @@ function LogsPageContent() {
         </Select>
 
         {/* Level filter buttons */}
-        <div className="flex items-center border rounded-md overflow-hidden">
+        <div className="flex items-center overflow-hidden rounded-md border">
           {LOG_LEVELS.map((level) => (
             <button
               key={level}
               onClick={() => toggleLevel(level)}
               className={cn(
-                "px-3 py-1.5 text-xs font-medium transition-colors capitalize border-r last:border-r-0",
+                'border-r px-3 py-1.5 text-xs font-medium capitalize transition-colors last:border-r-0',
                 selectedLevels.includes(level)
                   ? levelBgColors[level]
-                  : "text-muted-foreground hover:bg-muted/50"
+                  : 'text-muted-foreground hover:bg-muted/50'
               )}
             >
               {level}
@@ -623,39 +693,39 @@ function LogsPageContent() {
         </div>
 
         {/* Log source type filter (API vs File) */}
-        <div className="flex items-center border rounded-md overflow-hidden">
+        <div className="flex items-center overflow-hidden rounded-md border">
           {LOG_SOURCE_TYPES.map((source) => (
             <button
               key={source}
               onClick={() => toggleLogSource(source)}
               className={cn(
-                "px-3 py-1.5 text-xs font-medium transition-colors capitalize border-r last:border-r-0",
+                'border-r px-3 py-1.5 text-xs font-medium capitalize transition-colors last:border-r-0',
                 selectedLogSources.includes(source)
-                  ? "bg-primary/10 text-primary border-primary/30"
-                  : "text-muted-foreground hover:bg-muted/50"
+                  ? 'bg-primary/10 text-primary border-primary/30'
+                  : 'text-muted-foreground hover:bg-muted/50'
               )}
             >
-              {source === "api" ? "API" : "File"}
+              {source === 'api' ? 'API' : 'File'}
             </button>
           ))}
         </div>
 
         {/* Search */}
-        <div className="relative flex-1 min-w-[150px] max-w-[250px]">
-          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+        <div className="relative max-w-[250px] min-w-[150px] flex-1">
+          <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2" />
           <Input
             placeholder="Search logs..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 h-8 text-xs"
+            className="h-8 pl-8 text-xs"
           />
         </div>
 
         {/* Active source filter */}
         {selectedSources.length > 0 && (
-          <Badge variant="secondary" className="h-6 px-2 text-xs gap-1">
+          <Badge variant="secondary" className="h-6 gap-1 px-2 text-xs">
             {selectedSources[0]}
-            <button onClick={() => setSelectedSources([])} className="ml-1 hover:text-foreground">
+            <button onClick={() => setSelectedSources([])} className="hover:text-foreground ml-1">
               <X className="h-3 w-3" />
             </button>
           </Badge>
@@ -664,7 +734,7 @@ function LogsPageContent() {
         {/* Clear filters */}
         {hasFilters && (
           <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-2 text-xs">
-            <X className="h-3 w-3 mr-1" />
+            <X className="mr-1 h-3 w-3" />
             Clear
           </Button>
         )}
@@ -676,26 +746,32 @@ function LogsPageContent() {
         <div className="flex items-center gap-2">
           {liveMode && (
             <Badge
-              variant={connected ? "default" : "secondary"}
+              variant={connected ? 'default' : 'secondary'}
               className={cn(
-                "text-xs",
-                connected && "bg-green-500/10 text-green-500 border-green-500/20"
+                'text-xs',
+                connected && 'border-green-500/20 bg-green-500/10 text-green-500'
               )}
             >
               {connected ? (
-                <><Wifi className="h-3 w-3 mr-1" />Live</>
+                <>
+                  <Wifi className="mr-1 h-3 w-3" />
+                  Live
+                </>
               ) : (
-                <><WifiOff className="h-3 w-3 mr-1" />Offline</>
+                <>
+                  <WifiOff className="mr-1 h-3 w-3" />
+                  Offline
+                </>
               )}
             </Badge>
           )}
           <Button
-            variant={liveMode ? "default" : "outline"}
+            variant={liveMode ? 'default' : 'outline'}
             size="sm"
             onClick={() => setLiveMode(!liveMode)}
             className="h-8 text-xs"
           >
-            {liveMode ? "Pause" : "Live"}
+            {liveMode ? 'Pause' : 'Live'}
           </Button>
           {!liveMode && (
             <Button variant="outline" size="sm" onClick={() => refetch()} className="h-8 w-8 p-0">
@@ -705,9 +781,12 @@ function LogsPageContent() {
         </div>
       </div>
 
-      <div ref={containerRef} className="flex-1 flex flex-col min-h-0 overflow-hidden rounded-lg border bg-card">
+      <div
+        ref={containerRef}
+        className="bg-card flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border"
+      >
         {isLoading && !liveMode ? (
-          <div className="p-4 space-y-2">
+          <div className="space-y-2 p-4">
             {Array.from({ length: pageSize }).map((_, i) => (
               <Skeleton key={i} className="h-10 w-full" />
             ))}
@@ -724,90 +803,92 @@ function LogsPageContent() {
                 />
               ))}
             </div>
-              {/* Pagination bar - always shown for consistent height */}
-              <div
-                className="flex items-center justify-between border-t px-4 bg-muted/30 shrink-0"
-                style={{ height: PAGINATION_HEIGHT }}
-              >
-                {liveMode ? (
-                  <>
-                    <div className="text-sm text-muted-foreground">
-                      Showing latest <span className="font-medium">{allLogs.length}</span> entries
+            {/* Pagination bar - always shown for consistent height */}
+            <div
+              className="bg-muted/30 flex shrink-0 items-center justify-between border-t px-4"
+              style={{ height: PAGINATION_HEIGHT }}
+            >
+              {liveMode ? (
+                <>
+                  <div className="text-muted-foreground text-sm">
+                    Showing latest <span className="font-medium">{allLogs.length}</span> entries
+                  </div>
+                  <div className="text-muted-foreground text-xs">
+                    Pause live mode to browse history
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-muted-foreground text-sm">
+                    <span className="font-medium">{page * pageSize + 1}</span>
+                    <span>-</span>
+                    <span className="font-medium">
+                      {Math.min((page + 1) * pageSize, totalLogs)}
+                    </span>
+                    <span className="hidden sm:inline"> of </span>
+                    <span className="sm:hidden">/</span>
+                    <span className="font-medium">{totalLogs}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setPage(0)}
+                      disabled={page === 0}
+                    >
+                      <ChevronsLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setPage((p) => Math.max(0, p - 1))}
+                      disabled={page === 0}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <div className="flex items-center gap-1 px-2 text-sm">
+                      <span className="font-medium">{page + 1}</span>
+                      <span className="text-muted-foreground">/</span>
+                      <span className="text-muted-foreground">{totalPages}</span>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      Pause live mode to browse history
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="text-sm text-muted-foreground">
-                      <span className="font-medium">{page * pageSize + 1}</span>
-                      <span>-</span>
-                      <span className="font-medium">{Math.min((page + 1) * pageSize, totalLogs)}</span>
-                      <span className="hidden sm:inline"> of </span>
-                      <span className="sm:hidden">/</span>
-                      <span className="font-medium">{totalLogs}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setPage(0)}
-                        disabled={page === 0}
-                      >
-                        <ChevronsLeft className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setPage((p) => Math.max(0, p - 1))}
-                        disabled={page === 0}
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <div className="flex items-center gap-1 px-2 text-sm">
-                        <span className="font-medium">{page + 1}</span>
-                        <span className="text-muted-foreground">/</span>
-                        <span className="text-muted-foreground">{totalPages}</span>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setPage((p) => p + 1)}
-                        disabled={!hasMore}
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setPage(totalPages - 1)}
-                        disabled={!hasMore}
-                      >
-                        <ChevronsRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="flex items-center justify-center flex-1">
-              <div className="text-center">
-                <ScrollText className="mx-auto h-12 w-12 text-muted-foreground" />
-                <h3 className="mt-4 text-lg font-semibold">No activity found</h3>
-                <p className="mt-2 text-sm text-muted-foreground max-w-sm">
-                  {hasFilters
-                    ? "Try adjusting your filters to see more activity"
-                    : "Connect a server and wait for activity data to appear"}
-                </p>
-              </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setPage((p) => p + 1)}
+                      disabled={!hasMore}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setPage(totalPages - 1)}
+                      disabled={!hasMore}
+                    >
+                      <ChevronsRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
-          )}
+          </>
+        ) : (
+          <div className="flex flex-1 items-center justify-center">
+            <div className="text-center">
+              <ScrollText className="text-muted-foreground mx-auto h-12 w-12" />
+              <h3 className="mt-4 text-lg font-semibold">No activity found</h3>
+              <p className="text-muted-foreground mt-2 max-w-sm text-sm">
+                {hasFilters
+                  ? 'Try adjusting your filters to see more activity'
+                  : 'Connect a server and wait for activity data to appear'}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Log Detail Modal */}
@@ -824,7 +905,7 @@ export default function LogsPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex items-center justify-center h-full">
+        <div className="flex h-full items-center justify-center">
           <ScrollText className="h-8 w-8 animate-pulse text-zinc-600" />
         </div>
       }

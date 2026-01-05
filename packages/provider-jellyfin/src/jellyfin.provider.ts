@@ -1,4 +1,3 @@
-
 import { JellyfinClient } from './jellyfin.client.js';
 import {
   JELLYFIN_CORRELATION_PATTERNS,
@@ -207,8 +206,7 @@ export class JellyfinProvider implements MediaServerProvider {
       id: user.Id,
       externalId: user.Id,
       name: user.Name,
-      lastSeen:
-        user.LastActivityDate !== undefined ? new Date(user.LastActivityDate) : undefined,
+      lastSeen: user.LastActivityDate !== undefined ? new Date(user.LastActivityDate) : undefined,
       isAdmin: user.Policy.IsAdministrator,
     };
   }

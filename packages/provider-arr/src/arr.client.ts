@@ -31,7 +31,10 @@ export class ArrClient {
   /**
    * Make a GET request to the API
    */
-  protected async get<T>(path: string, params?: Record<string, string | number | boolean>): Promise<T> {
+  protected async get<T>(
+    path: string,
+    params?: Record<string, string | number | boolean>
+  ): Promise<T> {
     const url = new URL(`${this.baseUrl}/api/${this.apiVersion}${path}`);
 
     if (params) {
@@ -158,7 +161,10 @@ export class ArrClient {
       sortKey: options?.sortKey ?? 'timeleft',
       sortDirection: options?.sortDirection ?? 'ascending',
       ...(options?.includeUnknownItems !== undefined
-        ? { includeUnknownSeriesItems: options.includeUnknownItems, includeUnknownMovieItems: options.includeUnknownItems }
+        ? {
+            includeUnknownSeriesItems: options.includeUnknownItems,
+            includeUnknownMovieItems: options.includeUnknownItems,
+          }
         : {}),
     });
   }

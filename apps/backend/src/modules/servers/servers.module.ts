@@ -7,10 +7,7 @@ import { ServersController } from './servers.controller';
 import { ServersService } from './servers.service';
 
 @Module({
-  imports: [
-    forwardRef(() => FileIngestionModule),
-    forwardRef(() => IngestionModule),
-  ],
+  imports: [forwardRef(() => FileIngestionModule), forwardRef(() => IngestionModule)],
   controllers: [ServersController],
   providers: [ServersService],
   exports: [ServersService],

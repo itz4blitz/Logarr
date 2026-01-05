@@ -87,7 +87,9 @@ export class LogsController {
       progressCallback
     );
 
-    this.logger.log(`File backfill complete for server ${serverId}: ${result.processedFiles} files, ${result.processedLines} lines, ${result.entriesIngested} entries`);
+    this.logger.log(
+      `File backfill complete for server ${serverId}: ${result.processedFiles} files, ${result.processedLines} lines, ${result.entriesIngested} entries`
+    );
 
     return result;
   }

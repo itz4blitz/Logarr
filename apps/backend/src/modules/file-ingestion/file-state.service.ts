@@ -221,10 +221,7 @@ export class FileStateService {
       .select()
       .from(schema.logFileState)
       .where(
-        and(
-          eq(schema.logFileState.serverId, serverId),
-          eq(schema.logFileState.isActive, true)
-        )
+        and(eq(schema.logFileState.serverId, serverId), eq(schema.logFileState.isActive, true))
       );
 
     return states.map(this.mapToLogFileState);
@@ -234,9 +231,7 @@ export class FileStateService {
    * Delete all file states for a server
    */
   async deleteServerStates(serverId: string): Promise<void> {
-    await this.db
-      .delete(schema.logFileState)
-      .where(eq(schema.logFileState.serverId, serverId));
+    await this.db.delete(schema.logFileState).where(eq(schema.logFileState.serverId, serverId));
   }
 
   /**

@@ -2,7 +2,13 @@
  * Radarr provider implementation
  */
 
-import { ArrBaseProvider, ArrClient, RADARR_LOG_FILE_CONFIG, type ArrHistoryRecordBase, type ArrPaginatedResponse } from '@logarr/provider-arr';
+import {
+  ArrBaseProvider,
+  ArrClient,
+  RADARR_LOG_FILE_CONFIG,
+  type ArrHistoryRecordBase,
+  type ArrPaginatedResponse,
+} from '@logarr/provider-arr';
 
 import { RadarrEventTypeNames } from './radarr.types.js';
 
@@ -95,7 +101,9 @@ export class RadarrProvider extends ArrBaseProvider {
     return RADARR_LOG_FILE_CONFIG;
   }
 
-  protected override async getHistoryRecords(since?: Date): Promise<readonly ArrHistoryRecordBase[]> {
+  protected override async getHistoryRecords(
+    since?: Date
+  ): Promise<readonly ArrHistoryRecordBase[]> {
     const client = this.getClient();
 
     if (since) {
@@ -109,7 +117,8 @@ export class RadarrProvider extends ArrBaseProvider {
 
   protected override normalizeHistoryRecord(record: ArrHistoryRecordBase): NormalizedActivity {
     const radarrRecord = record as RadarrHistoryRecord;
-    const eventTypeName = RadarrEventTypeNames[this.parseEventType(radarrRecord.eventType)] ?? radarrRecord.eventType;
+    const eventTypeName =
+      RadarrEventTypeNames[this.parseEventType(radarrRecord.eventType)] ?? radarrRecord.eventType;
     const activityType = this.mapEventTypeToActivityType(eventTypeName);
     const severity = this.mapActivityTypeToSeverity(activityType);
 
@@ -118,7 +127,10 @@ export class RadarrProvider extends ArrBaseProvider {
     let description = '';
 
     const movieTitle = radarrRecord.movie?.title ?? 'Unknown Movie';
-    const movieYear = radarrRecord.movie?.year !== undefined && radarrRecord.movie.year !== 0 ? ` (${radarrRecord.movie.year})` : '';
+    const movieYear =
+      radarrRecord.movie?.year !== undefined && radarrRecord.movie.year !== 0
+        ? ` (${radarrRecord.movie.year})`
+        : '';
 
     switch (activityType) {
       case 'grab':
@@ -131,11 +143,15 @@ export class RadarrProvider extends ArrBaseProvider {
         break;
       case 'download_failed':
         title = `Download Failed: ${movieTitle}${movieYear}`;
-        description = radarrRecord.data?.['message']?.toString() ?? `Failed to download: ${radarrRecord.sourceTitle}`;
+        description =
+          radarrRecord.data?.['message']?.toString() ??
+          `Failed to download: ${radarrRecord.sourceTitle}`;
         break;
       case 'import_failed':
         title = `Import Failed: ${movieTitle}${movieYear}`;
-        description = radarrRecord.data?.['message']?.toString() ?? `Failed to import: ${radarrRecord.sourceTitle}`;
+        description =
+          radarrRecord.data?.['message']?.toString() ??
+          `Failed to import: ${radarrRecord.sourceTitle}`;
         break;
       case 'deleted':
         title = `Deleted: ${movieTitle}${movieYear}`;
