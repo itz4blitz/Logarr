@@ -24,5 +24,5 @@ echo "Runtime config generated:"
 echo "  API URL: ${NEXT_PUBLIC_API_URL}"
 echo "  WS URL: ${NEXT_PUBLIC_WS_URL}"
 
-# Start the application
-exec node server.js
+# Start the application (server.js is at /app in standalone monorepo output)
+exec node /app/apps/frontend/server.js
