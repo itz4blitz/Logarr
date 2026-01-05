@@ -1,7 +1,7 @@
 # Build stage
 FROM node:22-alpine AS builder
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 
 WORKDIR /app
 
@@ -16,8 +16,8 @@ COPY apps/frontend/ ./apps/frontend/
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 
-# Build packages first
-RUN pnpm --filter @loggerr/core build || true
+# Build shared packages first (if they exist)
+RUN pnpm --filter "@logarr/*" build || true
 
 # Set build-time environment variables
 ARG NEXT_PUBLIC_API_URL=http://localhost:4001/api
@@ -46,8 +46,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/.next/static ./apps
 COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/public ./apps/frontend/public
 
 # Copy entrypoint script
-COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/docker-entrypoint.sh ./apps/frontend/
-RUN chmod +x ./apps/frontend/docker-entrypoint.sh
+COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/docker-entrypoint.sh ./
+RUN chmod +x ./docker-entrypoint.sh
 
 USER nextjs
 
@@ -56,5 +56,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-WORKDIR /app/apps/frontend
 CMD ["./docker-entrypoint.sh"]
