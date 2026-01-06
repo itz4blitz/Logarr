@@ -552,7 +552,7 @@ function AddEditProviderDialog({
   const isTesting = testMutation.isPending;
 
   const handleTest = async () => {
-    if (!provider || !formData.apiKey) {
+    if (!provider || (!formData.apiKey && provider.requiresApiKey)) {
       toast.error('API key is required to test');
       return;
     }

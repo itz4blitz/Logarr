@@ -929,8 +929,9 @@ export class AiProviderService {
       .where(eq(schema.aiProviderSettings.id, id))
       .limit(1);
 
-    const apiKey = dbResult[0]?.apiKey;
-    if (!apiKey) {
+    const apiKey = dbResult[0]?.apiKey ?? '';
+    const providerConfig = AI_PROVIDER_BASE[setting.provider as AiProviderType];
+    if (!apiKey && providerConfig?.requiresApiKey) {
       return {
         success: false,
         message: 'No API key configured',
