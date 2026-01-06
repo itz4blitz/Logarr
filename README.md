@@ -189,7 +189,30 @@ REDIS_URL=redis://localhost:6380
 ANTHROPIC_API_KEY=sk-ant-...
 OPENAI_API_KEY=sk-...
 GOOGLE_AI_API_KEY=...
+
+# Optional - Data Retention (defaults shown)
+LOG_RETENTION_DAYS=30           # Days to keep info/debug logs
+LOG_RETENTION_ERROR_DAYS=90     # Days to keep error/warn logs
+LOG_CLEANUP_ENABLED=true        # Enable automatic cleanup
+LOG_CLEANUP_CRON=0 3 * * *      # Cleanup schedule (default: 3 AM daily)
 ```
+
+### Data Retention
+
+Logarr automatically cleans up old logs to prevent unbounded database growth—essential for home servers with limited storage.
+
+| Setting          | Default    | Description                       |
+| ---------------- | ---------- | --------------------------------- |
+| Info/Debug logs  | 30 days    | Lower-priority logs cleaned first |
+| Error/Warn logs  | 90 days    | Kept 3x longer for debugging      |
+| Cleanup schedule | 3 AM daily | Configurable via cron expression  |
+
+**Configuration options:**
+
+- **Environment variables** — Set defaults in `docker-compose.yml` or `.env`
+- **Settings UI** — Adjust at runtime via **Settings → Data Management**
+
+Issues and statistics are preserved even after logs are deleted. The Data Management page shows storage usage, cleanup history, and lets you preview or trigger manual cleanup.
 
 ### Adding Servers
 
@@ -296,7 +319,7 @@ Some ideas on the table:
 
 - Additional providers (Kodi, Lidarr, Readarr)
 - Alerting integrations (Slack, Discord, email)
-- Log retention policies
+- ~~Log retention policies~~ ✅ Implemented
 - Custom dashboards
 
 Have other ideas? [Open an issue](https://github.com/itz4blitz/logarr/issues) or jump into a discussion.

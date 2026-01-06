@@ -276,16 +276,19 @@ export class IssueContextService {
 
   /**
    * Get affected users with their occurrence counts and devices
+   * Optimized: Single query to get users with aggregated device arrays (eliminates N+1)
    */
   private async getAffectedUsers(issueId: string): Promise<IssueAnalysisContext['affectedUsers']> {
-    // Get user occurrences with their last seen time
+    // Single query: Get user occurrences with their devices in one go using array_agg
     const userOccurrences = await this.db
       .select({
         userId: schema.issueOccurrences.userId,
         count: count(),
         lastSeen: sql<Date>`max(${schema.issueOccurrences.timestamp})`,
+        devices: sql<string[]>`array_agg(DISTINCT ${schema.logEntries.deviceId}) FILTER (WHERE ${schema.logEntries.deviceId} IS NOT NULL)`,
       })
       .from(schema.issueOccurrences)
+      .innerJoin(schema.logEntries, eq(schema.issueOccurrences.logEntryId, schema.logEntries.id))
       .where(
         and(
           eq(schema.issueOccurrences.issueId, issueId),
@@ -296,114 +299,92 @@ export class IssueContextService {
       .orderBy(desc(count()))
       .limit(10);
 
-    // For each user, get their devices from log entries
-    const result: IssueAnalysisContext['affectedUsers'] = [];
-
-    for (const user of userOccurrences) {
-      if (!user.userId) continue;
-
-      // Get devices for this user from log entries
-      const devices = await this.db
-        .selectDistinct({ deviceId: schema.logEntries.deviceId })
-        .from(schema.issueOccurrences)
-        .innerJoin(schema.logEntries, eq(schema.issueOccurrences.logEntryId, schema.logEntries.id))
-        .where(
-          and(
-            eq(schema.issueOccurrences.issueId, issueId),
-            eq(schema.issueOccurrences.userId, user.userId)
-          )
-        )
-        .limit(5);
-
-      result.push({
-        userId: user.userId,
+    return userOccurrences
+      .filter((user) => user.userId !== null)
+      .map((user) => ({
+        userId: user.userId!,
         occurrenceCount: Number(user.count),
-        devices: devices.map((d) => d.deviceId).filter((d): d is string => d !== null),
+        devices: (user.devices || []).slice(0, 5), // Limit devices to 5
         lastSeen: user.lastSeen,
-      });
-    }
-
-    return result;
+      }));
   }
 
   /**
    * Get affected sessions with playback context
+   * Optimized: Single query with lateral join to get session + latest playback in one query
    */
   private async getAffectedSessions(
     issueId: string
   ): Promise<IssueAnalysisContext['affectedSessions']> {
-    // Get unique session IDs from occurrences
-    const sessionOccurrences = await this.db
-      .selectDistinct({
+    // Get unique session IDs from occurrences with session details and latest playback event
+    // Using a subquery with DISTINCT ON to get the latest playback event per session
+    const sessionsWithPlayback = await this.db
+      .select({
         sessionId: schema.issueOccurrences.sessionId,
+        userName: schema.sessions.userName,
+        deviceName: schema.sessions.deviceName,
+        clientName: schema.sessions.clientName,
+        nowPlayingItemName: schema.sessions.nowPlayingItemName,
+        videoCodec: schema.playbackEvents.videoCodec,
+        audioCodec: schema.playbackEvents.audioCodec,
+        isTranscoding: schema.playbackEvents.isTranscoding,
+        transcodeReasons: schema.playbackEvents.transcodeReasons,
+        playbackItemName: schema.playbackEvents.itemName,
       })
       .from(schema.issueOccurrences)
+      .leftJoin(schema.sessions, eq(schema.sessions.externalId, schema.issueOccurrences.sessionId))
+      .leftJoin(schema.playbackEvents, eq(schema.playbackEvents.sessionId, schema.sessions.id))
       .where(
         and(
           eq(schema.issueOccurrences.issueId, issueId),
           sql`${schema.issueOccurrences.sessionId} IS NOT NULL`
         )
       )
+      .groupBy(
+        schema.issueOccurrences.sessionId,
+        schema.sessions.userName,
+        schema.sessions.deviceName,
+        schema.sessions.clientName,
+        schema.sessions.nowPlayingItemName,
+        schema.playbackEvents.videoCodec,
+        schema.playbackEvents.audioCodec,
+        schema.playbackEvents.isTranscoding,
+        schema.playbackEvents.transcodeReasons,
+        schema.playbackEvents.itemName,
+        schema.playbackEvents.timestamp
+      )
+      .orderBy(desc(schema.playbackEvents.timestamp))
       .limit(10);
 
+    // Deduplicate by sessionId (keeping the first occurrence which has latest playback due to ordering)
+    const seenSessions = new Set<string>();
     const result: IssueAnalysisContext['affectedSessions'] = [];
 
-    for (const occ of sessionOccurrences) {
-      if (!occ.sessionId) continue;
-
-      // Try to find session details
-      const [session] = await this.db
-        .select({
-          userName: schema.sessions.userName,
-          deviceName: schema.sessions.deviceName,
-          clientName: schema.sessions.clientName,
-          nowPlayingItemName: schema.sessions.nowPlayingItemName,
-        })
-        .from(schema.sessions)
-        .where(eq(schema.sessions.externalId, occ.sessionId))
-        .limit(1);
-
-      // Try to find playback context
-      let playbackContext:
-        | IssueAnalysisContext['affectedSessions'][0]['playbackContext']
-        | undefined;
-
-      if (session) {
-        // Get most recent playback event for this session
-        const [playbackEvent] = await this.db
-          .select({
-            videoCodec: schema.playbackEvents.videoCodec,
-            audioCodec: schema.playbackEvents.audioCodec,
-            isTranscoding: schema.playbackEvents.isTranscoding,
-            transcodeReasons: schema.playbackEvents.transcodeReasons,
-            itemName: schema.playbackEvents.itemName,
-          })
-          .from(schema.playbackEvents)
-          .innerJoin(schema.sessions, eq(schema.playbackEvents.sessionId, schema.sessions.id))
-          .where(eq(schema.sessions.externalId, occ.sessionId))
-          .orderBy(desc(schema.playbackEvents.timestamp))
-          .limit(1);
-
-        if (playbackEvent) {
-          const ctx: NonNullable<IssueAnalysisContext['affectedSessions'][0]['playbackContext']> = {
-            isTranscoding: playbackEvent.isTranscoding,
-          };
-          const itemName = playbackEvent.itemName || session.nowPlayingItemName;
-          if (itemName) ctx.itemName = itemName;
-          if (playbackEvent.videoCodec) ctx.videoCodec = playbackEvent.videoCodec;
-          if (playbackEvent.audioCodec) ctx.audioCodec = playbackEvent.audioCodec;
-          if (playbackEvent.transcodeReasons) ctx.transcodeReasons = playbackEvent.transcodeReasons;
-          playbackContext = ctx;
-        }
-      }
+    for (const row of sessionsWithPlayback) {
+      if (!row.sessionId || seenSessions.has(row.sessionId)) continue;
+      seenSessions.add(row.sessionId);
 
       const sessionEntry: IssueAnalysisContext['affectedSessions'][0] = {
-        sessionId: occ.sessionId,
+        sessionId: row.sessionId,
       };
-      if (session?.userName) sessionEntry.userName = session.userName;
-      if (session?.deviceName) sessionEntry.deviceName = session.deviceName;
-      if (session?.clientName) sessionEntry.clientName = session.clientName;
-      if (playbackContext) sessionEntry.playbackContext = playbackContext;
+
+      if (row.userName) sessionEntry.userName = row.userName;
+      if (row.deviceName) sessionEntry.deviceName = row.deviceName;
+      if (row.clientName) sessionEntry.clientName = row.clientName;
+
+      // Build playback context if we have any playback data
+      if (row.isTranscoding !== null) {
+        const ctx: NonNullable<IssueAnalysisContext['affectedSessions'][0]['playbackContext']> = {
+          isTranscoding: row.isTranscoding,
+        };
+        const itemName = row.playbackItemName || row.nowPlayingItemName;
+        if (itemName) ctx.itemName = itemName;
+        if (row.videoCodec) ctx.videoCodec = row.videoCodec;
+        if (row.audioCodec) ctx.audioCodec = row.audioCodec;
+        if (row.transcodeReasons) ctx.transcodeReasons = row.transcodeReasons;
+        sessionEntry.playbackContext = ctx;
+      }
+
       result.push(sessionEntry);
     }
 

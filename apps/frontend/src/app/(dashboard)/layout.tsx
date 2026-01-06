@@ -21,9 +21,23 @@ const pageNames: Record<string, string> = {
   '/settings': 'Settings',
 };
 
+function getPageName(pathname: string): string {
+  // Exact match first
+  if (pageNames[pathname]) return pageNames[pathname];
+
+  // Check if path starts with a known route (for nested routes like /settings/data-management)
+  for (const [route, name] of Object.entries(pageNames)) {
+    if (route !== '/' && pathname.startsWith(route)) {
+      return name;
+    }
+  }
+
+  return 'Dashboard';
+}
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const pageName = pageNames[pathname] || 'Dashboard';
+  const pageName = getPageName(pathname);
 
   return (
     <SidebarProvider>

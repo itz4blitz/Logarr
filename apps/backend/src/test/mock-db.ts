@@ -62,6 +62,7 @@ export type MockDb = {
   insert: ReturnType<typeof vi.fn>;
   update: ReturnType<typeof vi.fn>;
   delete: ReturnType<typeof vi.fn>;
+  execute: ReturnType<typeof vi.fn>;
   query: Record<string, unknown>;
   $with: ReturnType<typeof vi.fn>;
   with: ReturnType<typeof vi.fn>;
@@ -90,6 +91,10 @@ export function createMockDb(): MockDb {
     insert: createMockOperation('insert'),
     update: createMockOperation('update'),
     delete: createMockOperation('delete'),
+    execute: vi.fn().mockImplementation(() => {
+      const result = mockResults.get('execute') ?? [];
+      return Promise.resolve(result);
+    }),
     query: {},
     $with: vi.fn(),
     with: vi.fn().mockImplementation(() => createChainableQuery([])),
@@ -114,6 +119,7 @@ export function configureMockDb(
     insert?: unknown;
     update?: unknown;
     delete?: unknown;
+    execute?: unknown;
   }
 ) {
   if (config.select !== undefined) mockDb._setResult('select', config.select);
@@ -122,4 +128,5 @@ export function configureMockDb(
   if (config.insert !== undefined) mockDb._setResult('insert', config.insert);
   if (config.update !== undefined) mockDb._setResult('update', config.update);
   if (config.delete !== undefined) mockDb._setResult('delete', config.delete);
+  if (config.execute !== undefined) mockDb._setResult('execute', config.execute);
 }
