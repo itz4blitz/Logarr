@@ -38,7 +38,9 @@ import { useSessionSocket } from '@/hooks/use-session-socket';
 // Constants
 // ============================================================================
 
-const CARD_HEIGHT = 132; // min-h-[132px] on SessionCard
+// SessionCard has min-h-[132px] but also has a bottom section with mt-2 + pt-2 + content
+// The actual rendered height is roughly 132 + 8 (mt-2) + 8 (pt-2) + 12 (text height) = ~160px
+const CARD_HEIGHT = 160;
 const CARD_GAP = 8; // gap-2 = 0.5rem = 8px
 const TOOLBAR_HEIGHT = 48;
 const PAGINATION_HEIGHT = 48;
@@ -106,14 +108,16 @@ function SessionGrid({
       if (containerRef.current) {
         // Get the actual available height from the container
         const rect = containerRef.current.getBoundingClientRect();
-        const availableHeight = rect.height - PAGINATION_HEIGHT;
+        // Subtract pagination height and a small buffer for safety
+        const availableHeight = rect.height - PAGINATION_HEIGHT - 4;
         const width = rect.width;
 
         // 2 columns on lg (1024px), 1 column otherwise
         const columns = width >= 1024 ? 2 : 1;
         // Calculate rows that fit, accounting for gap between rows
         const effectiveCardHeight = CARD_HEIGHT + CARD_GAP;
-        const rows = Math.max(1, Math.floor((availableHeight + CARD_GAP) / effectiveCardHeight));
+        // Use floor to ensure we don't show partial cards
+        const rows = Math.max(1, Math.floor(availableHeight / effectiveCardHeight));
         const newPageSize = rows * columns;
 
         setPageSize(newPageSize);
@@ -260,64 +264,71 @@ function SessionGrid({
             </div>
           </div>
 
-          {totalPages > 1 && (
-            <div
-              className="bg-muted/30 flex shrink-0 items-center justify-between border-t px-4"
-              style={{ height: PAGINATION_HEIGHT }}
-            >
-              <div className="text-muted-foreground text-sm">
-                <span className="font-medium">{page * pageSize + 1}</span>
-                <span>-</span>
-                <span className="font-medium">{Math.min((page + 1) * pageSize, totalItems)}</span>
-                <span className="hidden sm:inline"> of </span>
-                <span className="sm:hidden">/</span>
-                <span className="font-medium">{totalItems}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => setPage(0)}
-                  disabled={page === 0}
-                >
-                  <ChevronsLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  disabled={page === 0}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <div className="flex items-center gap-1 px-2 text-sm">
-                  <span className="font-medium">{page + 1}</span>
-                  <span className="text-muted-foreground">/</span>
-                  <span className="text-muted-foreground">{totalPages}</span>
+          {/* Pagination bar - always reserve space for consistent layout */}
+          <div
+            className="bg-muted/30 flex shrink-0 items-center justify-between border-t px-4"
+            style={{ height: PAGINATION_HEIGHT }}
+          >
+            {totalPages > 1 ? (
+              <>
+                <div className="text-muted-foreground text-sm">
+                  <span className="font-medium">{page * pageSize + 1}</span>
+                  <span>-</span>
+                  <span className="font-medium">{Math.min((page + 1) * pageSize, totalItems)}</span>
+                  <span className="hidden sm:inline"> of </span>
+                  <span className="sm:hidden">/</span>
+                  <span className="font-medium">{totalItems}</span>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                  disabled={page >= totalPages - 1}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => setPage(totalPages - 1)}
-                  disabled={page >= totalPages - 1}
-                >
-                  <ChevronsRight className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setPage(0)}
+                    disabled={page === 0}
+                  >
+                    <ChevronsLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <div className="flex items-center gap-1 px-2 text-sm">
+                    <span className="font-medium">{page + 1}</span>
+                    <span className="text-muted-foreground">/</span>
+                    <span className="text-muted-foreground">{totalPages}</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                    disabled={page >= totalPages - 1}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setPage(totalPages - 1)}
+                    disabled={page >= totalPages - 1}
+                  >
+                    <ChevronsRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="text-muted-foreground text-sm">
+                Showing all <span className="font-medium">{totalItems}</span> sessions
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </>
       )}
     </div>
@@ -351,21 +362,21 @@ function Toolbar({ sortBy, filterBy, onSortChange, onFilterChange, sessionCounts
 
   return (
     <div
-      className="flex items-center justify-between gap-4 px-1 py-2"
+      className="flex items-center justify-between gap-2 px-1 py-2 sm:gap-4"
       style={{ height: TOOLBAR_HEIGHT }}
     >
       {/* Filter Buttons */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-0.5 sm:gap-1">
         <Button
           variant={filterBy === 'all' ? 'secondary' : 'ghost'}
           size="sm"
-          className="h-8 gap-1.5"
+          className="h-8 gap-1 px-2 sm:gap-1.5 sm:px-3"
           onClick={() => onFilterChange('all')}
         >
           <Users className="h-3.5 w-3.5" />
-          All
+          <span className="hidden sm:inline">All</span>
           {sessionCounts.all > 0 && (
-            <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+            <Badge variant="secondary" className="h-5 px-1 text-xs sm:px-1.5">
               {sessionCounts.all}
             </Badge>
           )}
@@ -373,15 +384,15 @@ function Toolbar({ sortBy, filterBy, onSortChange, onFilterChange, sessionCounts
         <Button
           variant={filterBy === 'playing' ? 'secondary' : 'ghost'}
           size="sm"
-          className="h-8 gap-1.5"
+          className="h-8 gap-1 px-2 sm:gap-1.5 sm:px-3"
           onClick={() => onFilterChange('playing')}
         >
           <Play className="h-3.5 w-3.5 text-green-500" />
-          Playing
+          <span className="hidden sm:inline">Playing</span>
           {sessionCounts.playing > 0 && (
             <Badge
               variant="secondary"
-              className="h-5 bg-green-500/10 px-1.5 text-xs text-green-500"
+              className="h-5 bg-green-500/10 px-1 text-xs text-green-500 sm:px-1.5"
             >
               {sessionCounts.playing}
             </Badge>
@@ -390,15 +401,15 @@ function Toolbar({ sortBy, filterBy, onSortChange, onFilterChange, sessionCounts
         <Button
           variant={filterBy === 'paused' ? 'secondary' : 'ghost'}
           size="sm"
-          className="h-8 gap-1.5"
+          className="h-8 gap-1 px-2 sm:gap-1.5 sm:px-3"
           onClick={() => onFilterChange('paused')}
         >
           <Pause className="h-3.5 w-3.5 text-yellow-500" />
-          Paused
+          <span className="hidden sm:inline">Paused</span>
           {sessionCounts.paused > 0 && (
             <Badge
               variant="secondary"
-              className="h-5 bg-yellow-500/10 px-1.5 text-xs text-yellow-500"
+              className="h-5 bg-yellow-500/10 px-1 text-xs text-yellow-500 sm:px-1.5"
             >
               {sessionCounts.paused}
             </Badge>
@@ -407,15 +418,15 @@ function Toolbar({ sortBy, filterBy, onSortChange, onFilterChange, sessionCounts
         <Button
           variant={filterBy === 'transcoding' ? 'secondary' : 'ghost'}
           size="sm"
-          className="h-8 gap-1.5"
+          className="h-8 gap-1 px-2 sm:gap-1.5 sm:px-3"
           onClick={() => onFilterChange('transcoding')}
         >
           <Zap className="h-3.5 w-3.5 text-orange-500" />
-          Transcoding
+          <span className="hidden sm:inline">Transcoding</span>
           {sessionCounts.transcoding > 0 && (
             <Badge
               variant="secondary"
-              className="h-5 bg-orange-500/10 px-1.5 text-xs text-orange-500"
+              className="h-5 bg-orange-500/10 px-1 text-xs text-orange-500 sm:px-1.5"
             >
               {sessionCounts.transcoding}
             </Badge>
@@ -426,9 +437,9 @@ function Toolbar({ sortBy, filterBy, onSortChange, onFilterChange, sessionCounts
       {/* Sort Dropdown */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="h-8 gap-2">
+          <Button variant="outline" size="sm" className="h-8 gap-2 px-2 sm:px-3">
             <SortAsc className="h-3.5 w-3.5" />
-            {sortLabels[sortBy]}
+            <span className="hidden sm:inline">{sortLabels[sortBy]}</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">

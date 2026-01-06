@@ -44,7 +44,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useSessionLogs, useIssues, useSessions } from '@/hooks/use-api';
+import { useSessionLogs, useIssues, useActiveSessions, useSessions } from '@/hooks/use-api';
 import { useSessionSocket } from '@/hooks/use-session-socket';
 import { cn } from '@/lib/utils';
 
@@ -96,10 +96,27 @@ function getProgress(positionTicks: string | null, runTimeTicks: string | null):
   return Math.round((pos / total) * 100);
 }
 
-function getMediaImageUrl(server: Server | undefined, itemId: string | null): string | null {
+function getMediaImageUrl(
+  server: Server | undefined,
+  itemId: string | null,
+  nowPlaying?: { thumbnailUrl?: string | null } | null
+): string | null {
+  // If provider gave us a direct thumbnail URL, use it (Plex)
+  if (nowPlaying?.thumbnailUrl) {
+    return nowPlaying.thumbnailUrl;
+  }
+
   if (!server || !itemId) return null;
   const baseUrl = server.url.replace(/\/$/, '');
-  return `${baseUrl}/Items/${itemId}/Images/Primary?maxHeight=400&quality=90`;
+
+  // Jellyfin/Emby use item-based image URLs
+  if (server.providerId === 'jellyfin' || server.providerId === 'emby') {
+    return `${baseUrl}/Items/${itemId}/Images/Primary?maxHeight=400&quality=90`;
+  }
+
+  // For Plex without a direct URL, we can't construct one without the token
+  // The provider should have included thumbnailUrl in nowPlaying
+  return null;
 }
 
 function getUserAvatarUrl(server: Server | undefined, userId: string | null): string | null {
@@ -264,7 +281,7 @@ function OverviewTab({ session, server }: { session: Session; server?: Server })
   const isTranscoding = nowPlaying?.isTranscoding;
 
   return (
-    <div className="grid grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       {/* Left Column */}
       <div className="space-y-6">
         {/* Playback Info */}
@@ -273,7 +290,7 @@ function OverviewTab({ session, server }: { session: Session; server?: Server })
             <Settings className="h-4 w-4" />
             Playback Details
           </h4>
-          <div className="bg-muted/30 space-y-3 rounded-lg p-4">
+          <div className="bg-muted/30 space-y-3 rounded-lg border border-white/10 p-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-muted-foreground text-xs">Play Method</p>
@@ -349,7 +366,7 @@ function OverviewTab({ session, server }: { session: Session; server?: Server })
               <Film className="h-4 w-4" />
               Media Information
             </h4>
-            <div className="bg-muted/30 space-y-3 rounded-lg p-4">
+            <div className="bg-muted/30 space-y-3 rounded-lg border border-white/10 p-4">
               {nowPlaying.seriesName && (
                 <div>
                   <p className="text-muted-foreground text-xs">Series</p>
@@ -452,7 +469,7 @@ function UserDeviceTab({ session, server }: { session: Session; server?: Server 
   const userProfileUrl = getUserProfileUrl(server, session.userId);
 
   return (
-    <div className="grid grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       {/* Left Column - User & Network */}
       <div className="space-y-6">
         {/* User Info */}
@@ -461,7 +478,7 @@ function UserDeviceTab({ session, server }: { session: Session; server?: Server 
             <User className="h-4 w-4" />
             User
           </h4>
-          <div className="bg-muted/30 rounded-lg p-4">
+          <div className="bg-muted/30 rounded-lg border border-white/10 p-4">
             <div className="flex items-center gap-4">
               <Avatar className="h-14 w-14">
                 <AvatarImage src={userAvatarUrl || undefined} alt={session.userName || 'User'} />
@@ -498,7 +515,7 @@ function UserDeviceTab({ session, server }: { session: Session; server?: Server 
             <Globe className="h-4 w-4" />
             Network
           </h4>
-          <div className="bg-muted/30 rounded-lg p-4">
+          <div className="bg-muted/30 rounded-lg border border-white/10 p-4">
             {session.ipAddress ? (
               <div className="flex items-center justify-between">
                 <div>
@@ -563,7 +580,7 @@ function UserDeviceTab({ session, server }: { session: Session; server?: Server 
               <ServerIcon className="h-4 w-4" />
               Server
             </h4>
-            <div className="bg-muted/30 rounded-lg p-4">
+            <div className="bg-muted/30 rounded-lg border border-white/10 p-4">
               <div className="flex items-center gap-3">
                 <div
                   className={cn(
@@ -585,7 +602,7 @@ function UserDeviceTab({ session, server }: { session: Session; server?: Server 
         {/* Session IDs */}
         <div className="space-y-3">
           <h4 className="text-sm font-semibold">Session Identifiers</h4>
-          <div className="bg-muted/30 space-y-3 rounded-lg p-4">
+          <div className="bg-muted/30 space-y-3 rounded-lg border border-white/10 p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-muted-foreground text-xs">Session ID</p>
@@ -866,7 +883,7 @@ interface SessionDetailModalProps {
 }
 
 export function SessionDetailModal({
-  session,
+  session: initialSession,
   server,
   open,
   onOpenChange,
@@ -876,18 +893,26 @@ export function SessionDetailModal({
   // Connect to WebSocket for real-time updates when modal is open
   useSessionSocket({ enabled: open });
 
+  // Get live session data from the active sessions hook (updated via WebSocket)
+  const { data: allSessions } = useActiveSessions();
+
+  // Find the current session from live data, fallback to prop
+  const session = initialSession
+    ? allSessions?.find((s) => s.id === initialSession.id) ?? initialSession
+    : null;
+
   // Reset tab when session changes
   useEffect(() => {
-    if (session) {
+    if (initialSession) {
       setActiveTab('overview');
     }
-  }, [session?.id]);
+  }, [initialSession?.id]);
 
   if (!session) return null;
 
   const nowPlaying = session.nowPlaying;
   const progress = nowPlaying ? getProgress(nowPlaying.positionTicks, nowPlaying.runTimeTicks) : 0;
-  const mediaImageUrl = getMediaImageUrl(server, session.nowPlayingItemId);
+  const mediaImageUrl = getMediaImageUrl(server, session.nowPlayingItemId, nowPlaying);
   const isPlaying = session.isActive && nowPlaying && !nowPlaying.isPaused;
   const isPaused = session.isActive && nowPlaying?.isPaused;
   const isLiveStream = nowPlaying && !nowPlaying.runTimeTicks;
@@ -896,9 +921,9 @@ export function SessionDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="from-background to-background/95 flex h-[85vh] w-full max-w-[95vw] flex-col gap-0 overflow-hidden border-white/10 bg-linear-to-b p-0 sm:max-w-5xl">
+      <DialogContent className="bg-background flex h-[85vh] w-full max-w-[95vw] flex-col gap-0 overflow-hidden rounded-xl border border-white/20 p-0 shadow-2xl ring-1 ring-white/10 sm:max-w-5xl">
         {/* Header */}
-        <div className="relative shrink-0">
+        <div className="relative shrink-0 border-b border-white/10">
           {/* Background gradient */}
           <div
             className={cn(
@@ -909,10 +934,10 @@ export function SessionDetailModal({
             )}
           />
 
-          <DialogHeader className="relative p-6 pb-4">
-            <div className="flex gap-5">
+          <DialogHeader className="relative p-4 pb-4 sm:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:gap-5">
               {/* Poster */}
-              <div className="bg-muted relative h-28 w-20 shrink-0 overflow-hidden rounded-lg shadow-lg">
+              <div className="bg-muted relative mx-auto h-32 w-24 shrink-0 overflow-hidden rounded-lg border border-white/20 shadow-lg ring-1 ring-black/20 sm:mx-0 sm:h-28 sm:w-20">
                 {mediaImageUrl ? (
                   <Image
                     src={mediaImageUrl}
@@ -936,10 +961,10 @@ export function SessionDetailModal({
               </div>
 
               {/* Info */}
-              <div className="min-w-0 flex-1 pr-8">
-                <div className="flex items-start gap-3">
+              <div className="min-w-0 flex-1 text-center sm:pr-8 sm:text-left">
+                <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-start sm:gap-3">
                   <div className="min-w-0 flex-1">
-                    <DialogTitle className="truncate pr-4 text-xl font-bold">
+                    <DialogTitle className="truncate text-lg font-bold sm:pr-4 sm:text-xl">
                       {session.nowPlayingItemName || 'Unknown Media'}
                     </DialogTitle>
                     {nowPlaying?.seriesName && (
@@ -1030,7 +1055,7 @@ export function SessionDetailModal({
                 )}
 
                 {/* Quick info pills */}
-                <div className="mt-3 flex flex-wrap items-center gap-2">
+                <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                   <TooltipProvider delayDuration={200}>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -1107,42 +1132,42 @@ export function SessionDetailModal({
           onValueChange={setActiveTab}
           className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
-          <div className="shrink-0 border-b border-white/5 px-6 py-3">
+          <div className="shrink-0 border-b border-white/5 px-4 py-3 sm:px-6">
             <TabsList className="bg-muted/30 h-10 w-full gap-1 rounded-lg p-1">
               <TabsTrigger
                 value="overview"
                 className="data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50 data-[state=active]:bg-background data-[state=active]:text-foreground h-8 flex-1 rounded-md text-sm font-medium transition-all data-[state=active]:shadow-sm"
               >
-                <Info className="mr-2 h-4 w-4" />
-                Overview
+                <Info className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Overview</span>
               </TabsTrigger>
               <TabsTrigger
                 value="user"
                 className="data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50 data-[state=active]:bg-background data-[state=active]:text-foreground h-8 flex-1 rounded-md text-sm font-medium transition-all data-[state=active]:shadow-sm"
               >
-                <User className="mr-2 h-4 w-4" />
-                User & Device
+                <User className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">User & Device</span>
               </TabsTrigger>
               <TabsTrigger
                 value="history"
                 className="data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50 data-[state=active]:bg-background data-[state=active]:text-foreground h-8 flex-1 rounded-md text-sm font-medium transition-all data-[state=active]:shadow-sm"
               >
-                <History className="mr-2 h-4 w-4" />
-                History
+                <History className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">History</span>
               </TabsTrigger>
               <TabsTrigger
                 value="issues"
                 className="data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50 data-[state=active]:bg-background data-[state=active]:text-foreground h-8 flex-1 rounded-md text-sm font-medium transition-all data-[state=active]:shadow-sm"
               >
-                <AlertTriangle className="mr-2 h-4 w-4" />
-                Issues
+                <AlertTriangle className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Issues</span>
               </TabsTrigger>
               <TabsTrigger
                 value="logs"
                 className="data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50 data-[state=active]:bg-background data-[state=active]:text-foreground h-8 flex-1 rounded-md text-sm font-medium transition-all data-[state=active]:shadow-sm"
               >
-                <FileText className="mr-2 h-4 w-4" />
-                Logs
+                <FileText className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Logs</span>
               </TabsTrigger>
             </TabsList>
           </div>
@@ -1150,8 +1175,8 @@ export function SessionDetailModal({
           <div className="min-h-0 flex-1 overflow-hidden">
             {/* Overview Tab */}
             <TabsContent value="overview" className="mt-0 h-full data-[state=inactive]:hidden">
-              <ScrollArea className="h-full">
-                <div className="p-6">
+              <ScrollArea className="h-full" alwaysShowScrollbar>
+                <div className="p-4 sm:p-6">
                   <OverviewTab session={session} server={server} />
                 </div>
               </ScrollArea>
@@ -1159,8 +1184,8 @@ export function SessionDetailModal({
 
             {/* User & Device Tab */}
             <TabsContent value="user" className="mt-0 h-full data-[state=inactive]:hidden">
-              <ScrollArea className="h-full">
-                <div className="p-6">
+              <ScrollArea className="h-full" alwaysShowScrollbar>
+                <div className="p-4 sm:p-6">
                   <UserDeviceTab session={session} server={server} />
                 </div>
               </ScrollArea>
@@ -1168,8 +1193,8 @@ export function SessionDetailModal({
 
             {/* User History Tab */}
             <TabsContent value="history" className="mt-0 h-full data-[state=inactive]:hidden">
-              <ScrollArea className="h-full">
-                <div className="p-6">
+              <ScrollArea className="h-full" alwaysShowScrollbar>
+                <div className="p-4 sm:p-6">
                   <UserHistoryTab session={session} userId={session.userId} />
                 </div>
               </ScrollArea>
@@ -1177,8 +1202,8 @@ export function SessionDetailModal({
 
             {/* Issues Tab */}
             <TabsContent value="issues" className="mt-0 h-full data-[state=inactive]:hidden">
-              <ScrollArea className="h-full">
-                <div className="p-6">
+              <ScrollArea className="h-full" alwaysShowScrollbar>
+                <div className="p-4 sm:p-6">
                   <IssuesTab userId={session.userId} userName={session.userName} />
                 </div>
               </ScrollArea>
@@ -1186,8 +1211,8 @@ export function SessionDetailModal({
 
             {/* Logs Tab */}
             <TabsContent value="logs" className="mt-0 h-full data-[state=inactive]:hidden">
-              <ScrollArea className="h-full">
-                <div className="p-6">
+              <ScrollArea className="h-full" alwaysShowScrollbar>
+                <div className="p-4 sm:p-6">
                   <LogsTab sessionId={session.id} />
                 </div>
               </ScrollArea>
@@ -1196,7 +1221,7 @@ export function SessionDetailModal({
         </Tabs>
 
         {/* Footer */}
-        <div className="bg-muted/30 flex shrink-0 items-center justify-between border-t px-6 py-3">
+        <div className="bg-muted/30 flex shrink-0 flex-col gap-2 border-t px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="text-muted-foreground flex items-center gap-2 text-xs">
             <span>Session ID:</span>
             <code className="bg-muted rounded px-1.5 py-0.5 font-mono text-[10px]">
@@ -1206,7 +1231,7 @@ export function SessionDetailModal({
           </div>
 
           {userProfileUrl && (
-            <Button variant="outline" size="sm" asChild>
+            <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
               <a href={userProfileUrl} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
                 View User in {providerMeta?.name || 'Server'}

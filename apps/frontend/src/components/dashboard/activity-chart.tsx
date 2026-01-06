@@ -54,14 +54,14 @@ export function ActivityChart({ data, loading }: ActivityChartProps) {
     return (
       <div className="bg-card flex h-full flex-col rounded-xl border p-4">
         <div className="mb-4 flex shrink-0 items-center justify-between">
-          <Skeleton className="h-4 w-32 bg-white/5" />
+          <Skeleton className="h-4 w-32" />
           <div className="flex gap-4">
-            <Skeleton className="h-3 w-12 bg-white/5" />
-            <Skeleton className="h-3 w-12 bg-white/5" />
-            <Skeleton className="h-3 w-12 bg-white/5" />
+            <Skeleton className="h-3 w-12" />
+            <Skeleton className="h-3 w-12" />
+            <Skeleton className="h-3 w-12" />
           </div>
         </div>
-        <Skeleton className="min-h-[180px] w-full flex-1 rounded-lg bg-white/5" />
+        <Skeleton className="min-h-[180px] w-full flex-1 rounded-lg" />
       </div>
     );
   }

@@ -80,16 +80,16 @@ export function SourceDiagnosticsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[80vh] max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="flex h-[85vh] max-h-[85vh] flex-col overflow-hidden sm:h-auto sm:max-h-[80vh] sm:max-w-2xl">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
-            <span>Diagnostics: {server.name}</span>
+            <span className="truncate">Diagnostics: {server.name}</span>
             <Button
               variant="ghost"
               size="sm"
               onClick={onRefresh}
               disabled={isLoading}
-              className="h-7 px-2"
+              className="h-7 shrink-0 px-2"
             >
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -101,7 +101,7 @@ export function SourceDiagnosticsDialog({
           <DialogDescription>Detailed connection and file ingestion diagnostics</DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[60vh] pr-4">
+        <ScrollArea className="min-h-0 flex-1 pr-4" alwaysShowScrollbar>
           <div className="space-y-6">
             {/* API Connection Section */}
             <div className="space-y-3">

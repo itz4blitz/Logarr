@@ -5,15 +5,22 @@ import * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
+interface ScrollAreaProps extends React.ComponentProps<typeof ScrollAreaPrimitive.Root> {
+  /** When true, always shows the scrollbar instead of only on hover */
+  alwaysShowScrollbar?: boolean;
+}
+
 function ScrollArea({
   className,
   children,
+  alwaysShowScrollbar = false,
   ...props
-}: React.ComponentProps<typeof ScrollAreaPrimitive.Root>) {
+}: ScrollAreaProps) {
   return (
     <ScrollAreaPrimitive.Root
       data-slot="scroll-area"
       className={cn('relative', className)}
+      type={alwaysShowScrollbar ? 'always' : 'hover'}
       {...props}
     >
       <ScrollAreaPrimitive.Viewport

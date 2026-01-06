@@ -569,7 +569,7 @@ function IssueDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="from-background to-background/95 flex h-[85vh] w-full max-w-[95vw] flex-col gap-0 overflow-hidden border-white/10 bg-linear-to-b p-0 sm:max-w-4xl">
+      <DialogContent className="bg-background flex h-[85vh] w-full max-w-[95vw] flex-col gap-0 overflow-hidden rounded-xl border border-white/20 p-0 shadow-2xl ring-1 ring-white/10 sm:max-w-4xl">
         {issueLoading ? (
           <div className="flex flex-col items-center justify-center gap-3 p-12">
             <DialogTitle className="sr-only">Loading Issue</DialogTitle>
@@ -581,7 +581,7 @@ function IssueDetailModal({
             {/* Hero Header with gradient based on severity */}
             <div
               className={cn(
-                'relative overflow-hidden',
+                'relative overflow-hidden border-b border-white/10',
                 `bg-linear-to-b ${getSeverityGradient(issue.severity)}`
               )}
             >
@@ -596,9 +596,9 @@ function IssueDetailModal({
                 />
               </div>
 
-              <DialogHeader className="relative p-6 pb-4">
+              <DialogHeader className="relative p-4 pb-4 sm:p-6">
                 {/* Top row: Provider, Status, Actions */}
-                <div className="mb-4 flex items-center justify-between gap-4">
+                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                   <div className="flex items-center gap-3">
                     <div className="relative">
                       <ProviderIcon providerId={sourceToProvider[issue.source]} size="lg" />
@@ -632,7 +632,7 @@ function IssueDetailModal({
                   </div>
 
                   {/* Action buttons - mr-8 to avoid overlap with dialog close button */}
-                  <div className="mr-8 flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2 sm:mr-8">
                     {issue.status === 'open' && (
                       <Button
                         variant="outline"
@@ -640,8 +640,8 @@ function IssueDetailModal({
                         onClick={() => onAction('acknowledge')}
                         className="bg-background/50 border-white/10 backdrop-blur-sm hover:border-yellow-500/30 hover:bg-yellow-500/10 hover:text-yellow-500"
                       >
-                        <Eye className="mr-1.5 h-4 w-4" />
-                        Acknowledge
+                        <Eye className="h-4 w-4 sm:mr-1.5" />
+                        <span className="hidden sm:inline">Acknowledge</span>
                       </Button>
                     )}
                     {issue.status !== 'resolved' && issue.status !== 'ignored' && (
@@ -650,8 +650,8 @@ function IssueDetailModal({
                         onClick={() => onAction('resolve')}
                         className="bg-green-600 text-white shadow-lg shadow-green-500/20 hover:bg-green-700"
                       >
-                        <CheckCircle className="mr-1.5 h-4 w-4" />
-                        Resolve
+                        <CheckCircle className="h-4 w-4 sm:mr-1.5" />
+                        <span className="hidden sm:inline">Resolve</span>
                       </Button>
                     )}
                     {issue.status !== 'ignored' && issue.status !== 'resolved' && (
@@ -661,8 +661,8 @@ function IssueDetailModal({
                         onClick={() => onAction('ignore')}
                         className="text-muted-foreground hover:text-foreground"
                       >
-                        <XCircle className="mr-1.5 h-4 w-4" />
-                        Ignore
+                        <XCircle className="h-4 w-4 sm:mr-1.5" />
+                        <span className="hidden sm:inline">Ignore</span>
                       </Button>
                     )}
                     {(issue.status === 'resolved' || issue.status === 'ignored') && (
@@ -672,8 +672,8 @@ function IssueDetailModal({
                         onClick={() => onAction('reopen')}
                         className="bg-background/50 border-white/10 backdrop-blur-sm"
                       >
-                        <RefreshCw className="mr-1.5 h-4 w-4" />
-                        Reopen
+                        <RefreshCw className="h-4 w-4 sm:mr-1.5" />
+                        <span className="hidden sm:inline">Reopen</span>
                       </Button>
                     )}
                   </div>
@@ -698,8 +698,8 @@ function IssueDetailModal({
               </DialogHeader>
 
               {/* Quick stats bar */}
-              <div className="relative px-6 pb-4">
-                <div className="grid grid-cols-4 gap-3">
+              <div className="relative px-4 pb-4 sm:px-6">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
                   <div className="bg-background/40 flex items-center gap-3 rounded-xl border border-white/5 px-4 py-3 backdrop-blur-sm">
                     <div className="bg-primary/10 rounded-lg p-2">
                       <Activity className="text-primary h-4 w-4" />
@@ -746,30 +746,30 @@ function IssueDetailModal({
               onValueChange={setActiveTab}
               className="flex min-h-0 flex-1 flex-col overflow-hidden"
             >
-              <div className="shrink-0 border-b border-white/5 px-6 py-3">
+              <div className="shrink-0 border-b border-white/5 px-4 py-3 sm:px-6">
                 <TabsList className="bg-muted/30 h-10 w-full gap-1 rounded-lg p-1">
                   <TabsTrigger
                     value="overview"
                     className="data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50 data-[state=active]:bg-background data-[state=active]:text-foreground h-8 flex-1 rounded-md text-sm font-medium transition-all data-[state=active]:shadow-sm"
                   >
-                    <Info className="mr-2 h-4 w-4" />
-                    Overview
+                    <Info className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Overview</span>
                   </TabsTrigger>
                   <TabsTrigger
                     value="timeline"
                     className="data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50 data-[state=active]:bg-background data-[state=active]:text-foreground h-8 flex-1 rounded-md text-sm font-medium transition-all data-[state=active]:shadow-sm"
                   >
-                    <BarChart3 className="mr-2 h-4 w-4" />
-                    Timeline
+                    <BarChart3 className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Timeline</span>
                   </TabsTrigger>
                   <TabsTrigger
                     value="occurrences"
                     className="data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50 data-[state=active]:bg-background data-[state=active]:text-foreground h-8 flex-1 rounded-md text-sm font-medium transition-all data-[state=active]:shadow-sm"
                   >
-                    <Activity className="mr-2 h-4 w-4" />
-                    Occurrences
+                    <Activity className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Occurrences</span>
                     {issue.occurrenceCount > 0 && (
-                      <span className="bg-primary/20 text-primary ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium">
+                      <span className="bg-primary/20 text-primary ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium sm:ml-1.5">
                         {issue.occurrenceCount > 99 ? '99+' : issue.occurrenceCount}
                       </span>
                     )}
@@ -778,8 +778,8 @@ function IssueDetailModal({
                     value="ai"
                     className="data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted/50 data-[state=active]:bg-background data-[state=active]:text-foreground h-8 flex-1 rounded-md text-sm font-medium transition-all data-[state=active]:shadow-sm"
                   >
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    AI Analysis
+                    <Sparkles className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">AI Analysis</span>
                   </TabsTrigger>
                 </TabsList>
               </div>
@@ -787,8 +787,8 @@ function IssueDetailModal({
               <div className="min-h-0 flex-1 overflow-hidden">
                 {/* Overview Tab */}
                 <TabsContent value="overview" className="mt-0 h-full data-[state=inactive]:hidden">
-                  <ScrollArea className="h-full">
-                    <div className="space-y-6 p-6">
+                  <ScrollArea className="h-full" alwaysShowScrollbar>
+                    <div className="space-y-6 p-4 sm:p-6">
                       {/* Sample Error Message - Full Width */}
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
@@ -821,7 +821,7 @@ function IssueDetailModal({
                         {/* Left column - Details */}
                         <div className="min-w-0 space-y-4">
                           {/* Combined Details Card */}
-                          <div className="bg-muted/20 rounded-xl border border-white/5 p-4">
+                          <div className="bg-muted/20 rounded-xl border border-white/10 p-4">
                             <div className="space-y-4 text-sm">
                               {/* Timeline info */}
                               <div className="grid grid-cols-2 gap-4">
@@ -889,7 +889,7 @@ function IssueDetailModal({
 
                           {/* Notes if present */}
                           {issue.notes && (
-                            <div className="bg-muted/20 rounded-xl border border-white/5 p-4">
+                            <div className="bg-muted/20 rounded-xl border border-white/10 p-4">
                               <h4 className="mb-2 text-sm font-medium">Notes</h4>
                               <p className="text-muted-foreground text-sm whitespace-pre-wrap">
                                 {issue.notes}
@@ -899,7 +899,7 @@ function IssueDetailModal({
 
                           {/* Related Links */}
                           {issue.relatedLinks && issue.relatedLinks.length > 0 && (
-                            <div className="bg-muted/20 rounded-xl border border-white/5 p-4">
+                            <div className="bg-muted/20 rounded-xl border border-white/10 p-4">
                               <h4 className="mb-3 text-sm font-medium">Related Resources</h4>
                               <div className="space-y-2">
                                 {issue.relatedLinks.slice(0, 3).map((link, i) => (
@@ -954,7 +954,7 @@ function IssueDetailModal({
                               </p>
                             </div>
                           ) : defaultAiProvider ? (
-                            <div className="bg-muted/20 rounded-xl border border-white/5 p-4">
+                            <div className="bg-muted/20 rounded-xl border border-white/10 p-4">
                               <div className="flex items-center gap-3">
                                 <div className="rounded-lg bg-violet-500/10 p-2">
                                   <Sparkles className="h-5 w-5 text-violet-400" />
@@ -1006,7 +1006,7 @@ function IssueDetailModal({
 
                       {/* Full-width 24h Activity Chart */}
                       {timeline?.hourly && timeline.hourly.length > 0 && (
-                        <div className="bg-muted/20 rounded-xl border border-white/5 p-4">
+                        <div className="bg-muted/20 rounded-xl border border-white/10 p-4">
                           <div className="mb-3 flex items-center justify-between">
                             <h4 className="flex items-center gap-2 text-sm font-medium">
                               <BarChart3 className="text-muted-foreground h-4 w-4" />
@@ -1034,8 +1034,8 @@ function IssueDetailModal({
 
                 {/* Timeline Tab */}
                 <TabsContent value="timeline" className="mt-0 h-full data-[state=inactive]:hidden">
-                  <ScrollArea className="h-full">
-                    <div className="space-y-6 p-6">
+                  <ScrollArea className="h-full" alwaysShowScrollbar>
+                    <div className="space-y-6 p-4 sm:p-6">
                       {timelineLoading ? (
                         <div className="flex items-center justify-center py-12">
                           <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
@@ -1044,7 +1044,7 @@ function IssueDetailModal({
                         <>
                           {/* Summary Stats Row */}
                           <div className="grid grid-cols-3 gap-3">
-                            <div className="bg-muted/20 rounded-xl border border-white/5 p-4">
+                            <div className="bg-muted/20 rounded-xl border border-white/10 p-4">
                               <div className="mb-1 flex items-center gap-2">
                                 <Activity className="text-primary h-4 w-4" />
                                 <span className="text-muted-foreground text-xs">24h Total</span>
@@ -1053,7 +1053,7 @@ function IssueDetailModal({
                                 {timeline.hourly?.reduce((sum, d) => sum + d.count, 0) || 0}
                               </p>
                             </div>
-                            <div className="bg-muted/20 rounded-xl border border-white/5 p-4">
+                            <div className="bg-muted/20 rounded-xl border border-white/10 p-4">
                               <div className="mb-1 flex items-center gap-2">
                                 <TrendingUp className="h-4 w-4 text-orange-500" />
                                 <span className="text-muted-foreground text-xs">Peak Hour</span>
@@ -1064,7 +1064,7 @@ function IssueDetailModal({
                                   : 0}
                               </p>
                             </div>
-                            <div className="bg-muted/20 rounded-xl border border-white/5 p-4">
+                            <div className="bg-muted/20 rounded-xl border border-white/10 p-4">
                               <div className="mb-1 flex items-center gap-2">
                                 <Calendar className="h-4 w-4 text-blue-500" />
                                 <span className="text-muted-foreground text-xs">30d Total</span>
@@ -1089,7 +1089,7 @@ function IssueDetailModal({
                                 </p>
                               )}
                             </div>
-                            <div className="bg-muted/20 rounded-xl border border-white/5 p-4">
+                            <div className="bg-muted/20 rounded-xl border border-white/10 p-4">
                               {timeline.hourly && timeline.hourly.length > 0 ? (
                                 <div className="space-y-3">
                                   <div className="h-32">
@@ -1124,7 +1124,7 @@ function IssueDetailModal({
                                 </p>
                               )}
                             </div>
-                            <div className="bg-muted/20 rounded-xl border border-white/5 p-4">
+                            <div className="bg-muted/20 rounded-xl border border-white/10 p-4">
                               {timeline.daily && timeline.daily.length > 0 ? (
                                 <div className="space-y-3">
                                   <div className="h-32">
@@ -1177,8 +1177,8 @@ function IssueDetailModal({
                   value="occurrences"
                   className="mt-0 h-full data-[state=inactive]:hidden"
                 >
-                  <ScrollArea className="h-full">
-                    <div className="p-6">
+                  <ScrollArea className="h-full" alwaysShowScrollbar>
+                    <div className="p-4 sm:p-6">
                       {occurrencesLoading ? (
                         <div className="flex items-center justify-center py-12">
                           <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
@@ -1341,8 +1341,8 @@ function IssueDetailModal({
 
                 {/* AI Analysis Tab */}
                 <TabsContent value="ai" className="mt-0 h-full data-[state=inactive]:hidden">
-                  <ScrollArea className="h-full">
-                    <div className="space-y-6 p-6">
+                  <ScrollArea className="h-full" alwaysShowScrollbar>
+                    <div className="space-y-6 p-4 sm:p-6">
                       {/* Show structured analysis if available */}
                       {analysisResult ? (
                         <AnalysisDisplay
@@ -1489,6 +1489,126 @@ function IssueDetailModal({
   );
 }
 
+const sourceToProviderMap: Record<IssueSource, string> = {
+  jellyfin: 'jellyfin',
+  plex: 'plex',
+  sonarr: 'sonarr',
+  radarr: 'radarr',
+  prowlarr: 'prowlarr',
+  docker: 'docker',
+  system: 'system',
+};
+
+function IssueCard({
+  issue,
+  onClick,
+  onAction,
+}: {
+  issue: Issue;
+  onClick: () => void;
+  onAction: (action: 'acknowledge' | 'resolve' | 'ignore' | 'reopen') => void;
+}) {
+  return (
+    <div
+      className="bg-muted/30 flex h-[120px] cursor-pointer flex-col rounded-lg border border-white/10 p-3"
+      onClick={onClick}
+    >
+      {/* Top row: icon, title, menu */}
+      <div className="flex min-h-0 flex-1 items-start gap-3">
+        <div className="bg-muted/50 flex h-8 w-8 shrink-0 items-center justify-center rounded-md">
+          <ProviderIcon providerId={sourceToProviderMap[issue.source]} size="md" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-2 text-sm font-medium leading-tight">{issue.title}</p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <SeverityBadge severity={issue.severity} />
+            <StatusBadge status={issue.status} />
+          </div>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+            <Button variant="ghost" size="sm" className="h-7 w-7 shrink-0 p-0">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                onClick();
+              }}
+            >
+              <ExternalLink className="mr-2 h-4 w-4" />
+              View Details
+            </DropdownMenuItem>
+            {issue.status === 'open' && (
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAction('acknowledge');
+                }}
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                Acknowledge
+              </DropdownMenuItem>
+            )}
+            {issue.status !== 'resolved' && (
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAction('resolve');
+                }}
+              >
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Mark Resolved
+              </DropdownMenuItem>
+            )}
+            {issue.status !== 'ignored' && (
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAction('ignore');
+                }}
+              >
+                <XCircle className="mr-2 h-4 w-4" />
+                Ignore
+              </DropdownMenuItem>
+            )}
+            {(issue.status === 'resolved' || issue.status === 'ignored') && (
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAction('reopen');
+                }}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Reopen
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      {/* Bottom row: stats */}
+      <div className="mt-auto flex shrink-0 items-center justify-between gap-2 border-t border-white/5 pt-2">
+        <div className="text-muted-foreground flex items-center gap-3 text-xs">
+          <span className="flex items-center gap-1">
+            <Activity className="h-3 w-3" />
+            {issue.occurrenceCount.toLocaleString()}
+          </span>
+          <span className="flex items-center gap-1">
+            <Users className="h-3 w-3" />
+            {issue.affectedUsersCount.toLocaleString()}
+          </span>
+          <ImpactScoreBar score={issue.impactScore} />
+        </div>
+        <span className="text-muted-foreground shrink-0 text-xs">
+          {formatDistanceToNow(new Date(issue.lastSeen), { addSuffix: true })}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function IssueRow({
   issue,
   onClick,
@@ -1498,16 +1618,6 @@ function IssueRow({
   onClick: () => void;
   onAction: (action: 'acknowledge' | 'resolve' | 'ignore' | 'reopen') => void;
 }) {
-  const sourceToProvider: Record<IssueSource, string> = {
-    jellyfin: 'jellyfin',
-    plex: 'plex',
-    sonarr: 'sonarr',
-    radarr: 'radarr',
-    prowlarr: 'prowlarr',
-    docker: 'docker',
-    system: 'system',
-  };
-
   return (
     <div
       className="hover:bg-muted/50 flex cursor-pointer items-center gap-3 px-4 transition-colors"
@@ -1515,7 +1625,7 @@ function IssueRow({
       onClick={onClick}
     >
       {/* Provider Icon */}
-      <ProviderIcon providerId={sourceToProvider[issue.source]} size="sm" />
+      <ProviderIcon providerId={sourceToProviderMap[issue.source]} size="sm" />
 
       {/* Severity */}
       <SeverityBadge severity={issue.severity} />
@@ -1535,11 +1645,11 @@ function IssueRow({
           <TooltipTrigger asChild>
             <div className="flex items-center gap-1">
               <Activity className="h-3 w-3" />
-              <span>{issue.occurrenceCount}</span>
+              <span>{issue.occurrenceCount.toLocaleString()}</span>
             </div>
           </TooltipTrigger>
           <TooltipContent>
-            <p>{issue.occurrenceCount} occurrences</p>
+            <p>{issue.occurrenceCount.toLocaleString()} occurrences</p>
           </TooltipContent>
         </Tooltip>
 
@@ -1547,11 +1657,11 @@ function IssueRow({
           <TooltipTrigger asChild>
             <div className="flex items-center gap-1">
               <Users className="h-3 w-3" />
-              <span>{issue.affectedUsersCount}</span>
+              <span>{issue.affectedUsersCount.toLocaleString()}</span>
             </div>
           </TooltipTrigger>
           <TooltipContent>
-            <p>{issue.affectedUsersCount} affected users</p>
+            <p>{issue.affectedUsersCount.toLocaleString()} affected users</p>
           </TooltipContent>
         </Tooltip>
 
@@ -1646,17 +1756,32 @@ function StatsCard({
   color: string;
   subtext?: string;
 }) {
+  // Format numbers with commas
+  const formattedValue = typeof value === 'number' ? value.toLocaleString() : value;
+
   return (
     <Card className="bg-card border-border/50">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-3">
+      <CardContent className="flex h-full flex-col justify-center p-3 sm:p-4">
+        {/* Mobile: centered vertical layout filling space */}
+        <div className="flex flex-col items-center justify-center gap-1 sm:hidden">
+          <div className={cn('rounded-lg p-2', color)}>
+            <Icon className="h-6 w-6" />
+          </div>
+          <div className="flex items-baseline gap-1">
+            <span className="text-2xl font-bold leading-none">{formattedValue}</span>
+            {subtext && <span className="text-muted-foreground text-xs">{subtext}</span>}
+          </div>
+          <p className="text-muted-foreground text-xs">{title}</p>
+        </div>
+        {/* Desktop: horizontal with icon */}
+        <div className="hidden items-center gap-3 sm:flex">
           <div className={cn('rounded-lg p-2', color)}>
             <Icon className="h-4 w-4" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-muted-foreground text-xs">{title}</p>
             <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold">{value}</span>
+              <span className="text-2xl font-bold">{formattedValue}</span>
               {subtext && <span className="text-muted-foreground text-xs">{subtext}</span>}
             </div>
           </div>
@@ -1850,10 +1975,10 @@ function IssuesPageContent() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
-      {/* Stats Cards */}
-      <div className="grid shrink-0 grid-cols-2 gap-4 md:grid-cols-4">
+      {/* Stats Cards - horizontal 1x4 on mobile, 2x2 on sm, 1x4 on md+ */}
+      <div className="grid shrink-0 grid-cols-4 gap-1.5 sm:grid-cols-2 sm:gap-4 md:grid-cols-4">
         <StatsCard
-          title="Open Issues"
+          title="Open"
           value={statsLoading ? '-' : (stats?.openIssues ?? 0)}
           icon={AlertCircle}
           color="bg-red-500/10 text-red-500"
@@ -1865,13 +1990,13 @@ function IssuesPageContent() {
           color="bg-orange-500/10 text-orange-500"
         />
         <StatsCard
-          title="Resolved Today"
+          title="Resolved"
           value={statsLoading ? '-' : (stats?.resolvedToday ?? 0)}
           icon={CheckCircle}
           color="bg-green-500/10 text-green-500"
         />
         <StatsCard
-          title="Avg Impact"
+          title="Impact"
           value={statsLoading ? '-' : Math.round(stats?.averageImpactScore ?? 0)}
           icon={TrendingUp}
           color="bg-blue-500/10 text-blue-500"
@@ -1880,123 +2005,167 @@ function IssuesPageContent() {
       </div>
 
       {/* Filters */}
-      <div className="flex shrink-0 flex-wrap items-center gap-3">
-        {/* Search */}
-        <div className="relative max-w-[400px] min-w-[200px] flex-1">
-          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
-          <Input
-            placeholder="Search issues..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-background h-9 border-white/10 pl-9"
-          />
-        </div>
+      <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+        {/* Row 1: Search + Actions */}
+        <div className="flex items-center gap-2">
+          {/* Search */}
+          <div className="relative min-w-0 flex-1 sm:max-w-[400px] sm:min-w-[200px]">
+            <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
+            <Input
+              placeholder="Search issues..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-background h-9 border-white/10 pl-9"
+            />
+          </div>
 
-        {/* Severity filters */}
-        <div className="bg-background flex h-9 items-center gap-2 rounded-md border border-white/10 px-3">
-          <span className="text-muted-foreground text-xs">Severity:</span>
-          {SEVERITIES.slice(0, 3).map((severity) => (
-            <label
-              key={severity}
-              className={cn(
-                'flex cursor-pointer items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors',
-                selectedSeverities.includes(severity)
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <Checkbox
-                checked={selectedSeverities.includes(severity)}
-                onCheckedChange={() => toggleSeverity(severity)}
-                className="h-3.5 w-3.5"
-              />
-              <span className="capitalize">{severity}</span>
-            </label>
-          ))}
-        </div>
-
-        {/* Status filters */}
-        <Select
-          value={
-            selectedStatuses.length === 0
-              ? 'all'
-              : selectedStatuses.includes('open') &&
-                  selectedStatuses.includes('acknowledged') &&
-                  selectedStatuses.includes('in_progress')
-                ? 'active'
-                : selectedStatuses[0]
-          }
-          onValueChange={(v) => {
-            if (v === 'all') {
-              setSelectedStatuses([]);
-            } else if (v === 'active') {
-              setSelectedStatuses(['open', 'acknowledged', 'in_progress']);
-            } else {
-              setSelectedStatuses([v as IssueStatus]);
-            }
-          }}
-        >
-          <SelectTrigger className="bg-background h-9 w-[140px] border-white/10 text-xs">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Issues</SelectItem>
-            <SelectItem value="active">Active Issues</SelectItem>
-            <SelectItem value="resolved">Resolved</SelectItem>
-            <SelectItem value="ignored">Ignored</SelectItem>
-          </SelectContent>
-        </Select>
-
-        {/* Sort */}
-        <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
-          <SelectTrigger className="bg-background h-9 w-[140px] border-white/10 text-xs">
-            <SelectValue placeholder="Sort by" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="impactScore">Impact Score</SelectItem>
-            <SelectItem value="occurrenceCount">Occurrences</SelectItem>
-            <SelectItem value="lastSeen">Last Seen</SelectItem>
-          </SelectContent>
-        </Select>
-
-        {/* Clear filters */}
-        {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 text-xs">
-            <X className="mr-1 h-3 w-3" />
-            Clear
-          </Button>
-        )}
-
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* Backfill Button */}
-        <Tooltip>
-          <TooltipTrigger asChild>
+          {/* Mobile: Clear, Backfill, Refresh */}
+          <div className="flex items-center gap-1 sm:hidden">
+            {hasFilters && (
+              <Button variant="ghost" size="icon" onClick={clearFilters} className="h-9 w-9">
+                <X className="h-4 w-4" />
+              </Button>
+            )}
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={handleBackfill}
               disabled={backfillIssues.isPending}
-              className="h-9"
+              className="h-9 w-9"
             >
               {backfillIssues.isPending ? (
-                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Database className="mr-1 h-3 w-3" />
+                <Database className="h-4 w-4" />
               )}
-              Backfill
             </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Process existing logs to detect issues</p>
-          </TooltipContent>
-        </Tooltip>
+            <Button variant="outline" size="icon" onClick={() => refetch()} className="h-9 w-9">
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
 
-        {/* Refresh */}
-        <Button variant="outline" size="sm" onClick={() => refetch()} className="h-9">
-          <RefreshCw className="h-3 w-3" />
-        </Button>
+        {/* Row 2: Filters (stacked on mobile) */}
+        <div className="flex flex-1 flex-wrap items-center gap-2 sm:gap-3">
+          {/* Severity filters - hidden on mobile, shown on sm+ */}
+          <div className="bg-background hidden h-9 items-center gap-2 rounded-md border border-white/10 px-3 sm:flex">
+            <span className="text-muted-foreground text-xs">Severity:</span>
+            {SEVERITIES.slice(0, 3).map((severity) => (
+              <label
+                key={severity}
+                className={cn(
+                  'flex cursor-pointer items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors',
+                  selectedSeverities.includes(severity)
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Checkbox
+                  checked={selectedSeverities.includes(severity)}
+                  onCheckedChange={() => toggleSeverity(severity)}
+                  className="h-3.5 w-3.5"
+                />
+                <span className="capitalize">{severity}</span>
+              </label>
+            ))}
+          </div>
+
+          {/* Status and Sort filters - full width on mobile, auto on desktop */}
+          <div className="flex w-full gap-2 sm:w-auto sm:gap-3">
+            {/* Status filters */}
+            <Select
+              value={
+                selectedStatuses.length === 0
+                  ? 'all'
+                  : selectedStatuses.includes('open') &&
+                      selectedStatuses.includes('acknowledged') &&
+                      selectedStatuses.includes('in_progress')
+                    ? 'active'
+                    : selectedStatuses[0]
+              }
+              onValueChange={(v) => {
+                if (v === 'all') {
+                  setSelectedStatuses([]);
+                } else if (v === 'active') {
+                  setSelectedStatuses(['open', 'acknowledged', 'in_progress']);
+                } else {
+                  setSelectedStatuses([v as IssueStatus]);
+                }
+              }}
+            >
+              <SelectTrigger className="bg-background h-9 flex-1 border-white/10 text-xs sm:w-[140px] sm:flex-none">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent position="popper" side="bottom" align="start">
+                <SelectItem value="all">All Issues</SelectItem>
+                <SelectItem value="active">Active Issues</SelectItem>
+                <SelectItem value="resolved">Resolved</SelectItem>
+                <SelectItem value="ignored">Ignored</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Sort */}
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+              <SelectTrigger className="bg-background h-9 flex-1 border-white/10 text-xs sm:w-[140px] sm:flex-none">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent position="popper" side="bottom" align="start">
+                <SelectItem value="impactScore">Impact Score</SelectItem>
+                <SelectItem value="occurrenceCount">Occurrences</SelectItem>
+                <SelectItem value="lastSeen">Last Seen</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Clear filters - desktop only */}
+          {hasFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearFilters}
+              className="hidden h-9 text-xs sm:flex"
+            >
+              <X className="mr-1 h-3 w-3" />
+              Clear
+            </Button>
+          )}
+
+          {/* Spacer */}
+          <div className="hidden flex-1 sm:block" />
+
+          {/* Backfill Button - desktop only */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBackfill}
+                disabled={backfillIssues.isPending}
+                className="hidden h-9 sm:flex"
+              >
+                {backfillIssues.isPending ? (
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                ) : (
+                  <Database className="mr-1 h-3 w-3" />
+                )}
+                Backfill
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Process existing logs to detect issues</p>
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Refresh - desktop only */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            className="hidden h-9 sm:flex"
+          >
+            <RefreshCw className="h-3 w-3" />
+          </Button>
+        </div>
       </div>
 
       {/* Issues List */}
@@ -2012,76 +2181,99 @@ function IssuesPageContent() {
           </div>
         ) : issues && issues.length > 0 ? (
           <>
-            <div className="flex-1 overflow-hidden">
-              {paginatedIssues.map((issue) => (
-                <IssueRow
-                  key={issue.id}
-                  issue={issue}
-                  onClick={() => setDetailIssueId(issue.id)}
-                  onAction={(action) => handleAction(issue.id, action)}
-                />
-              ))}
+            {/* Mobile Card View - scrollable, no pagination */}
+            <div className="flex flex-1 flex-col overflow-y-auto p-4 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-track]:bg-transparent sm:hidden">
+              <div className="space-y-3">
+                {issues.map((issue) => (
+                  <IssueCard
+                    key={issue.id}
+                    issue={issue}
+                    onClick={() => setDetailIssueId(issue.id)}
+                    onAction={(action) => handleAction(issue.id, action)}
+                  />
+                ))}
+              </div>
             </div>
-            {totalPages > 1 && (
+
+            {/* Desktop Row View - with fit-to-viewport pagination */}
+            <div className="hidden flex-1 flex-col overflow-hidden sm:flex">
+              <div className="flex-1 overflow-hidden">
+                {paginatedIssues.map((issue) => (
+                  <IssueRow
+                    key={issue.id}
+                    issue={issue}
+                    onClick={() => setDetailIssueId(issue.id)}
+                    onAction={(action) => handleAction(issue.id, action)}
+                  />
+                ))}
+              </div>
+              {/* Pagination bar - always reserve space for consistent layout */}
               <div
                 className="bg-muted/30 flex shrink-0 items-center justify-between border-t border-white/5 px-4"
                 style={{ height: PAGINATION_HEIGHT }}
               >
-                <div className="text-muted-foreground text-sm">
-                  <span className="font-medium">{validPage * pageSize + 1}</span>
-                  <span>-</span>
-                  <span className="font-medium">
-                    {Math.min((validPage + 1) * pageSize, issues.length)}
-                  </span>
-                  <span className="hidden sm:inline"> of </span>
-                  <span className="sm:hidden">/</span>
-                  <span className="font-medium">{issues.length}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setPage(0)}
-                    disabled={validPage === 0}
-                  >
-                    <ChevronsLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setPage((p) => Math.max(0, p - 1))}
-                    disabled={validPage === 0}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <div className="flex items-center gap-1 px-2 text-sm">
-                    <span className="font-medium">{validPage + 1}</span>
-                    <span className="text-muted-foreground">/</span>
-                    <span className="text-muted-foreground">{totalPages}</span>
+                {totalPages > 1 ? (
+                  <>
+                    <div className="text-muted-foreground text-sm">
+                      <span className="font-medium">{validPage * pageSize + 1}</span>
+                      <span>-</span>
+                      <span className="font-medium">
+                        {Math.min((validPage + 1) * pageSize, issues.length)}
+                      </span>
+                      <span> of </span>
+                      <span className="font-medium">{issues.length}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setPage(0)}
+                        disabled={validPage === 0}
+                      >
+                        <ChevronsLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setPage((p) => Math.max(0, p - 1))}
+                        disabled={validPage === 0}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <div className="flex items-center gap-1 px-2 text-sm">
+                        <span className="font-medium">{validPage + 1}</span>
+                        <span className="text-muted-foreground">/</span>
+                        <span className="text-muted-foreground">{totalPages}</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                        disabled={validPage >= totalPages - 1}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setPage(totalPages - 1)}
+                        disabled={validPage >= totalPages - 1}
+                      >
+                        <ChevronsRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-muted-foreground text-sm">
+                    Showing all <span className="font-medium">{issues.length}</span> issues
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                    disabled={validPage >= totalPages - 1}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setPage(totalPages - 1)}
-                    disabled={validPage >= totalPages - 1}
-                  >
-                    <ChevronsRight className="h-4 w-4" />
-                  </Button>
-                </div>
+                )}
               </div>
-            )}
+            </div>
           </>
         ) : (
           <div className="flex flex-1 items-center justify-center">

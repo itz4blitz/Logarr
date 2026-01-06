@@ -380,8 +380,8 @@ export function SessionCard({
     <TooltipProvider delayDuration={300}>
       <div
         className={cn(
-          'group bg-card/50 hover:bg-card relative rounded-lg p-3 transition-all duration-200',
-          'hover:border-border/50 min-h-[132px] border border-transparent',
+          'group bg-card/50 hover:bg-card relative flex h-[160px] flex-col rounded-lg p-3 transition-all duration-200',
+          'border border-white/10 hover:border-white/20',
           onClick && 'cursor-pointer'
         )}
         onClick={onClick}
@@ -395,7 +395,7 @@ export function SessionCard({
             : undefined
         }
       >
-        <div className="flex gap-3">
+        <div className="flex min-h-0 flex-1 gap-3">
           {/* Media Poster - clean without overlays */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -409,7 +409,7 @@ export function SessionCard({
                   <Image
                     src={mediaImageUrl}
                     alt={session.nowPlayingItemName || 'Media'}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-contain"
                     fill
                     sizes={compact ? '60px' : '80px'}
                     unoptimized
@@ -623,126 +623,127 @@ export function SessionCard({
                 </Tooltip>
               ) : null)}
 
-            {/* User row */}
-            <div className="mt-auto flex items-center gap-2">
+          </div>
+        </div>
+
+        {/* User row - spans full width below the poster/content area */}
+        <div className="mt-auto flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Avatar className={cn('cursor-help', compact ? 'h-5 w-5' : 'h-6 w-6')}>
+                <AvatarImage
+                  src={userAvatarUrl || undefined}
+                  alt={session.userName || 'User'}
+                />
+                <AvatarFallback
+                  className={cn(
+                    'bg-muted text-muted-foreground',
+                    compact ? 'text-[8px]' : 'text-[9px]'
+                  )}
+                >
+                  {(session.userName || 'U').charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="space-y-1">
+                <p className="font-semibold">{session.userName || 'Unknown User'}</p>
+                {session.ipAddress && (
+                  <p className="text-muted-foreground text-xs">IP: {session.ipAddress}</p>
+                )}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+          <div className="min-w-0 flex-1">
+            <p
+              className={cn(
+                'text-muted-foreground truncate',
+                compact ? 'text-[10px]' : 'text-xs'
+              )}
+            >
+              {session.userName || 'Unknown'} •{' '}
+              {session.deviceName || session.clientName || 'Unknown'}
+            </p>
+          </div>
+
+          {/* Playback info icons - with tooltips */}
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="cursor-help">
+                  <ProviderIcon providerId={server?.providerId || 'unknown'} size="sm" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="font-semibold">{server?.name || 'Unknown Server'}</p>
+                <p className="text-muted-foreground text-xs">{server?.url || 'No URL'}</p>
+              </TooltipContent>
+            </Tooltip>
+
+            {nowPlaying && !compact && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Avatar className={cn('cursor-help', compact ? 'h-5 w-5' : 'h-6 w-6')}>
-                    <AvatarImage
-                      src={userAvatarUrl || undefined}
-                      alt={session.userName || 'User'}
-                    />
-                    <AvatarFallback
-                      className={cn(
-                        'bg-muted text-muted-foreground',
-                        compact ? 'text-[8px]' : 'text-[9px]'
-                      )}
-                    >
-                      {(session.userName || 'U').charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div
+                    className={cn(
+                      'flex cursor-help items-center gap-0.5 text-[10px]',
+                      nowPlaying.isTranscoding ? 'text-orange-500' : 'text-green-500'
+                    )}
+                  >
+                    {nowPlaying.isTranscoding ? (
+                      <Zap className="h-3 w-3" />
+                    ) : (
+                      <Wifi className="h-3 w-3" />
+                    )}
+                  </div>
                 </TooltipTrigger>
-                <TooltipContent>
+                <TooltipContent className="max-w-[280px]">
                   <div className="space-y-1">
-                    <p className="font-semibold">{session.userName || 'Unknown User'}</p>
-                    {session.ipAddress && (
-                      <p className="text-muted-foreground text-xs">IP: {session.ipAddress}</p>
+                    <p className="font-semibold">
+                      {nowPlaying.isTranscoding
+                        ? 'Transcoding'
+                        : getPlayMethodLabel(nowPlaying.playMethod)}
+                    </p>
+                    {streamInfo && (
+                      <p className="text-muted-foreground text-xs">{streamInfo}</p>
+                    )}
+                    {nowPlaying.isTranscoding && transcodeReasons && (
+                      <p className="border-border/50 mt-1 border-t pt-1 text-xs text-orange-400">
+                        Reason: {transcodeReasons}
+                      </p>
                     )}
                   </div>
                 </TooltipContent>
               </Tooltip>
-              <div className="min-w-0 flex-1">
-                <p
-                  className={cn(
-                    'text-muted-foreground truncate',
-                    compact ? 'text-[10px]' : 'text-xs'
-                  )}
-                >
-                  {session.userName || 'Unknown'} •{' '}
-                  {session.deviceName || session.clientName || 'Unknown'}
-                </p>
-              </div>
+            )}
 
-              {/* Playback info icons - with tooltips */}
-              <div className="flex shrink-0 items-center gap-1.5">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="cursor-help">
-                      <ProviderIcon providerId={server?.providerId || 'unknown'} size="sm" />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="font-semibold">{server?.name || 'Unknown Server'}</p>
-                    <p className="text-muted-foreground text-xs">{server?.url || 'No URL'}</p>
-                  </TooltipContent>
-                </Tooltip>
-
-                {nowPlaying && !compact && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div
-                        className={cn(
-                          'flex cursor-help items-center gap-0.5 text-[10px]',
-                          nowPlaying.isTranscoding ? 'text-orange-500' : 'text-green-500'
-                        )}
-                      >
-                        {nowPlaying.isTranscoding ? (
-                          <Zap className="h-3 w-3" />
-                        ) : (
-                          <Wifi className="h-3 w-3" />
-                        )}
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-[280px]">
-                      <div className="space-y-1">
-                        <p className="font-semibold">
-                          {nowPlaying.isTranscoding
-                            ? 'Transcoding'
-                            : getPlayMethodLabel(nowPlaying.playMethod)}
-                        </p>
-                        {streamInfo && (
-                          <p className="text-muted-foreground text-xs">{streamInfo}</p>
-                        )}
-                        {nowPlaying.isTranscoding && transcodeReasons && (
-                          <p className="border-border/50 mt-1 border-t pt-1 text-xs text-orange-400">
-                            Reason: {transcodeReasons}
-                          </p>
-                        )}
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-
-                {!compact && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="cursor-help">
-                        <DeviceIcon
-                          deviceName={session.deviceName}
-                          clientName={session.clientName}
-                          className="text-muted-foreground h-3.5 w-3.5"
-                        />
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <div className="space-y-1">
-                        <p className="font-semibold">{session.deviceName || 'Unknown Device'}</p>
-                        <p className="text-muted-foreground text-xs">
-                          {session.clientName}{' '}
-                          {session.clientVersion && `v${session.clientVersion}`}
-                        </p>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
-            </div>
+            {!compact && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="cursor-help">
+                    <DeviceIcon
+                      deviceName={session.deviceName}
+                      clientName={session.clientName}
+                      className="text-muted-foreground h-3.5 w-3.5"
+                    />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <div className="space-y-1">
+                    <p className="font-semibold">{session.deviceName || 'Unknown Device'}</p>
+                    <p className="text-muted-foreground text-xs">
+                      {session.clientName}{' '}
+                      {session.clientVersion && `v${session.clientVersion}`}
+                    </p>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
         </div>
 
         {/* Subtle bottom info - only show in non-compact mode */}
         {!compact && (
-          <div className="text-muted-foreground/70 border-border/30 mt-2 flex items-center justify-between border-t pt-2 text-[10px]">
+          <div className="text-muted-foreground/70 border-border/30 flex shrink-0 items-center justify-between border-t pt-2 text-[10px]">
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="cursor-help">
@@ -791,21 +792,33 @@ export function SessionCardSkeleton({
   }
 
   return (
-    <div className="bg-card/50 rounded-lg p-3">
-      <div className="flex gap-3">
+    <div className="bg-card/50 flex h-[160px] flex-col rounded-lg border border-white/10 p-3">
+      {/* Top section: poster + content side by side */}
+      <div className="flex min-h-0 flex-1 gap-3">
         <Skeleton
           className={cn('shrink-0 rounded-md', compact ? 'h-[60px] w-[60px]' : 'h-[80px] w-[80px]')}
         />
         <div className="flex flex-1 flex-col">
           <Skeleton className="mb-1 h-4 w-3/4" />
           {!compact && <Skeleton className="mb-2 h-3 w-1/2" />}
-          <Skeleton className="mb-2 h-1 w-full" />
-          <div className="mt-auto flex items-center gap-2">
-            <Skeleton className={cn('rounded-full', compact ? 'h-5 w-5' : 'h-6 w-6')} />
-            <Skeleton className="h-3 w-32" />
-          </div>
+          <Skeleton className="h-1 w-full" />
         </div>
       </div>
+      {/* User row - spans full width */}
+      <div className="mt-auto flex items-center gap-2">
+        <Skeleton className={cn('rounded-full', compact ? 'h-5 w-5' : 'h-6 w-6')} />
+        <Skeleton className="h-3 flex-1" />
+        <Skeleton className="h-4 w-4 rounded" />
+        <Skeleton className="h-4 w-4 rounded" />
+        <Skeleton className="h-4 w-4 rounded" />
+      </div>
+      {/* Bottom info */}
+      {!compact && (
+        <div className="flex shrink-0 items-center justify-between border-t pt-2">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-3 w-12" />
+        </div>
+      )}
     </div>
   );
 }

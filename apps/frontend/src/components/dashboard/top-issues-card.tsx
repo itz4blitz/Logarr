@@ -94,10 +94,10 @@ export function TopIssuesCard({ issues, loading }: TopIssuesCardProps) {
 
   if (loading) {
     return (
-      <div ref={containerRef} className="bg-card flex h-full flex-col rounded-xl border p-4">
+      <div ref={containerRef} className="bg-card flex h-full flex-col overflow-hidden rounded-xl border p-4">
         <div className="mb-3 flex items-center justify-between">
-          <Skeleton className="h-4 w-24 bg-white/5" />
-          <Skeleton className="h-3 w-16 bg-white/5" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-3 w-16" />
         </div>
         <div className="flex-1">
           {Array.from({ length: pageSize }).map((_, i) => (
@@ -106,9 +106,9 @@ export function TopIssuesCard({ issues, loading }: TopIssuesCardProps) {
               className="flex items-center gap-2.5 rounded-lg px-2"
               style={{ height: 36 }}
             >
-              <Skeleton className="h-5 w-12 shrink-0 rounded bg-white/5" />
-              <Skeleton className="h-3.5 flex-1 bg-white/5" />
-              <Skeleton className="h-3 w-8 shrink-0 bg-white/5" />
+              <Skeleton className="h-5 w-12 shrink-0 rounded" />
+              <Skeleton className="h-3.5 flex-1" />
+              <Skeleton className="h-3 w-8 shrink-0" />
             </div>
           ))}
         </div>
@@ -117,7 +117,7 @@ export function TopIssuesCard({ issues, loading }: TopIssuesCardProps) {
   }
 
   return (
-    <div ref={containerRef} className="bg-card flex h-full flex-col rounded-xl border p-4">
+    <div ref={containerRef} className="bg-card flex h-full flex-col overflow-hidden rounded-xl border p-4">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold tracking-tight text-zinc-200">Top Issues</h3>
         <div className="flex items-center gap-3">

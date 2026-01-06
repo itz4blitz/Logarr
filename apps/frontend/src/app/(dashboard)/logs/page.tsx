@@ -22,6 +22,7 @@ import {
   Hash,
   User,
   Tv,
+  Server,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -189,7 +190,7 @@ function LogDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="from-background to-background/95 flex max-h-[85vh] w-full max-w-[95vw] flex-col gap-0 overflow-hidden border-white/10 bg-linear-to-b p-0 sm:max-w-3xl">
+      <DialogContent className="bg-background flex max-h-[85vh] w-full max-w-[95vw] flex-col gap-0 overflow-hidden rounded-xl border border-white/20 p-0 shadow-2xl ring-1 ring-white/10 sm:max-w-3xl">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center gap-3 p-12">
             <DialogTitle className="sr-only">Loading Log</DialogTitle>
@@ -201,7 +202,7 @@ function LogDetailModal({
             {/* Header with level-based gradient */}
             <div
               className={cn(
-                'relative overflow-hidden',
+                'relative overflow-hidden border-b border-white/10',
                 `bg-linear-to-b ${getLevelGradient(log.level)}`
               )}
             >
@@ -215,7 +216,7 @@ function LogDetailModal({
                   }}
                 />
               </div>
-              <DialogHeader className="relative p-6 pb-4">
+              <DialogHeader className="relative p-4 pb-4 sm:p-6">
                 <div className="mb-3 flex items-center gap-3">
                   <div className="relative">
                     <ProviderIcon providerId={log.serverProviderId || 'unknown'} size="lg" />
@@ -263,8 +264,8 @@ function LogDetailModal({
             </div>
 
             {/* Content */}
-            <ScrollArea className="min-h-0 flex-1">
-              <div className="space-y-5 p-6">
+            <ScrollArea className="min-h-0 flex-1" alwaysShowScrollbar>
+              <div className="space-y-5 p-4 sm:p-6">
                 {/* Related Issue - Spotify green accent */}
                 {log.relatedIssue && (
                   <Link
@@ -461,7 +462,7 @@ function ActivityRow({
 
   return (
     <div
-      className="hover:bg-muted/50 group flex cursor-pointer items-center gap-2 border-b px-3 transition-colors last:border-b-0"
+      className="hover:bg-muted/50 group flex cursor-pointer items-center gap-1.5 border-b px-2 transition-colors last:border-b-0 sm:gap-2 sm:px-3"
       style={{ height: ROW_HEIGHT }}
       onClick={onClick}
     >
@@ -473,13 +474,13 @@ function ActivityRow({
         )}
       />
 
-      {/* Provider Icon - smaller */}
+      {/* Provider Icon - always visible */}
       <ProviderIcon providerId={server?.providerId || 'unknown'} size="sm" className="shrink-0" />
 
       {/* Activity Type - compact badge style */}
       <span
         className={cn(
-          'bg-muted/50 max-w-[100px] shrink-0 truncate rounded px-1.5 py-0.5 text-[10px] font-medium',
+          'bg-muted/50 hidden max-w-[100px] shrink-0 truncate rounded px-1.5 py-0.5 text-[10px] font-medium sm:block',
           activityInfo.color
         )}
       >
@@ -502,12 +503,12 @@ function ActivityRow({
       )}
 
       {/* Timestamp - slightly narrower */}
-      <span className="text-muted-foreground w-14 shrink-0 text-right text-[10px] tabular-nums">
+      <span className="text-muted-foreground w-12 shrink-0 text-right text-[10px] tabular-nums sm:w-14">
         {formatShortTime(new Date(log.timestamp))}
       </span>
 
       {/* View icon - only on hover */}
-      <Eye className="text-muted-foreground h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100" />
+      <Eye className="text-muted-foreground hidden h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 sm:block" />
     </div>
   );
 }
@@ -657,61 +658,157 @@ function LogsPageContent() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">
-      {/* Filter bar */}
-      <div className="flex shrink-0 items-center gap-3">
-        {/* Server filter */}
-        <Select value={serverId} onValueChange={setServerId}>
-          <SelectTrigger className="h-8 w-[140px] text-xs">
-            <SelectValue placeholder="All Servers" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Servers</SelectItem>
-            {servers?.map((server) => (
-              <SelectItem key={server.id} value={server.id}>
-                {server.name}
+      {/* Filter bar - responsive */}
+      <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+        {/* Top row on mobile: Server filter + Live controls */}
+        <div className="flex items-center gap-2 sm:contents">
+          {/* Server filter */}
+          <Select value={serverId} onValueChange={setServerId}>
+            <SelectTrigger className="h-8 flex-1 text-xs sm:w-[160px] sm:flex-none">
+              <SelectValue placeholder="All Servers">
+                {serverId === 'all' ? (
+                  <span className="flex items-center gap-2">
+                    <Server className="h-3.5 w-3.5 text-zinc-400" />
+                    All Servers
+                  </span>
+                ) : (
+                  (() => {
+                    const selectedServer = servers?.find((s) => s.id === serverId);
+                    return selectedServer ? (
+                      <span className="flex items-center gap-2">
+                        <ProviderIcon providerId={selectedServer.providerId} size="sm" />
+                        {selectedServer.name}
+                      </span>
+                    ) : null;
+                  })()
+                )}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="py-2">
+                <span className="flex items-center gap-2">
+                  <Server className="h-3.5 w-3.5 text-zinc-400" />
+                  All Servers
+                </span>
               </SelectItem>
+              {servers?.map((server) => (
+                <SelectItem
+                  key={server.id}
+                  value={server.id}
+                  className="py-2"
+                >
+                  <span className="flex items-center gap-2">
+                    <ProviderIcon providerId={server.providerId} size="sm" />
+                    <span className="flex-1">{server.name}</span>
+                    {server.isConnected ? (
+                      <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                    ) : (
+                      <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                    )}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Live mode - mobile: show on first row */}
+          <div className="flex items-center gap-2 sm:order-last sm:ml-auto">
+            {liveMode && (
+              <Badge
+                variant={connected ? 'default' : 'secondary'}
+                className={cn(
+                  'text-xs',
+                  connected && 'border-green-500/20 bg-green-500/10 text-green-500'
+                )}
+              >
+                {connected ? (
+                  <>
+                    <Wifi className="mr-1 h-3 w-3" />
+                    <span className="hidden sm:inline">Live</span>
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="mr-1 h-3 w-3" />
+                    <span className="hidden sm:inline">Offline</span>
+                  </>
+                )}
+              </Badge>
+            )}
+            <Button
+              variant={liveMode ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setLiveMode(!liveMode)}
+              className="h-8 text-xs"
+            >
+              {liveMode ? 'Pause' : 'Live'}
+            </Button>
+            {!liveMode && (
+              <Button variant="outline" size="sm" onClick={() => refetch()} className="h-8 w-8 p-0">
+                <RefreshCw className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Second row on mobile: Filters */}
+        <div className="flex flex-wrap items-center gap-2 sm:contents">
+          {/* Level filter buttons */}
+          <div className="flex items-center overflow-hidden rounded-md border">
+            {LOG_LEVELS.map((level) => (
+              <button
+                key={level}
+                onClick={() => toggleLevel(level)}
+                className={cn(
+                  'border-r px-2 py-1.5 text-xs font-medium capitalize transition-colors last:border-r-0 sm:px-3',
+                  selectedLevels.includes(level)
+                    ? levelBgColors[level]
+                    : 'text-muted-foreground hover:bg-muted/50'
+                )}
+              >
+                {level}
+              </button>
             ))}
-          </SelectContent>
-        </Select>
+          </div>
 
-        {/* Level filter buttons */}
-        <div className="flex items-center overflow-hidden rounded-md border">
-          {LOG_LEVELS.map((level) => (
-            <button
-              key={level}
-              onClick={() => toggleLevel(level)}
-              className={cn(
-                'border-r px-3 py-1.5 text-xs font-medium capitalize transition-colors last:border-r-0',
-                selectedLevels.includes(level)
-                  ? levelBgColors[level]
-                  : 'text-muted-foreground hover:bg-muted/50'
-              )}
-            >
-              {level}
-            </button>
-          ))}
+          {/* Log source type filter (API vs File) */}
+          <div className="flex items-center overflow-hidden rounded-md border">
+            {LOG_SOURCE_TYPES.map((source) => (
+              <button
+                key={source}
+                onClick={() => toggleLogSource(source)}
+                className={cn(
+                  'border-r px-2 py-1.5 text-xs font-medium capitalize transition-colors last:border-r-0 sm:px-3',
+                  selectedLogSources.includes(source)
+                    ? 'bg-primary/10 text-primary border-primary/30'
+                    : 'text-muted-foreground hover:bg-muted/50'
+                )}
+              >
+                {source === 'api' ? 'API' : 'File'}
+              </button>
+            ))}
+          </div>
+
+          {/* Active source filter */}
+          {selectedSources.length > 0 && (
+            <Badge variant="secondary" className="h-6 gap-1 px-2 text-xs">
+              {selectedSources[0]}
+              <button onClick={() => setSelectedSources([])} className="hover:text-foreground ml-1">
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          )}
+
+          {/* Clear filters */}
+          {hasFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-2 text-xs">
+              <X className="h-3 w-3 sm:mr-1" />
+              <span className="hidden sm:inline">Clear</span>
+            </Button>
+          )}
         </div>
 
-        {/* Log source type filter (API vs File) */}
-        <div className="flex items-center overflow-hidden rounded-md border">
-          {LOG_SOURCE_TYPES.map((source) => (
-            <button
-              key={source}
-              onClick={() => toggleLogSource(source)}
-              className={cn(
-                'border-r px-3 py-1.5 text-xs font-medium capitalize transition-colors last:border-r-0',
-                selectedLogSources.includes(source)
-                  ? 'bg-primary/10 text-primary border-primary/30'
-                  : 'text-muted-foreground hover:bg-muted/50'
-              )}
-            >
-              {source === 'api' ? 'API' : 'File'}
-            </button>
-          ))}
-        </div>
-
-        {/* Search */}
-        <div className="relative max-w-[250px] min-w-[150px] flex-1">
+        {/* Third row on mobile: Search */}
+        <div className="relative w-full sm:max-w-[250px] sm:min-w-[150px] sm:flex-1">
           <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2" />
           <Input
             placeholder="Search logs..."
@@ -719,65 +816,6 @@ function LogsPageContent() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="h-8 pl-8 text-xs"
           />
-        </div>
-
-        {/* Active source filter */}
-        {selectedSources.length > 0 && (
-          <Badge variant="secondary" className="h-6 gap-1 px-2 text-xs">
-            {selectedSources[0]}
-            <button onClick={() => setSelectedSources([])} className="hover:text-foreground ml-1">
-              <X className="h-3 w-3" />
-            </button>
-          </Badge>
-        )}
-
-        {/* Clear filters */}
-        {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-2 text-xs">
-            <X className="mr-1 h-3 w-3" />
-            Clear
-          </Button>
-        )}
-
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* Live mode */}
-        <div className="flex items-center gap-2">
-          {liveMode && (
-            <Badge
-              variant={connected ? 'default' : 'secondary'}
-              className={cn(
-                'text-xs',
-                connected && 'border-green-500/20 bg-green-500/10 text-green-500'
-              )}
-            >
-              {connected ? (
-                <>
-                  <Wifi className="mr-1 h-3 w-3" />
-                  Live
-                </>
-              ) : (
-                <>
-                  <WifiOff className="mr-1 h-3 w-3" />
-                  Offline
-                </>
-              )}
-            </Badge>
-          )}
-          <Button
-            variant={liveMode ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setLiveMode(!liveMode)}
-            className="h-8 text-xs"
-          >
-            {liveMode ? 'Pause' : 'Live'}
-          </Button>
-          {!liveMode && (
-            <Button variant="outline" size="sm" onClick={() => refetch()} className="h-8 w-8 p-0">
-              <RefreshCw className="h-3.5 w-3.5" />
-            </Button>
-          )}
         </div>
       </div>
 
