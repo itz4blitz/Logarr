@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 
 import { type Integration, getDashboardIconUrl, getIntegrationById } from '@/lib/integrations';
 import { cn } from '@/lib/utils';
@@ -19,13 +19,16 @@ const sizeClasses = {
   xl: 'h-12 w-12',
 };
 
-// Built-in SVG icons for currently implemented providers
-const builtInIcons: Record<string, React.FC<{ className?: string }>> = {
-  jellyfin: ({ className }) => (
+// Jellyfin icon component with unique gradient IDs
+function JellyfinBuiltInIcon({ className }: { className?: string }) {
+  const id = useId();
+  const gradientId = `jellyfin-gradient-${id}`;
+
+  return (
     <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" className={className}>
       <defs>
         <linearGradient
-          id="jellyfin-gradient"
+          id={gradientId}
           x1="110.25"
           y1="213.3"
           x2="496.14"
@@ -38,14 +41,44 @@ const builtInIcons: Record<string, React.FC<{ className?: string }>> = {
       </defs>
       <path
         d="M256,201.6c-20.4,0-86.2,119.3-76.2,139.4s142.5,19.9,152.4,0S276.5,201.6,256,201.6z"
-        fill="url(#jellyfin-gradient)"
+        fill={`url(#${gradientId})`}
       />
       <path
         d="M256,23.3c-61.6,0-259.8,359.4-229.6,420.1s429.3,60,459.2,0S317.6,23.3,256,23.3z M406.5,390.8c-19.6,39.3-281.1,39.8-300.9,0s110.1-275.3,150.4-275.3S426.1,351.4,406.5,390.8z"
-        fill="url(#jellyfin-gradient)"
+        fill={`url(#${gradientId})`}
       />
     </svg>
-  ),
+  );
+}
+
+// Google icon component with unique gradient IDs
+function GoogleBuiltInIcon({ className }: { className?: string }) {
+  const id = useId();
+  const gradientId = `google-gemini-gradient-${id}`;
+
+  return (
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <defs>
+        <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#4285F4" />
+          <stop offset="25%" stopColor="#9B72CB" />
+          <stop offset="50%" stopColor="#D96570" />
+          <stop offset="75%" stopColor="#9B72CB" />
+          <stop offset="100%" stopColor="#4285F4" />
+        </linearGradient>
+      </defs>
+      <path
+        fill={`url(#${gradientId})`}
+        d="M12 0C5.373 0 0 5.373 0 12c0 4.992 3.048 9.267 7.385 11.072C6.516 21.267 6 19.2 6 17c0-5.523 4.477-10 10-10 1.2 0 2.35.21 3.42.6C17.735 3.048 13.992 0 12 0zm0 6c-3.314 0-6 2.686-6 6s2.686 6 6 6 6-2.686 6-6-2.686-6-6-6z"
+      />
+      <circle fill={`url(#${gradientId})`} cx="12" cy="12" r="4" />
+    </svg>
+  );
+}
+
+// Built-in SVG icons for currently implemented providers
+const builtInIcons: Record<string, React.FC<{ className?: string }>> = {
+  jellyfin: JellyfinBuiltInIcon,
   plex: ({ className }) => (
     <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" className={className}>
       <rect width="512" height="512" fill="#282a2d" rx="15%" />
@@ -181,24 +214,7 @@ const builtInIcons: Record<string, React.FC<{ className?: string }>> = {
       <path d="M17.304 3.541h-3.672l6.696 16.918h3.672zm-10.608 0L0 20.459h3.744l1.368-3.6h6.624l1.368 3.6h3.744L10.152 3.541zm-.264 10.392 2.04-5.352 2.04 5.352z" />
     </svg>
   ),
-  google: ({ className }) => (
-    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className={className}>
-      <defs>
-        <linearGradient id="google-gemini-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#4285F4" />
-          <stop offset="25%" stopColor="#9B72CB" />
-          <stop offset="50%" stopColor="#D96570" />
-          <stop offset="75%" stopColor="#9B72CB" />
-          <stop offset="100%" stopColor="#4285F4" />
-        </linearGradient>
-      </defs>
-      <path
-        fill="url(#google-gemini-gradient)"
-        d="M12 0C5.373 0 0 5.373 0 12c0 4.992 3.048 9.267 7.385 11.072C6.516 21.267 6 19.2 6 17c0-5.523 4.477-10 10-10 1.2 0 2.35.21 3.42.6C17.735 3.048 13.992 0 12 0zm0 6c-3.314 0-6 2.686-6 6s2.686 6 6 6 6-2.686 6-6-2.686-6-6-6z"
-      />
-      <circle fill="url(#google-gemini-gradient)" cx="12" cy="12" r="4" />
-    </svg>
-  ),
+  google: GoogleBuiltInIcon,
 };
 
 // Fallback icon when external icon fails to load

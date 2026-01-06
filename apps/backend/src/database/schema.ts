@@ -585,3 +585,39 @@ export const analysisConversationsRelations = relations(analysisConversations, (
     references: [issues.id],
   }),
 }));
+
+/**
+ * App settings table - stores runtime-configurable settings
+ * Key-value store with JSON values for flexibility
+ */
+export const appSettings = pgTable(
+  'app_settings',
+  {
+    key: text('key').primaryKey(),
+    value: jsonb('value').notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  }
+);
+
+/**
+ * Retention history table - audit log of cleanup operations
+ */
+export const retentionHistory = pgTable(
+  'retention_history',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    infoDeleted: integer('info_deleted').notNull().default(0),
+    debugDeleted: integer('debug_deleted').notNull().default(0),
+    warnDeleted: integer('warn_deleted').notNull().default(0),
+    errorDeleted: integer('error_deleted').notNull().default(0),
+    orphanedOccurrencesDeleted: integer('orphaned_occurrences_deleted').notNull().default(0),
+    status: text('status').notNull().default('running'), // running, completed, failed
+    errorMessage: text('error_message'),
+  },
+  (table) => [
+    index('retention_history_started_at_idx').on(table.startedAt),
+    index('retention_history_status_idx').on(table.status),
+  ]
+);

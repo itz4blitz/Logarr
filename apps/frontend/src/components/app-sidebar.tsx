@@ -10,7 +10,7 @@ import {
   Sparkles,
   Database,
   Wifi,
-  Container,
+  Radio,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -327,11 +327,11 @@ export function AppSidebar() {
             status={health?.services?.database}
             isCollapsed={isCollapsed}
           />
-          {/* Cache Status */}
+          {/* Realtime Status (Redis/WebSocket) */}
           <ServiceStatusIndicator
-            name="Cache"
-            shortName="Cache"
-            icon={Container}
+            name="Realtime"
+            shortName="Live"
+            icon={Radio}
             status={health?.services?.redis}
             isCollapsed={isCollapsed}
           />

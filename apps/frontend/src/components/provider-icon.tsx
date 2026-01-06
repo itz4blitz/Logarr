@@ -243,17 +243,30 @@ function AnthropicIcon({ className }: { className?: string }) {
   );
 }
 
-// Ollama logo
+// Ollama logo - official llama icon with white background for dark mode visibility
 function OllamaIcon({ className }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      fill="currentColor"
-    >
-      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-2-9.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5S12.33 12 11.5 12 10 11.33 10 10.5zm4 0c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5zM12 17c-2.33 0-4.31-1.46-5.11-3.5h10.22c-.8 2.04-2.78 3.5-5.11 3.5z" />
-    </svg>
+    <div className={className} style={{ position: 'relative' }}>
+      <svg
+        viewBox="0 0 24 24"
+        xmlns="http://www.w3.org/2000/svg"
+        style={{ width: '100%', height: '100%' }}
+      >
+        <rect width="24" height="24" rx="4" fill="white" />
+      </svg>
+      <img
+        src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ollama.svg"
+        alt="Ollama"
+        style={{
+          position: 'absolute',
+          top: '10%',
+          left: '10%',
+          width: '80%',
+          height: '80%',
+          objectFit: 'contain',
+        }}
+      />
+    </div>
   );
 }
 
@@ -269,16 +282,22 @@ function GoogleAIIcon({ className }: { className?: string }) {
   );
 }
 
-// LM Studio logo
+// LM Studio logo - stylized "LM" text mark with brand colors
 function LMStudioIcon({ className }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      fill="currentColor"
-    >
-      <path d="M4 4h6v2H6v12h4v2H4V4zm10 0h6v16h-6v-2h4V6h-4V4zm-5 6h6v4H9v-4z" />
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className={className}>
+      {/* Background */}
+      <rect width="24" height="24" rx="4" fill="#635BE1" />
+      {/* L */}
+      <path
+        d="M5 6h2v10h4v2H5V6z"
+        fill="white"
+      />
+      {/* M */}
+      <path
+        d="M13 6h2.5l1.5 6 1.5-6H21v12h-2V10l-1.5 6h-2L14 10v8h-2V6h1z"
+        fill="white"
+      />
     </svg>
   );
 }
@@ -590,7 +609,7 @@ export const providerMeta: Record<string, { name: string; color: string; bgColor
   anthropic: { name: 'Anthropic', color: '#D4A574', bgColor: 'bg-orange-500/10' },
   google: { name: 'Google AI', color: '#4285F4', bgColor: 'bg-blue-500/10' },
   ollama: { name: 'Ollama', color: '#FFFFFF', bgColor: 'bg-gray-500/10' },
-  lmstudio: { name: 'LM Studio', color: '#6366F1', bgColor: 'bg-indigo-500/10' },
+  lmstudio: { name: 'LM Studio', color: '#635BE1', bgColor: 'bg-violet-500/10' },
   docker: { name: 'Docker', color: '#2496ED', bgColor: 'bg-blue-500/10' },
   system: { name: 'System', color: '#6366F1', bgColor: 'bg-indigo-500/10' },
 };

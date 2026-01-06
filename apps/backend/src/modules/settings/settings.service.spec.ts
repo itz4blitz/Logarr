@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -11,12 +12,20 @@ import type { TestingModule } from '@nestjs/testing';
 describe('SettingsService', () => {
   let service: SettingsService;
   let mockDb: MockDb;
+  let mockConfigService: { get: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     mockDb = createMockDb();
+    mockConfigService = {
+      get: vi.fn().mockReturnValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [SettingsService, { provide: DATABASE_CONNECTION, useValue: mockDb }],
+      providers: [
+        SettingsService,
+        { provide: DATABASE_CONNECTION, useValue: mockDb },
+        { provide: ConfigService, useValue: mockConfigService },
+      ],
     }).compile();
 
     service = module.get<SettingsService>(SettingsService);
@@ -61,7 +70,8 @@ describe('SettingsService', () => {
 
   describe('getSystemInfo', () => {
     it('should return system info with counts', async () => {
-      configureMockDb(mockDb, { select: [{ id: '1' }, { id: '2' }] });
+      // getSystemInfo uses count() which returns [{ count: N }]
+      configureMockDb(mockDb, { select: [{ count: 2 }] });
 
       const result = await service.getSystemInfo();
 
@@ -73,7 +83,7 @@ describe('SettingsService', () => {
     });
 
     it('should return version 0.1.0', async () => {
-      configureMockDb(mockDb, { select: [] });
+      configureMockDb(mockDb, { select: [{ count: 0 }] });
 
       const result = await service.getSystemInfo();
 
@@ -81,7 +91,7 @@ describe('SettingsService', () => {
     });
 
     it('should indicate db connected when queries succeed', async () => {
-      configureMockDb(mockDb, { select: [] });
+      configureMockDb(mockDb, { select: [{ count: 0 }] });
 
       const result = await service.getSystemInfo();
 
@@ -89,8 +99,8 @@ describe('SettingsService', () => {
     });
 
     it('should count servers correctly', async () => {
-      const servers = [{ id: '1' }, { id: '2' }, { id: '3' }];
-      configureMockDb(mockDb, { select: servers });
+      // getSystemInfo uses count() which returns [{ count: N }]
+      configureMockDb(mockDb, { select: [{ count: 3 }] });
 
       const result = await service.getSystemInfo();
 
@@ -111,7 +121,7 @@ describe('SettingsService', () => {
     });
 
     it('should return zero counts when database is empty', async () => {
-      configureMockDb(mockDb, { select: [] });
+      configureMockDb(mockDb, { select: [{ count: 0 }] });
 
       const result = await service.getSystemInfo();
 

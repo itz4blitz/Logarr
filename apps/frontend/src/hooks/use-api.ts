@@ -39,6 +39,12 @@ export const queryKeys = {
   aiProviderSettings: ['settings', 'ai'] as const,
   aiProviderSetting: (id: string) => ['settings', 'ai', id] as const,
   defaultAiProvider: ['settings', 'ai', 'default'] as const,
+  // Retention
+  retentionConfig: ['retention', 'config'] as const,
+  storageStats: ['retention', 'stats'] as const,
+  cleanupPreview: ['retention', 'preview'] as const,
+  retentionSettings: ['settings', 'retention'] as const,
+  retentionHistory: ['settings', 'retention', 'history'] as const,
 };
 
 // Health
@@ -538,5 +544,78 @@ export function useAiAnalysisHistory(params?: {
     queryFn: () => api.getAiAnalysisHistory(params),
     placeholderData: keepPreviousData,
     staleTime: 30000, // History rarely changes - cache for 30 seconds
+  });
+}
+
+// Retention
+export function useRetentionConfig() {
+  return useQuery({
+    queryKey: queryKeys.retentionConfig,
+    queryFn: () => api.getRetentionConfig(),
+    staleTime: 60000, // Config rarely changes - cache for 1 minute
+  });
+}
+
+export function useStorageStats() {
+  return useQuery({
+    queryKey: queryKeys.storageStats,
+    queryFn: () => api.getStorageStats(),
+    refetchInterval: 15000, // Refresh every 15 seconds for near real-time updates
+    staleTime: 10000, // Consider data fresh for 10 seconds
+  });
+}
+
+export function useCleanupPreview() {
+  return useQuery({
+    queryKey: queryKeys.cleanupPreview,
+    queryFn: () => api.getCleanupPreview(),
+    staleTime: 30000, // Preview can be cached for 30 seconds
+  });
+}
+
+export function useRunCleanup() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => api.runCleanup(),
+    onSuccess: () => {
+      // Invalidate storage stats and logs after cleanup
+      queryClient.invalidateQueries({ queryKey: queryKeys.storageStats });
+      queryClient.invalidateQueries({ queryKey: queryKeys.cleanupPreview });
+      queryClient.invalidateQueries({ queryKey: queryKeys.retentionHistory });
+      queryClient.invalidateQueries({ queryKey: ['logs'] });
+    },
+  });
+}
+
+// Retention Settings (DB-stored)
+export function useRetentionSettings() {
+  return useQuery({
+    queryKey: queryKeys.retentionSettings,
+    queryFn: () => api.getRetentionSettings(),
+    staleTime: 60000,
+  });
+}
+
+export function useUpdateRetentionSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (settings: Parameters<typeof api.updateRetentionSettings>[0]) =>
+      api.updateRetentionSettings(settings),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.retentionSettings });
+      queryClient.invalidateQueries({ queryKey: queryKeys.retentionConfig });
+      queryClient.invalidateQueries({ queryKey: queryKeys.storageStats });
+      queryClient.invalidateQueries({ queryKey: queryKeys.cleanupPreview });
+    },
+  });
+}
+
+export function useRetentionHistory(limit = 20) {
+  return useQuery({
+    queryKey: [...queryKeys.retentionHistory, limit] as const,
+    queryFn: () => api.getRetentionHistory(limit),
+    staleTime: 30000,
   });
 }

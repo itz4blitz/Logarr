@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 
 import { AiProviderService } from './ai-provider.service';
-import { SettingsService } from './settings.service';
+import { SettingsService, type RetentionSettings } from './settings.service';
 
 import type {
   CreateAiProviderDto,
@@ -29,6 +29,24 @@ export class SettingsController {
     private readonly settingsService: SettingsService,
     private readonly aiProviderService: AiProviderService
   ) {}
+
+  // ============ Retention Settings ============
+
+  @Get('retention')
+  async getRetentionSettings() {
+    return this.settingsService.getRetentionSettings();
+  }
+
+  @Put('retention')
+  async updateRetentionSettings(@Body() settings: Partial<RetentionSettings>) {
+    return this.settingsService.updateRetentionSettings(settings);
+  }
+
+  @Get('retention/history')
+  async getRetentionHistory(@Query('limit') limit?: string) {
+    const limitNum = limit ? parseInt(limit, 10) : 20;
+    return this.settingsService.getRetentionHistory(limitNum);
+  }
 
   // ============ General Settings ============
 
