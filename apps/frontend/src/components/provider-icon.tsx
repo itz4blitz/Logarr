@@ -608,7 +608,7 @@ export const providerMeta: Record<string, { name: string; color: string; bgColor
   openai: { name: 'OpenAI', color: '#10A37F', bgColor: 'bg-emerald-500/10' },
   anthropic: { name: 'Anthropic', color: '#D4A574', bgColor: 'bg-orange-500/10' },
   google: { name: 'Google AI', color: '#4285F4', bgColor: 'bg-blue-500/10' },
-  ollama: { name: 'Ollama', color: '#7C3AED', bgColor: 'bg-violet-500/10' },
+  ollama: { name: 'Ollama', color: '#FFFFFF', bgColor: 'bg-gray-500/10' },
   lmstudio: { name: 'LM Studio', color: '#635BE1', bgColor: 'bg-violet-500/10' },
   docker: { name: 'Docker', color: '#2496ED', bgColor: 'bg-blue-500/10' },
   system: { name: 'System', color: '#6366F1', bgColor: 'bg-indigo-500/10' },

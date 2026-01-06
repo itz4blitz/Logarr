@@ -506,4 +506,51 @@ describe('AiProviderService', () => {
       expect(models.some((m) => m.id.includes('claude'))).toBe(true);
     });
   });
+
+  describe('fetchModelsForSetting', () => {
+    it('should throw NotFoundException for non-existent setting', async () => {
+      configureMockDb(mockDb, { select: [] });
+
+      await expect(service.fetchModelsForSetting('non-existent-id')).rejects.toThrow(
+        NotFoundException
+      );
+    });
+
+    it('should fetch models using stored API key', async () => {
+      const mockSetting = {
+        id: 'provider-1',
+        provider: 'anthropic',
+        name: 'Test Provider',
+        apiKey: 'test-key',
+        model: 'claude-3-opus',
+        maxTokens: 1000,
+        temperature: '0.7',
+        baseUrl: null,
+        isDefault: true,
+        isEnabled: true,
+        lastTestedAt: null,
+        lastTestResult: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // First call returns the setting, second call returns the API key
+      let callCount = 0;
+      mockDb.select.mockImplementation(() => ({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockImplementation(() => {
+              callCount++;
+              return Promise.resolve([mockSetting]);
+            }),
+          }),
+        }),
+      }));
+
+      const models = await service.fetchModelsForSetting('provider-1');
+
+      expect(models).toBeInstanceOf(Array);
+      expect(models.some((m) => m.id.includes('claude'))).toBe(true);
+    });
+  });
 });

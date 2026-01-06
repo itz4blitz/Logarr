@@ -196,27 +196,50 @@ class OpenAiStrategy implements AiProviderStrategy {
 
     const data = (await response.json()) as OpenAiModelsResponse;
 
-    // Filter for chat models only and sort by creation date (newest first)
+    // Filter for base OpenAI chat models only (exclude fine-tuned, custom, and non-chat models)
     const chatModels = (data.data ?? [])
       .filter((m) => {
         const id = m.id.toLowerCase();
-        // Include GPT models that support chat
-        return (
-          (id.includes('gpt-4') || id.includes('gpt-3.5')) &&
-          !id.includes('instruct') &&
-          !id.includes('vision') && // Vision is deprecated, use gpt-4o
-          !id.includes('0125') && // Skip old dated versions
-          !id.includes('0613') &&
-          !id.includes('1106')
-        );
+        // Exclude fine-tuned models (they start with ft:)
+        if (id.startsWith('ft:')) return false;
+        // Exclude models owned by user organizations (fine-tuned/custom)
+        const ownedBy = m.owned_by ?? '';
+        if (ownedBy !== '' && !['openai', 'system', 'openai-internal'].includes(ownedBy)) return false;
+        // Exclude non-chat model types
+        if (
+          id.includes('instruct') ||
+          id.includes('vision') || // Vision is deprecated, use gpt-4o
+          id.includes('realtime') || // Skip realtime models
+          id.includes('audio') || // Skip audio-specific models (TTS, transcription)
+          id.includes('tts') || // Text-to-speech models
+          id.includes('whisper') || // Speech recognition
+          id.includes('embedding') || // Embedding models
+          id.includes('davinci') || // Legacy completion models
+          id.includes('babbage') || // Legacy models
+          id.includes('curie') || // Legacy models
+          id.includes('ada') || // Legacy models (except embeddings already filtered)
+          id.includes('dall-e') || // Image generation
+          id.includes('moderation') // Content moderation
+        ) {
+          return false;
+        }
+        // Include only standard GPT chat models
+        return id.includes('gpt-4') || id.includes('gpt-3.5') || id.includes('o1') || id.includes('o3');
       })
       .sort((a, b) => (b.created ?? 0) - (a.created ?? 0))
-      .slice(0, 10); // Limit to top 10 models
+      .slice(0, 15); // Limit to top 15 models
 
     return chatModels.map((m) => {
       const id = m.id;
       let contextWindow = 4096;
-      if (id.includes('gpt-4o') || id.includes('gpt-4-turbo')) contextWindow = 128000;
+      // o1 and o3 reasoning models (200k context)
+      if (id.includes('o1') || id.includes('o3')) contextWindow = 200000;
+      // GPT-4.1 series (1M context)
+      else if (id.includes('gpt-4.1')) contextWindow = 1047576;
+      // GPT-4.5 preview (128k context)
+      else if (id.includes('gpt-4.5')) contextWindow = 128000;
+      // GPT-4o and GPT-4 turbo (128k context)
+      else if (id.includes('gpt-4o') || id.includes('gpt-4-turbo')) contextWindow = 128000;
       else if (id.includes('gpt-4-32k')) contextWindow = 32768;
       else if (id.includes('gpt-4')) contextWindow = 8192;
       else if (id.includes('gpt-3.5-turbo-16k')) contextWindow = 16384;
@@ -748,6 +771,28 @@ export class AiProviderService {
       // Return fallback models on error
       return FALLBACK_MODELS[provider] ?? [];
     }
+  }
+
+  /**
+   * Fetch models for an existing provider setting (uses stored API key)
+   */
+  async fetchModelsForSetting(id: string): Promise<AiModelInfo[]> {
+    const setting = await this.getProviderSettingById(id);
+
+    // Get the actual API key from DB
+    const dbResult = await this.db
+      .select({ apiKey: schema.aiProviderSettings.apiKey })
+      .from(schema.aiProviderSettings)
+      .where(eq(schema.aiProviderSettings.id, id))
+      .limit(1);
+
+    const apiKey = dbResult[0]?.apiKey ?? '';
+
+    return this.fetchProviderModels(
+      setting.provider as AiProviderType,
+      apiKey,
+      setting.baseUrl ?? undefined
+    );
   }
 
   /**

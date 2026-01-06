@@ -14,6 +14,7 @@ vi.mock('@/hooks/use-api', () => ({
   useTestAiProvider: vi.fn(),
   useTestAiProviderSetting: vi.fn(),
   useFetchAiProviderModels: vi.fn(),
+  useFetchAiProviderModelsForSetting: vi.fn(),
 }));
 
 // Mock sonner toast
@@ -33,6 +34,7 @@ import {
   useTestAiProvider,
   useTestAiProviderSetting,
   useFetchAiProviderModels,
+  useFetchAiProviderModelsForSetting,
 } from '@/hooks/use-api';
 import { toast } from 'sonner';
 
@@ -151,6 +153,11 @@ describe('AiProvidersPage', () => {
     });
 
     (useFetchAiProviderModels as ReturnType<typeof vi.fn>).mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue([]),
+      isPending: false,
+    });
+
+    (useFetchAiProviderModelsForSetting as ReturnType<typeof vi.fn>).mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue([]),
       isPending: false,
     });
