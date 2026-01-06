@@ -13,17 +13,36 @@ const sizeClasses = {
   lg: 'h-8 w-8',
 };
 
-// Official Jellyfin logo
+// Official Jellyfin logo - using useId for unique gradient IDs
+import { useId } from 'react';
+
 function JellyfinIcon({ className }: { className?: string }) {
+  const id = useId();
+  const gradientIdA = `jellyfin-gradient-a-${id}`;
+  const gradientIdB = `jellyfin-gradient-b-${id}`;
+
   return (
     <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" className={className}>
       <defs>
         <linearGradient
-          id="jellyfin-gradient"
-          x1="110.25"
-          y1="213.3"
-          x2="496.14"
-          y2="436.09"
+          id={gradientIdA}
+          x1="97.508"
+          y1="308.135"
+          x2="522.069"
+          y2="63.019"
+          gradientTransform="matrix(1 0 0 -1 0 514)"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop offset="0" stopColor="#AA5CC3" />
+          <stop offset="1" stopColor="#00A4DC" />
+        </linearGradient>
+        <linearGradient
+          id={gradientIdB}
+          x1="94.193"
+          y1="302.394"
+          x2="518.754"
+          y2="57.278"
+          gradientTransform="matrix(1 0 0 -1 0 514)"
           gradientUnits="userSpaceOnUse"
         >
           <stop offset="0" stopColor="#AA5CC3" />
@@ -31,12 +50,12 @@ function JellyfinIcon({ className }: { className?: string }) {
         </linearGradient>
       </defs>
       <path
-        d="M256,201.6c-20.4,0-86.2,119.3-76.2,139.4s142.5,19.9,152.4,0S276.5,201.6,256,201.6z"
-        fill="url(#jellyfin-gradient)"
+        d="M256 196.2c-22.4 0-94.8 131.3-83.8 153.4s156.8 21.9 167.7 0-61.3-153.4-83.9-153.4"
+        fill={`url(#${gradientIdA})`}
       />
       <path
-        d="M256,23.3c-61.6,0-259.8,359.4-229.6,420.1s429.3,60,459.2,0S317.6,23.3,256,23.3z M406.5,390.8c-19.6,39.3-281.1,39.8-300.9,0s110.1-275.3,150.4-275.3S426.1,351.4,406.5,390.8z"
-        fill="url(#jellyfin-gradient)"
+        d="M256 0C188.3 0-29.8 395.4 3.4 462.2s472.3 66 505.2 0S323.8 0 256 0m165.6 404.3c-21.6 43.2-309.3 43.8-331.1 0S211.7 101.4 256 101.4 443.2 361 421.6 404.3"
+        fill={`url(#${gradientIdB})`}
       />
     </svg>
   );
@@ -264,6 +283,212 @@ function LMStudioIcon({ className }: { className?: string }) {
   );
 }
 
+// Official SQLite logo - cylinder/disk stack
+function SQLiteIcon({ className }: { className?: string }) {
+  const id = useId();
+  const gradientIds = {
+    a: `sqlite-a-${id}`,
+    b: `sqlite-b-${id}`,
+    c: `sqlite-c-${id}`,
+    d: `sqlite-d-${id}`,
+    e: `sqlite-e-${id}`,
+    f: `sqlite-f-${id}`,
+    g: `sqlite-g-${id}`,
+    h: `sqlite-h-${id}`,
+    i: `sqlite-i-${id}`,
+    j: `sqlite-j-${id}`,
+    k: `sqlite-k-${id}`,
+    l: `sqlite-l-${id}`,
+    m: `sqlite-m-${id}`,
+    n: `sqlite-n-${id}`,
+    o: `sqlite-o-${id}`,
+    p: `sqlite-p-${id}`,
+    q: `sqlite-q-${id}`,
+    r: `sqlite-r-${id}`,
+  };
+
+  return (
+    <svg
+      viewBox="8 10.52 240 237.48"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      <defs>
+        <linearGradient id={gradientIds.a}>
+          <stop offset="0" style={{ stopColor: '#ababab', stopOpacity: 1 }} />
+          <stop offset=".194" style={{ stopColor: '#f6f6f6', stopOpacity: 1 }} />
+          <stop offset=".397" style={{ stopColor: '#b0b0b0', stopOpacity: 1 }} />
+          <stop offset="1" style={{ stopColor: '#585858', stopOpacity: 1 }} />
+        </linearGradient>
+        <linearGradient id={gradientIds.b}>
+          <stop offset="0" style={{ stopColor: '#a2a2a2', stopOpacity: 1 }} />
+          <stop offset="1" style={{ stopColor: '#4e4e4e', stopOpacity: 1 }} />
+        </linearGradient>
+        <linearGradient id={gradientIds.c}>
+          <stop offset="0" style={{ stopColor: '#fff', stopOpacity: 1 }} />
+          <stop offset="1" style={{ stopColor: '#fff', stopOpacity: 0 }} />
+        </linearGradient>
+        <linearGradient
+          xlinkHref={`#${gradientIds.a}`}
+          id={gradientIds.j}
+          x1="10.116"
+          x2="38.013"
+          y1="17.512"
+          y2="17.512"
+          gradientTransform="translate(0 -1.714)"
+          gradientUnits="userSpaceOnUse"
+        />
+        <linearGradient
+          xlinkHref={`#${gradientIds.b}`}
+          id={gradientIds.k}
+          x1="24"
+          x2="24"
+          y1="15.149"
+          y2="13.285"
+          gradientUnits="userSpaceOnUse"
+        />
+        <linearGradient
+          xlinkHref={`#${gradientIds.c}`}
+          id={gradientIds.l}
+          x1="16.071"
+          x2="16.19"
+          y1="19.5"
+          y2="24.04"
+          gradientTransform="translate(-.143 .929)"
+          gradientUnits="userSpaceOnUse"
+        />
+        <linearGradient
+          xlinkHref={`#${gradientIds.a}`}
+          id={gradientIds.m}
+          x1="10.116"
+          x2="38.013"
+          y1="17.512"
+          y2="17.512"
+          gradientTransform="translate(0 -1.714)"
+          gradientUnits="userSpaceOnUse"
+        />
+        <linearGradient
+          xlinkHref={`#${gradientIds.b}`}
+          id={gradientIds.n}
+          x1="24"
+          x2="24"
+          y1="15.149"
+          y2="13.285"
+          gradientUnits="userSpaceOnUse"
+        />
+        <linearGradient
+          xlinkHref={`#${gradientIds.c}`}
+          id={gradientIds.o}
+          x1="16.071"
+          x2="16.19"
+          y1="19.5"
+          y2="24.04"
+          gradientTransform="translate(-.143 .929)"
+          gradientUnits="userSpaceOnUse"
+        />
+        <linearGradient
+          xlinkHref={`#${gradientIds.a}`}
+          id={gradientIds.p}
+          x1="10.116"
+          x2="38.013"
+          y1="17.512"
+          y2="17.512"
+          gradientTransform="translate(0 -1.714)"
+          gradientUnits="userSpaceOnUse"
+        />
+        <linearGradient
+          xlinkHref={`#${gradientIds.b}`}
+          id={gradientIds.q}
+          x1="24"
+          x2="24"
+          y1="15.149"
+          y2="13.285"
+          gradientUnits="userSpaceOnUse"
+        />
+        <linearGradient
+          xlinkHref={`#${gradientIds.c}`}
+          id={gradientIds.r}
+          x1="16.071"
+          x2="16.19"
+          y1="19.5"
+          y2="24.04"
+          gradientTransform="translate(-.143 .929)"
+          gradientUnits="userSpaceOnUse"
+        />
+      </defs>
+      <g transform="matrix(8.59688 0 0 6.30047 -78.796 85.965)">
+        <path
+          d="M23.941 8.037c-7.625 0-13.825 2.13-13.825 5.475v6.558c0 3.345 6.2 5.648 13.825 5.648s14.072-2.303 14.072-5.648v-6.558c0-3.345-6.447-5.475-14.072-5.475"
+          style={{ fill: `url(#${gradientIds.j})`, fillOpacity: 1, stroke: 'none', strokeWidth: 0.769 }}
+        />
+        <ellipse
+          cx="24"
+          cy="14.071"
+          rx="12.857"
+          ry="5.5"
+          style={{
+            fill: '#c3c3c3',
+            fillOpacity: 1,
+            stroke: `url(#${gradientIds.k})`,
+            strokeWidth: 1.00493,
+          }}
+          transform="matrix(1.0373 0 0 .95462 -.895 -.076)"
+        />
+        <path
+          d="m13.643 18 .256 5.876 4.672 1.084-.142-5.603s2.071-.04 5.428-.254c-5.216-.233-11.183-2.725-13.214-4.18 1.417 2.093 3 3.077 3 3.077"
+          style={{ opacity: 0.493671, fill: `url(#${gradientIds.l})`, fillOpacity: 1, stroke: 'none', strokeWidth: 1 }}
+        />
+      </g>
+      <g transform="matrix(8.59688 0 0 6.30047 -78.967 22.701)">
+        <path
+          d="M23.941 8.036c-7.625 0-13.825 2.131-13.825 5.476v6.558c0 3.345 6.2 5.648 13.825 5.648s14.072-2.303 14.072-5.648v-6.558c0-3.345-6.447-5.476-14.072-5.476"
+          style={{ fill: `url(#${gradientIds.m})`, fillOpacity: 1, stroke: 'none', strokeWidth: 0.769 }}
+        />
+        <ellipse
+          cx="24"
+          cy="14.071"
+          rx="12.857"
+          ry="5.5"
+          style={{
+            fill: '#c3c3c3',
+            fillOpacity: 1,
+            stroke: `url(#${gradientIds.n})`,
+            strokeWidth: 1.00493,
+          }}
+          transform="matrix(1.0373 0 0 .95462 -.895 -.076)"
+        />
+        <path
+          d="m13.643 18 .256 5.876 4.672 1.084-.142-5.603s2.071-.04 5.428-.254c-5.216-.233-11.183-2.725-13.214-4.179 1.417 2.092 3 3.076 3 3.076"
+          style={{ opacity: 0.493671, fill: `url(#${gradientIds.o})`, fillOpacity: 1, stroke: 'none', strokeWidth: 1 }}
+        />
+      </g>
+      <g transform="matrix(8.59688 0 0 6.30047 -78.956 -40.054)">
+        <path
+          d="M23.941 8.037c-7.625 0-13.825 2.13-13.825 5.475v6.558c0 3.345 6.2 5.648 13.825 5.648s14.072-2.303 14.072-5.648v-6.558c0-3.345-6.447-5.475-14.072-5.475"
+          style={{ fill: `url(#${gradientIds.p})`, fillOpacity: 1, stroke: 'none', strokeWidth: 0.769 }}
+        />
+        <ellipse
+          cx="24"
+          cy="14.071"
+          rx="12.857"
+          ry="5.5"
+          style={{
+            fill: '#c3c3c3',
+            fillOpacity: 1,
+            stroke: `url(#${gradientIds.q})`,
+            strokeWidth: 1.00493,
+          }}
+          transform="matrix(1.0373 0 0 .95462 -.895 -.076)"
+        />
+        <path
+          d="m13.643 18 .256 5.876 4.672 1.084-.142-5.603s2.071-.04 5.428-.255c-5.216-.233-11.183-2.724-13.214-4.178 1.417 2.093 3 3.076 3 3.076"
+          style={{ opacity: 0.493671, fill: `url(#${gradientIds.r})`, fillOpacity: 1, stroke: 'none', strokeWidth: 1 }}
+        />
+      </g>
+    </svg>
+  );
+}
+
 // Official Plex logo from dashboard-icons
 function PlexIcon({ className }: { className?: string }) {
   return (
@@ -282,6 +507,33 @@ function EmbyIcon({ className }: { className?: string }) {
       alt="Emby"
       className={className}
     />
+  );
+}
+
+// Official Docker logo from dashboard-icons
+function DockerIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <path
+        fill="#2496ED"
+        d="M13.983 11.078h2.119a.19.19 0 0 0 .19-.192V9.297a.19.19 0 0 0-.19-.191h-2.119a.19.19 0 0 0-.19.191v1.589c0 .106.085.192.19.192m-2.954-5.43h2.118a.19.19 0 0 0 .19-.191V3.868a.19.19 0 0 0-.19-.191h-2.118a.19.19 0 0 0-.19.191v1.589c0 .106.085.191.19.191m0 2.715h2.118a.19.19 0 0 0 .19-.192V6.582a.19.19 0 0 0-.19-.19h-2.118a.19.19 0 0 0-.19.19v1.589c0 .106.085.192.19.192m-2.93 0h2.12a.19.19 0 0 0 .19-.192V6.582a.19.19 0 0 0-.19-.19H8.1a.19.19 0 0 0-.19.19v1.589c0 .106.085.192.19.192m-2.93 0h2.12a.19.19 0 0 0 .19-.192V6.582a.19.19 0 0 0-.19-.19h-2.12a.19.19 0 0 0-.19.19v1.589c0 .106.085.192.19.192m5.86 2.715h2.12a.19.19 0 0 0 .19-.192V9.297a.19.19 0 0 0-.19-.191h-2.12a.19.19 0 0 0-.19.191v1.589c0 .106.085.192.19.192m-2.93 0h2.12a.19.19 0 0 0 .19-.192V9.297a.19.19 0 0 0-.19-.191h-2.12a.19.19 0 0 0-.19.191v1.589c0 .106.085.192.19.192m-2.93 0h2.12a.19.19 0 0 0 .19-.192V9.297a.19.19 0 0 0-.19-.191h-2.12a.19.19 0 0 0-.19.191v1.589c0 .106.085.192.19.192m-2.93 0h2.12a.19.19 0 0 0 .19-.192V9.297a.19.19 0 0 0-.19-.191h-2.12a.19.19 0 0 0-.19.191v1.589c0 .106.085.192.19.192m15.825 1.578c-.473-.267-1.084-.334-1.621-.16-.166-.832-.64-1.546-1.293-1.98l-.26-.17-.185.253c-.36.492-.542 1.163-.49 1.805.028.32.11.64.256.93-.405.235-.83.396-1.24.475a5.4 5.4 0 0 1-1.49.077H.19a.19.19 0 0 0-.19.191c-.017 1.281.202 2.56.647 3.752.508 1.257 1.262 2.18 2.244 2.744 1.107.635 2.904.997 4.93.997a12.9 12.9 0 0 0 2.37-.205c1.123-.202 2.21-.59 3.223-1.145a8.8 8.8 0 0 0 2.166-1.67c1.001-1.036 1.6-2.225 2.056-3.32h.18c1.088 0 1.758-.432 2.127-.792.254-.232.445-.514.567-.83l.08-.242z"
+      />
+    </svg>
+  );
+}
+
+// System/Server icon for system-level issues
+function SystemIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className={className} fill="none">
+      <path
+        stroke="#6366F1"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6Zm0 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4ZM8 8h.01M8 18h.01"
+      />
+    </svg>
   );
 }
 
@@ -307,11 +559,14 @@ const providerIcons: Record<string, React.ComponentType<{ className?: string }>>
   prowlarr: ProwlarrIcon,
   lidarr: LidarrIcon,
   readarr: ReadarrIcon,
+  sqlite: SQLiteIcon,
   openai: OpenAIIcon,
   anthropic: AnthropicIcon,
   google: GoogleAIIcon,
   ollama: OllamaIcon,
   lmstudio: LMStudioIcon,
+  docker: DockerIcon,
+  system: SystemIcon,
 };
 
 export function ProviderIcon({ providerId, className, size = 'md' }: ProviderIconProps) {
@@ -330,11 +585,14 @@ export const providerMeta: Record<string, { name: string; color: string; bgColor
   prowlarr: { name: 'Prowlarr', color: '#E66001', bgColor: 'bg-orange-500/10' },
   lidarr: { name: 'Lidarr', color: '#00C853', bgColor: 'bg-green-500/10' },
   readarr: { name: 'Readarr', color: '#8B0000', bgColor: 'bg-red-500/10' },
+  sqlite: { name: 'SQLite', color: '#003B57', bgColor: 'bg-slate-500/10' },
   openai: { name: 'OpenAI', color: '#10A37F', bgColor: 'bg-emerald-500/10' },
   anthropic: { name: 'Anthropic', color: '#D4A574', bgColor: 'bg-orange-500/10' },
   google: { name: 'Google AI', color: '#4285F4', bgColor: 'bg-blue-500/10' },
   ollama: { name: 'Ollama', color: '#FFFFFF', bgColor: 'bg-gray-500/10' },
   lmstudio: { name: 'LM Studio', color: '#6366F1', bgColor: 'bg-indigo-500/10' },
+  docker: { name: 'Docker', color: '#2496ED', bgColor: 'bg-blue-500/10' },
+  system: { name: 'System', color: '#6366F1', bgColor: 'bg-indigo-500/10' },
 };
 
 export function getProviderMeta(providerId: string) {

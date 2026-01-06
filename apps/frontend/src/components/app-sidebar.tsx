@@ -207,7 +207,7 @@ export function AppSidebar() {
         )}
       >
         <Link href="/" className="flex items-center gap-2">
-          <ScrollText className="text-primary h-6 w-6 shrink-0" />
+          <img src="/icon.svg" alt="Logarr" className="h-6 w-6 shrink-0" />
           {!isCollapsed && <span className="text-xl font-semibold">Logarr</span>}
         </Link>
       </SidebarHeader>

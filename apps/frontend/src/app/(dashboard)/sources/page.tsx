@@ -214,26 +214,26 @@ function ServersPageContent() {
 
   return (
     <Card ref={containerRef} className="flex flex-1 flex-col overflow-hidden">
-      <CardHeader className="flex shrink-0 flex-row items-center justify-between space-y-0">
+      <CardHeader className="flex shrink-0 flex-row items-center justify-between space-y-0 px-4 py-3 sm:px-6 sm:py-4">
         <div>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
             Connected Sources
             {testAllConnections.isPending && (
               <span className="text-muted-foreground flex items-center gap-1.5 text-xs font-normal">
                 <Loader2 className="h-3 w-3 animate-spin" />
-                Checking status...
+                <span className="hidden sm:inline">Checking status...</span>
               </span>
             )}
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="hidden sm:block">
             View and manage your media server and service connections
           </CardDescription>
         </div>
         <AddSourceModal
           trigger={
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Source
+            <Button size="sm" className="sm:size-default">
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Add Source</span>
             </Button>
           }
         />
@@ -247,7 +247,114 @@ function ServersPageContent() {
           </div>
         ) : servers && servers.length > 0 ? (
           <div className="flex flex-1 flex-col overflow-hidden">
-            <div className="flex-1 overflow-hidden">
+            {/* Mobile Card View */}
+            <div className="flex-1 space-y-3 overflow-y-auto p-4 sm:hidden">
+              {(servers || []).map((server) => {
+                const integration = getIntegrationById(server.providerId);
+                return (
+                  <div
+                    key={server.id}
+                    className="bg-muted/30 rounded-lg border border-white/10 p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        {integration ? (
+                          <div
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+                            style={{
+                              backgroundColor: `${integration.color}15`,
+                            }}
+                          >
+                            <IntegrationIcon integration={integration} size="md" />
+                          </div>
+                        ) : (
+                          <div className="bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
+                            <Server className="text-muted-foreground h-5 w-5" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="font-medium">{server.name}</div>
+                          <a
+                            href={server.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
+                          >
+                            {new URL(server.url).host}
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        </div>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Actions</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => handleTestConnection(server)}
+                            disabled={testingServerId === server.id}
+                          >
+                            {testingServerId === server.id ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <RefreshCw className="mr-2 h-4 w-4" />
+                            )}
+                            Test Connection
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleOpenDiagnostics(server)}>
+                            <Bug className="mr-2 h-4 w-4" />
+                            Diagnostics
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setServerToEdit(server);
+                              setEditDialogOpen(true);
+                            }}
+                          >
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => {
+                              setServerToDelete(server);
+                              setDeleteDialogOpen(true);
+                            }}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between gap-2">
+                      <ConnectionStatus
+                        apiConnected={server.isConnected}
+                        fileIngestionEnabled={server.fileIngestionEnabled}
+                        fileIngestionConnected={server.fileIngestionConnected}
+                        lastSeen={server.lastSeen}
+                        lastFileSync={server.lastFileSync}
+                        variant="badge"
+                      />
+                      <span className="text-muted-foreground text-xs">
+                        {server.lastSeen
+                          ? formatDistanceToNow(new Date(server.lastSeen), {
+                              addSuffix: true,
+                            })
+                          : 'Never seen'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden flex-1 overflow-hidden sm:block">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -394,20 +501,23 @@ function ServersPageContent() {
               </Table>
             </div>
 
+            {/* Pagination - only shown on desktop when needed */}
             {totalPages > 1 && (
-              <TablePagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalItems={totalItems}
-                startIndex={startIndex}
-                endIndex={endIndex}
-                hasNextPage={hasNextPage}
-                hasPrevPage={hasPrevPage}
-                onNextPage={nextPage}
-                onPrevPage={prevPage}
-                onFirstPage={firstPage}
-                onLastPage={lastPage}
-              />
+              <div className="hidden sm:block">
+                <TablePagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={totalItems}
+                  startIndex={startIndex}
+                  endIndex={endIndex}
+                  hasNextPage={hasNextPage}
+                  hasPrevPage={hasPrevPage}
+                  onNextPage={nextPage}
+                  onPrevPage={prevPage}
+                  onFirstPage={firstPage}
+                  onLastPage={lastPage}
+                />
+              </div>
             )}
           </div>
         ) : (

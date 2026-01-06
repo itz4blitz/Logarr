@@ -32,7 +32,7 @@ export default function DashboardPage() {
   const loading = isLoading || !data;
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+    <div className="flex min-h-0 flex-col gap-4 lg:h-full lg:overflow-hidden">
       {/* Health Status Bar */}
       <HealthBar
         health={
@@ -89,8 +89,8 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Main Content Grid - fills remaining height */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[1fr_1fr] gap-4 lg:grid-cols-3">
+      {/* Main Content Grid - fills remaining height on desktop, scrollable on mobile */}
+      <div className="grid min-h-0 flex-1 grid-cols-1 auto-rows-[minmax(250px,1fr)] gap-4 lg:grid-cols-3 lg:grid-rows-[1fr_1fr] lg:auto-rows-auto">
         {/* Activity Chart - spans 2 columns */}
         <div className="min-h-0 lg:col-span-2">
           <ActivityChart data={data?.activityChart || []} loading={loading} />

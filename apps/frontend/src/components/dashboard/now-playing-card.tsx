@@ -105,10 +105,10 @@ export function NowPlayingCard({ sessions, servers, loading }: NowPlayingCardPro
 
   if (loading) {
     return (
-      <div ref={containerRef} className="bg-card flex h-full flex-col rounded-xl border p-3">
+      <div ref={containerRef} className="bg-card flex h-full flex-col overflow-hidden rounded-xl border p-3">
         <div className="mb-2 flex items-center justify-between">
-          <div className="h-4 w-24 animate-pulse rounded bg-white/5" />
-          <div className="h-3 w-16 animate-pulse rounded bg-white/5" />
+          <div className="h-4 w-24 animate-pulse rounded bg-accent" />
+          <div className="h-3 w-16 animate-pulse rounded bg-accent" />
         </div>
         <div className="flex-1 space-y-1">
           {Array.from({ length: pageSize }).map((_, i) => (
@@ -120,7 +120,7 @@ export function NowPlayingCard({ sessions, servers, loading }: NowPlayingCardPro
   }
 
   return (
-    <div ref={containerRef} className="bg-card flex h-full flex-col rounded-xl border p-3">
+    <div ref={containerRef} className="bg-card flex h-full flex-col overflow-hidden rounded-xl border p-3">
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-sm font-semibold tracking-tight text-zinc-200">Now Playing</h3>
         <div className="flex items-center gap-2">

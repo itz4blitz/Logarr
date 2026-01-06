@@ -101,8 +101,8 @@ export function MetricCard({
     >
       {loading ? (
         <div className="space-y-3">
-          <Skeleton className="h-3 w-20 bg-white/5" />
-          <Skeleton className="h-8 w-16 bg-white/5" />
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-8 w-16" />
         </div>
       ) : (
         <>
