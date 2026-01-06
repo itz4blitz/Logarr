@@ -102,7 +102,8 @@ export class EmbyProvider implements MediaServerProvider {
 
     // Default Emby log paths for different platforms
     return Promise.resolve([
-      '/config/logs', // Docker
+      '/emby-logs', // Docker with Logarr (mount via EMBY_LOGS_PATH env var)
+      '/config/logs', // Docker (Emby container)
       '/var/lib/emby/logs', // Linux
       '/var/lib/emby-server/logs', // Linux alternative
       'C:\\ProgramData\\Emby-Server\\logs', // Windows

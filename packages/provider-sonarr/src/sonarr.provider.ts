@@ -98,6 +98,24 @@ export class SonarrProvider extends ArrBaseProvider {
   }
 
   /**
+   * Override log paths with Sonarr-specific defaults
+   */
+  override getLogPaths(): Promise<readonly string[]> {
+    if (this.config?.logPath !== undefined) {
+      return Promise.resolve([this.config.logPath]);
+    }
+
+    // Default Sonarr log paths for different platforms
+    return Promise.resolve([
+      '/sonarr-logs', // Docker with Logarr (mount via SONARR_LOGS_PATH env var)
+      '/config/logs', // Docker (Sonarr container)
+      '~/.config/Sonarr/logs', // Linux
+      '/var/lib/sonarr/logs', // Linux alternative
+      'C:\\ProgramData\\Sonarr\\logs', // Windows
+    ]);
+  }
+
+  /**
    * Override log file config with Sonarr-specific paths
    */
   override getLogFileConfig(): LogFileConfig {

@@ -95,6 +95,24 @@ export class RadarrProvider extends ArrBaseProvider {
   }
 
   /**
+   * Override log paths with Radarr-specific defaults
+   */
+  override getLogPaths(): Promise<readonly string[]> {
+    if (this.config?.logPath !== undefined) {
+      return Promise.resolve([this.config.logPath]);
+    }
+
+    // Default Radarr log paths for different platforms
+    return Promise.resolve([
+      '/radarr-logs', // Docker with Logarr (mount via RADARR_LOGS_PATH env var)
+      '/config/logs', // Docker (Radarr container)
+      '~/.config/Radarr/logs', // Linux
+      '/var/lib/radarr/logs', // Linux alternative
+      'C:\\ProgramData\\Radarr\\logs', // Windows
+    ]);
+  }
+
+  /**
    * Override log file config with Radarr-specific paths
    */
   override getLogFileConfig(): LogFileConfig {

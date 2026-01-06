@@ -103,7 +103,8 @@ export class PlexProvider implements MediaServerProvider {
 
     // Default Plex log paths for different platforms
     return Promise.resolve([
-      '/config/Library/Application Support/Plex Media Server/Logs', // Docker
+      '/plex-logs', // Docker with Logarr (mount via PLEX_LOGS_PATH env var)
+      '/config/Library/Application Support/Plex Media Server/Logs', // Docker (Plex container)
       '/var/lib/plexmediaserver/Library/Application Support/Plex Media Server/Logs', // Linux
       'C:\\Users\\*\\AppData\\Local\\Plex Media Server\\Logs', // Windows
       '~/Library/Application Support/Plex Media Server/Logs', // macOS

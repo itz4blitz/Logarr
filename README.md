@@ -220,6 +220,50 @@ Issues and statistics are preserved even after logs are deleted. The Data Manage
 2. Select server type and enter URL + API key
 3. Test connection and save
 
+### File-Based Log Ingestion
+
+For deeper log analysis, Logarr can read log files directly from your media servers. This captures detailed application logs that APIs don't expose.
+
+#### Setup (Docker)
+
+1. **Set log paths in `.env`** — Point to your host machine's log directories:
+
+```bash
+# Media Servers
+PLEX_LOGS_PATH=/path/to/plex/Library/Application Support/Plex Media Server/Logs
+JELLYFIN_LOGS_PATH=/path/to/jellyfin/config/log
+EMBY_LOGS_PATH=/path/to/emby/config/logs
+
+# *arr Apps
+SONARR_LOGS_PATH=/path/to/sonarr/config/logs
+RADARR_LOGS_PATH=/path/to/radarr/config/logs
+PROWLARR_LOGS_PATH=/path/to/prowlarr/config/logs
+```
+
+1. **Restart Logarr** — The docker-compose mounts these paths automatically.
+
+1. **Configure in UI** — Go to **Sources** → Edit your server → Enable file ingestion with the container path:
+
+| Server   | Container Path    |
+| -------- | ----------------- |
+| Plex     | `/plex-logs`      |
+| Jellyfin | `/jellyfin-logs`  |
+| Emby     | `/emby-logs`      |
+| Sonarr   | `/sonarr-logs`    |
+| Radarr   | `/radarr-logs`    |
+| Prowlarr | `/prowlarr-logs`  |
+
+#### Common Log Locations
+
+| Server   | Docker                        | Linux                              | Windows                                           |
+| -------- | ----------------------------- | ---------------------------------- | ------------------------------------------------- |
+| Plex     | `/config/Library/.../Logs`    | `/var/lib/plexmediaserver/.../Logs`| `%LOCALAPPDATA%\Plex Media Server\Logs`           |
+| Jellyfin | `/config/log`                 | `/var/lib/jellyfin/log`            | `C:\ProgramData\Jellyfin\Server\log`              |
+| Emby     | `/config/logs`                | `/var/lib/emby/logs`               | `C:\ProgramData\Emby-Server\logs`                 |
+| Sonarr   | `/config/logs`                | `~/.config/Sonarr/logs`            | `C:\ProgramData\Sonarr\logs`                      |
+| Radarr   | `/config/logs`                | `~/.config/Radarr/logs`            | `C:\ProgramData\Radarr\logs`                      |
+| Prowlarr | `/config/logs`                | `~/.config/Prowlarr/logs`          | `C:\ProgramData\Prowlarr\logs`                    |
+
 ---
 
 ## API Reference
@@ -313,16 +357,7 @@ pnpm test:e2e          # Run Playwright E2E tests
 
 ## Roadmap
 
-This project is under active development and we're looking for contributors to help shape its direction.
-
-Some ideas on the table:
-
-- Additional providers (Kodi, Lidarr, Readarr)
-- Alerting integrations (Slack, Discord, email)
-- ~~Log retention policies~~ ✅ Implemented
-- Custom dashboards
-
-Have other ideas? [Open an issue](https://github.com/itz4blitz/logarr/issues) or jump into a discussion.
+This project is under active development. Check out our [GitHub Discussions](https://github.com/itz4blitz/logarr/discussions) for feature requests, ideas, and community conversations.
 
 ---
 

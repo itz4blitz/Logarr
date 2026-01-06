@@ -49,6 +49,15 @@ services:
       REDIS_URL: redis://redis:6379
       BACKEND_PORT: 4000
       CORS_ORIGIN: http://localhost:3001
+    volumes:
+      # Media server log mounts (optional - set paths in .env for file-based log ingestion)
+      # In the Sources UI, configure paths as: /plex-logs, /jellyfin-logs, /emby-logs, etc.
+      - ${PLEX_LOGS_PATH:-/dev/null}:/plex-logs:ro
+      - ${JELLYFIN_LOGS_PATH:-/dev/null}:/jellyfin-logs:ro
+      - ${EMBY_LOGS_PATH:-/dev/null}:/emby-logs:ro
+      - ${SONARR_LOGS_PATH:-/dev/null}:/sonarr-logs:ro
+      - ${RADARR_LOGS_PATH:-/dev/null}:/radarr-logs:ro
+      - ${PROWLARR_LOGS_PATH:-/dev/null}:/prowlarr-logs:ro
     healthcheck:
       test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:4000/api']
       interval: 30s

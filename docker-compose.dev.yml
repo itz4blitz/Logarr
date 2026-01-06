@@ -63,6 +63,7 @@ services:
       - ./packages/provider-radarr/src:/app/packages/provider-radarr/src
       - ./packages/provider-prowlarr/src:/app/packages/provider-prowlarr/src
       - ./packages/provider-plex/src:/app/packages/provider-plex/src
+      - ./packages/provider-emby/src:/app/packages/provider-emby/src
       - ./apps/backend/src:/app/apps/backend/src
       # Mount tsconfig files
       - ./tsconfig.json:/app/tsconfig.json
@@ -73,14 +74,19 @@ services:
       - ./packages/provider-radarr/tsconfig.json:/app/packages/provider-radarr/tsconfig.json
       - ./packages/provider-prowlarr/tsconfig.json:/app/packages/provider-prowlarr/tsconfig.json
       - ./packages/provider-plex/tsconfig.json:/app/packages/provider-plex/tsconfig.json
+      - ./packages/provider-emby/tsconfig.json:/app/packages/provider-emby/tsconfig.json
       - ./apps/backend/tsconfig.json:/app/apps/backend/tsconfig.json
       # Mount media server logs (optional - for file-based log ingestion)
-      # Set PLEX_LOGS_PATH and JELLYFIN_LOGS_PATH in .env to LOCAL paths
+      # Set *_LOGS_PATH vars in .env to LOCAL paths on your host machine
       # Note: Docker Desktop cannot mount network drives (Z:, mapped shares)
       # For network shares, run backend natively or use local paths
-      # In Sources UI, use container paths: /plex-logs and /jellyfin-logs
+      # In Sources UI, use container paths: /plex-logs, /jellyfin-logs, etc.
       - ${PLEX_LOGS_PATH:-./logs/plex}:/plex-logs:ro
       - ${JELLYFIN_LOGS_PATH:-./logs/jellyfin}:/jellyfin-logs:ro
+      - ${EMBY_LOGS_PATH:-./logs/emby}:/emby-logs:ro
+      - ${SONARR_LOGS_PATH:-./logs/sonarr}:/sonarr-logs:ro
+      - ${RADARR_LOGS_PATH:-./logs/radarr}:/radarr-logs:ro
+      - ${PROWLARR_LOGS_PATH:-./logs/prowlarr}:/prowlarr-logs:ro
     depends_on:
       db:
         condition: service_healthy

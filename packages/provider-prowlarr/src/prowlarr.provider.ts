@@ -91,6 +91,24 @@ export class ProwlarrProvider extends ArrBaseProvider {
   }
 
   /**
+   * Override log paths with Prowlarr-specific defaults
+   */
+  override getLogPaths(): Promise<readonly string[]> {
+    if (this.config?.logPath !== undefined) {
+      return Promise.resolve([this.config.logPath]);
+    }
+
+    // Default Prowlarr log paths for different platforms
+    return Promise.resolve([
+      '/prowlarr-logs', // Docker with Logarr (mount via PROWLARR_LOGS_PATH env var)
+      '/config/logs', // Docker (Prowlarr container)
+      '~/.config/Prowlarr/logs', // Linux
+      '/var/lib/prowlarr/logs', // Linux alternative
+      'C:\\ProgramData\\Prowlarr\\logs', // Windows
+    ]);
+  }
+
+  /**
    * Override log file config with Prowlarr-specific paths
    */
   override getLogFileConfig(): LogFileConfig {
