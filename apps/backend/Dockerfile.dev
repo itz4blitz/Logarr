@@ -11,7 +11,7 @@ COPY . .
 RUN pnpm install
 
 # Build packages first (core -> provider-arr -> provider-jellyfin, provider-sonarr, provider-radarr, provider-prowlarr, provider-plex)
-RUN pnpm build --filter @logarr/core --filter @logarr/provider-arr --filter @logarr/provider-jellyfin --filter @logarr/provider-sonarr --filter @logarr/provider-radarr --filter @logarr/provider-prowlarr --filter @logarr/provider-plex
+RUN pnpm build --filter @logarr/core --filter @logarr/provider-arr --filter @logarr/provider-jellyfin --filter @logarr/provider-sonarr --filter @logarr/provider-radarr --filter @logarr/provider-prowlarr --filter @logarr/provider-plex --filter @logarr/provider-emby
 
 EXPOSE 4002
 

@@ -86,7 +86,8 @@ export class JellyfinProvider implements MediaServerProvider {
 
     // Default Jellyfin log paths for different platforms
     return Promise.resolve([
-      '/config/log', // Docker
+      '/jellyfin-logs', // Docker with Logarr (mount via JELLYFIN_LOGS_PATH env var)
+      '/config/log', // Docker (Jellyfin container)
       '/var/lib/jellyfin/log', // Linux
       'C:\\ProgramData\\Jellyfin\\Server\\log', // Windows
     ]);
