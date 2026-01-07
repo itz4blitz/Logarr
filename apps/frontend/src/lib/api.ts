@@ -1062,6 +1062,12 @@ class ApiClient {
     });
   }
 
+  async fetchAiProviderModelsForSetting(id: string): Promise<AiModelInfo[]> {
+    return this.request<AiModelInfo[]>(`/settings/ai/${id}/models`, {
+      method: 'POST',
+    });
+  }
+
   async generateAiAnalysis(prompt: string, providerId?: string): Promise<AnalysisResult> {
     return this.request<AnalysisResult>('/settings/ai/analyze', {
       method: 'POST',

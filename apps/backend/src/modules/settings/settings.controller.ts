@@ -143,6 +143,11 @@ export class SettingsController {
     return this.aiProviderService.testProviderSetting(id);
   }
 
+  @Post('ai/:id/models')
+  async fetchModelsForSetting(@Param('id', ParseUUIDPipe) id: string) {
+    return this.aiProviderService.fetchModelsForSetting(id);
+  }
+
   @Post('ai/analyze')
   async generateAnalysis(@Body() body: { prompt: string; providerId?: string }) {
     return this.aiProviderService.generateAnalysis(body.prompt, body.providerId);

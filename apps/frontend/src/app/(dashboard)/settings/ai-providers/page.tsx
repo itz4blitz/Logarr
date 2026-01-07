@@ -23,7 +23,6 @@ import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 
 import type {
-  AiProviderType,
   AiProviderInfo,
   AiProviderSettings,
   AiModelInfo,
@@ -79,6 +78,7 @@ import {
   useTestAiProvider,
   useTestAiProviderSetting,
   useFetchAiProviderModels,
+  useFetchAiProviderModelsForSetting,
 } from '@/hooks/use-api';
 import { cn } from '@/lib/utils';
 
@@ -204,24 +204,10 @@ function AiProvidersGrid({
                   'group bg-card relative rounded-xl border transition-all duration-200',
                   'hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/20'
                 )}
-                style={
-                  setting.isDefault
-                    ? {
-                        boxShadow: `0 0 0 2px ${meta.color}40`,
-                      }
-                    : undefined
-                }
+                style={{
+                  boxShadow: `0 0 0 2px ${meta.color}40`,
+                }}
               >
-                {/* Gradient accent bar - hidden when default since outline provides visual distinction */}
-                {!setting.isDefault && (
-                  <div
-                    className="absolute top-0 right-0 left-0 h-1 rounded-t-xl"
-                    style={{
-                      background: `linear-gradient(to right, ${meta.color}, ${meta.color}80)`,
-                    }}
-                  />
-                )}
-
                 <div className="p-5">
                   {/* Header */}
                   <div className="mb-4 flex items-start justify-between">
@@ -473,6 +459,7 @@ function AddEditProviderDialog({
   const updateMutation = useUpdateAiProviderSetting();
   const testMutation = useTestAiProvider();
   const fetchModelsMutation = useFetchAiProviderModels();
+  const fetchModelsForSettingMutation = useFetchAiProviderModelsForSetting();
 
   // Reset form when provider/setting changes
   const providerId = provider?.id ?? null;
@@ -507,18 +494,25 @@ function AddEditProviderDialog({
   const handleFetchModels = async (showToast = false) => {
     if (!provider) return;
 
-    // For providers requiring API key, we need it to fetch
-    if (provider.requiresApiKey && !formData.apiKey) {
-      if (showToast) toast.error('API key required to fetch models');
-      return;
-    }
-
     try {
-      const models = await fetchModelsMutation.mutateAsync({
-        provider: provider.id,
-        apiKey: formData.apiKey || '',
-        baseUrl: formData.baseUrl || undefined,
-      });
+      let models: AiModelInfo[];
+
+      // If editing an existing setting, use the stored API key
+      if (setting?.id) {
+        models = await fetchModelsForSettingMutation.mutateAsync(setting.id);
+      } else {
+        // For new providers requiring API key, we need it to fetch
+        if (provider.requiresApiKey && !formData.apiKey) {
+          if (showToast) toast.error('API key required to fetch models');
+          return;
+        }
+        models = await fetchModelsMutation.mutateAsync({
+          provider: provider.id,
+          apiKey: formData.apiKey || '',
+          baseUrl: formData.baseUrl || undefined,
+        });
+      }
+
       setDynamicModels(models);
       setModelsFetched(true);
       // If we got models and current selection isn't in the list, select first
@@ -532,13 +526,12 @@ function AddEditProviderDialog({
     }
   };
 
-  // Auto-fetch models for local providers when baseUrl is set
+  // Auto-fetch models when editing an existing setting or for local providers
   const shouldAutoFetch =
     provider &&
-    !provider.requiresApiKey &&
-    formData.baseUrl &&
     !autoFetchTriggered &&
-    !modelsFetched;
+    !modelsFetched &&
+    (setting?.id || (!provider.requiresApiKey && formData.baseUrl));
   if (shouldAutoFetch) {
     setAutoFetchTriggered(true);
     handleFetchModels(false);
@@ -732,10 +725,13 @@ function AddEditProviderDialog({
                   className="h-6 gap-1 text-xs"
                   onClick={() => handleFetchModels(true)}
                   disabled={
-                    fetchModelsMutation.isPending || (provider?.requiresApiKey && !formData.apiKey)
+                    fetchModelsMutation.isPending ||
+                    fetchModelsForSettingMutation.isPending ||
+                    // Only require API key for new providers that need it
+                    (!setting?.id && provider?.requiresApiKey && !formData.apiKey)
                   }
                 >
-                  {fetchModelsMutation.isPending ? (
+                  {fetchModelsMutation.isPending || fetchModelsForSettingMutation.isPending ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
                   ) : (
                     <RefreshCw className="h-3 w-3" />

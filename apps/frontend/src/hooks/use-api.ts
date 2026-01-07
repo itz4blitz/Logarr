@@ -514,6 +514,12 @@ export function useFetchAiProviderModels() {
   });
 }
 
+export function useFetchAiProviderModelsForSetting() {
+  return useMutation({
+    mutationFn: (id: string) => api.fetchAiProviderModelsForSetting(id),
+  });
+}
+
 export function useGenerateAiAnalysis() {
   return useMutation({
     mutationFn: ({ prompt, providerId }: { prompt: string; providerId?: string }) =>
