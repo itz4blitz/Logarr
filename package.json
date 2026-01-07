@@ -1,6 +1,6 @@
 {
   "name": "logarr",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "private": true,
   "description": "Unified logging for your media stack",
   "scripts": {

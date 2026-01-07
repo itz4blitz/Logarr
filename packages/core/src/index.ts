@@ -1,3 +1,14 @@
+// Re-export HTTP utilities
+export {
+  httpRequest,
+  HttpError,
+  formatHttpError,
+  DEFAULT_TIMEOUT_MS,
+  DEFAULT_RETRIES,
+  RETRY_DELAY_MS,
+} from './http.js';
+export type { HttpErrorType, HttpRequestOptions } from './http.js';
+
 // Re-export all types
 export type {
   // Log levels

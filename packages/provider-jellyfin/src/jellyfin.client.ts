@@ -1,5 +1,7 @@
 import { EventEmitter } from 'events';
 
+import { httpRequest, HttpError } from '@logarr/core';
+
 import type {
   JellyfinActivityLogEntry,
   JellyfinQueryResult,
@@ -51,6 +53,7 @@ export class JellyfinClient extends EventEmitter {
 
   /**
    * Make an authenticated GET request to the Jellyfin API
+   * Uses httpRequest from @logarr/core for timeout and retry handling
    */
   private async get<T>(path: string, params?: Record<string, string>): Promise<T> {
     const url = new URL(`${this.baseUrl}${path}`);
@@ -61,19 +64,19 @@ export class JellyfinClient extends EventEmitter {
       }
     }
 
-    const response = await fetch(url.toString(), {
-      method: 'GET',
-      headers: this.headers,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `Jellyfin API error: ${response.status} ${response.statusText} - ${errorText}`
-      );
+    try {
+      return await httpRequest<T>(url.toString(), {
+        method: 'GET',
+        headers: this.headers,
+        timeout: 10000,
+        retries: 2,
+      });
+    } catch (error) {
+      if (error instanceof HttpError) {
+        throw new Error(`Jellyfin API error: ${error.message}\n${error.suggestion}`);
+      }
+      throw error;
     }
-
-    return response.json() as Promise<T>;
   }
 
   /**

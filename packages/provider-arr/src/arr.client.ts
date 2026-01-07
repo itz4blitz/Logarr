@@ -3,6 +3,8 @@
  * Handles authentication and common API patterns
  */
 
+import { httpRequest, HttpError } from '@logarr/core';
+
 import type {
   ArrSystemStatus,
   ArrHealthCheck,
@@ -30,6 +32,7 @@ export class ArrClient {
 
   /**
    * Make a GET request to the API
+   * Uses httpRequest from @logarr/core for timeout and retry handling
    */
   protected async get<T>(
     path: string,
@@ -45,17 +48,19 @@ export class ArrClient {
       }
     }
 
-    const response = await fetch(url.toString(), {
-      method: 'GET',
-      headers: this.headers,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error');
-      throw new Error(`API error ${response.status}: ${errorText}`);
+    try {
+      return await httpRequest<T>(url.toString(), {
+        method: 'GET',
+        headers: this.headers,
+        timeout: 10000,
+        retries: 2,
+      });
+    } catch (error) {
+      if (error instanceof HttpError) {
+        throw new Error(`Arr API error: ${error.message}\n${error.suggestion}`);
+      }
+      throw error;
     }
-
-    return response.json() as Promise<T>;
   }
 
   /**

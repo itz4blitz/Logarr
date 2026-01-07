@@ -1,5 +1,7 @@
 import { EventEmitter } from 'events';
 
+import { httpRequest, HttpError } from '@logarr/core';
+
 import type {
   PlexServerInfo,
   PlexSession,
@@ -43,6 +45,7 @@ export class PlexClient extends EventEmitter {
 
   /**
    * Make an authenticated GET request to the Plex API
+   * Uses httpRequest from @logarr/core for timeout and retry handling
    */
   private async get<T>(path: string, params?: Record<string, string | number>): Promise<T> {
     const url = new URL(`${this.baseUrl}${path}`);
@@ -56,25 +59,19 @@ export class PlexClient extends EventEmitter {
       }
     }
 
-    let response: Response;
     try {
-      response = await fetch(url.toString(), {
+      return await httpRequest<T>(url.toString(), {
         method: 'GET',
         headers: this.headers,
+        timeout: 10000,
+        retries: 2,
       });
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      throw new Error(
-        `Failed to connect to Plex server at ${this.baseUrl}: ${errorMsg}. Check that the URL is accessible from this machine/container.`
-      );
+      if (error instanceof HttpError) {
+        throw new Error(`Plex API error: ${error.message}\n${error.suggestion}`);
+      }
+      throw error;
     }
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error');
-      throw new Error(`Plex API error: ${response.status} ${response.statusText} - ${errorText}`);
-    }
-
-    return response.json() as Promise<T>;
   }
 
   /**
