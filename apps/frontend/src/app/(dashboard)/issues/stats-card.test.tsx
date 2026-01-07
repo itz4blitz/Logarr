@@ -27,15 +27,26 @@ function StatsCard({
     <Card className="bg-card border-border/50" data-testid="stats-card">
       <CardContent className="flex h-full flex-col justify-center p-3 sm:p-4">
         {/* Mobile: centered vertical layout filling space */}
-        <div className="flex flex-col items-center justify-center gap-1 sm:hidden" data-testid="mobile-layout">
+        <div
+          className="flex flex-col items-center justify-center gap-1 sm:hidden"
+          data-testid="mobile-layout"
+        >
           <div className={cn('rounded-lg p-2', color)} data-testid="icon-container-mobile">
             <Icon className="h-6 w-6" data-testid="icon-mobile" />
           </div>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-bold leading-none" data-testid="value-mobile">{formattedValue}</span>
-            {subtext && <span className="text-muted-foreground text-xs" data-testid="subtext-mobile">{subtext}</span>}
+            <span className="text-2xl leading-none font-bold" data-testid="value-mobile">
+              {formattedValue}
+            </span>
+            {subtext && (
+              <span className="text-muted-foreground text-xs" data-testid="subtext-mobile">
+                {subtext}
+              </span>
+            )}
           </div>
-          <p className="text-muted-foreground text-xs" data-testid="title-mobile">{title}</p>
+          <p className="text-muted-foreground text-xs" data-testid="title-mobile">
+            {title}
+          </p>
         </div>
         {/* Desktop: horizontal with icon */}
         <div className="hidden items-center gap-3 sm:flex" data-testid="desktop-layout">
@@ -43,10 +54,18 @@ function StatsCard({
             <Icon className="h-4 w-4" data-testid="icon-desktop" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-muted-foreground text-xs" data-testid="title-desktop">{title}</p>
+            <p className="text-muted-foreground text-xs" data-testid="title-desktop">
+              {title}
+            </p>
             <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold" data-testid="value-desktop">{formattedValue}</span>
-              {subtext && <span className="text-muted-foreground text-xs" data-testid="subtext-desktop">{subtext}</span>}
+              <span className="text-2xl font-bold" data-testid="value-desktop">
+                {formattedValue}
+              </span>
+              {subtext && (
+                <span className="text-muted-foreground text-xs" data-testid="subtext-desktop">
+                  {subtext}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -93,12 +112,7 @@ describe('StatsCard', () => {
 
     it('should render string values as-is', () => {
       render(
-        <StatsCard
-          title="Status"
-          value="N/A"
-          icon={Clock}
-          color="bg-gray-500/10 text-gray-500"
-        />
+        <StatsCard title="Status" value="N/A" icon={Clock} color="bg-gray-500/10 text-gray-500" />
       );
 
       expect(screen.getByTestId('value-mobile')).toHaveTextContent('N/A');

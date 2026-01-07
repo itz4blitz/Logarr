@@ -87,17 +87,14 @@ describe('useSmoothProgress', () => {
   });
 
   it('should sync to new server position when it changes', () => {
-    const { result, rerender } = renderHook(
-      (props) => useSmoothProgress(props),
-      {
-        initialProps: {
-          positionTicks: '100000000',
-          runTimeTicks: '1000000000',
-          isPaused: false,
-          isPlaying: true,
-        },
-      }
-    );
+    const { result, rerender } = renderHook((props) => useSmoothProgress(props), {
+      initialProps: {
+        positionTicks: '100000000',
+        runTimeTicks: '1000000000',
+        isPaused: false,
+        isPlaying: true,
+      },
+    });
 
     // Advance to interpolate
     act(() => {

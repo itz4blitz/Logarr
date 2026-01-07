@@ -16,12 +16,12 @@ export function HealthBar({ health, loading }: HealthBarProps) {
     return (
       <div className="bg-card flex shrink-0 flex-col gap-2 rounded-xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div className="flex items-center gap-3">
-          <div className="h-5 w-5 animate-pulse rounded-full bg-accent" />
-          <div className="h-4 w-36 animate-pulse rounded-md bg-accent" />
+          <div className="bg-accent h-5 w-5 animate-pulse rounded-full" />
+          <div className="bg-accent h-4 w-36 animate-pulse rounded-md" />
         </div>
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:flex sm:flex-wrap sm:items-center sm:gap-6">
-          <div className="h-4 w-24 animate-pulse rounded-md bg-accent" />
-          <div className="h-4 w-24 animate-pulse rounded-md bg-accent" />
+          <div className="bg-accent h-4 w-24 animate-pulse rounded-md" />
+          <div className="bg-accent h-4 w-24 animate-pulse rounded-md" />
         </div>
       </div>
     );

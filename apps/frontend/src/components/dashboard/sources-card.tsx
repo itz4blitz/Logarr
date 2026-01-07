@@ -18,11 +18,11 @@ interface SourcesCardProps {
   loading?: boolean;
 }
 
-const SOURCE_ROW_HEIGHT = 52; // Height of each source item (h-9 icon = 36px + py-2.5 = 10px + content)
-const HEADER_HEIGHT = 56; // Title row (text + sort toggle + margin-bottom)
-const PAGINATION_HEIGHT = 44; // Pagination controls height (pt-3 + mt-2 + content)
-const CARD_PADDING = 32; // p-4 = 16px top + 16px bottom
-const ROW_GAP = 8; // space-y-2 = 8px gap
+const SOURCE_ROW_HEIGHT = 44; // Height of each source item (h-8 icon = 32px + py-1.5 = 6px + content)
+const HEADER_HEIGHT = 44; // Title row (text + sort toggle + margin-bottom)
+const PAGINATION_HEIGHT = 36; // Pagination controls height (pt-2 + mt-1 + content)
+const CARD_PADDING = 24; // p-3 = 12px top + 12px bottom
+const ROW_GAP = 4; // space-y-1 = 4px gap
 
 const SORT_KEY = 'logarr-sources-sort';
 type SortOption = 'name' | 'lastSeen';
@@ -83,16 +83,16 @@ export function SourcesCard({ sources, loading }: SourcesCardProps) {
 
   if (loading) {
     return (
-      <div ref={containerRef} className="bg-card flex h-full flex-col rounded-xl border p-4">
-        <div className="mb-3 flex items-center justify-between">
+      <div ref={containerRef} className="bg-card flex h-full flex-col rounded-xl border p-3">
+        <div className="mb-2 flex items-center justify-between">
           <Skeleton className="h-4 w-20" />
           <Skeleton className="h-3 w-16" />
         </div>
-        <div className="flex-1 space-y-2">
+        <div className="flex-1 space-y-1">
           {Array.from({ length: pageSize }).map((_, i) => (
-            <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2.5">
-              <Skeleton className="h-9 w-9 shrink-0 rounded-lg" />
-              <div className="min-w-0 flex-1 space-y-1.5">
+            <div key={i} className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5">
+              <Skeleton className="h-8 w-8 shrink-0 rounded-lg" />
+              <div className="min-w-0 flex-1 space-y-1">
                 <Skeleton className="h-3.5 w-3/4" />
                 <Skeleton className="h-2.5 w-1/2" />
               </div>
@@ -105,8 +105,11 @@ export function SourcesCard({ sources, loading }: SourcesCardProps) {
   }
 
   return (
-    <div ref={containerRef} className="bg-card flex h-full flex-col overflow-hidden rounded-xl border p-4">
-      <div className="mb-3 flex items-center justify-between">
+    <div
+      ref={containerRef}
+      className="bg-card flex h-full flex-col overflow-hidden rounded-xl border p-3"
+    >
+      <div className="mb-2 flex items-center justify-between">
         <h3 className="text-sm font-semibold tracking-tight text-zinc-200">Sources</h3>
         <div className="flex items-center gap-3">
           {/* Sort toggle */}
@@ -150,20 +153,20 @@ export function SourcesCard({ sources, loading }: SourcesCardProps) {
         </div>
       ) : (
         <>
-          <div className="min-h-0 flex-1 space-y-2 overflow-hidden">
+          <div className="min-h-0 flex-1 space-y-1 overflow-hidden">
             {paginatedSources.map((source) => {
               const meta = getProviderMeta(source.providerId);
               return (
                 <Link key={source.id} href={`/sources?edit=${source.id}`} className="group block">
                   <div
                     className={cn(
-                      'flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all',
+                      'flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 transition-all',
                       'hover:bg-white/5'
                     )}
                   >
                     <div
                       className={cn(
-                        'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
+                        'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
                         meta.bgColor,
                         !source.isConnected && 'opacity-40 grayscale'
                       )}
@@ -199,7 +202,7 @@ export function SourcesCard({ sources, loading }: SourcesCardProps) {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="mt-2 flex shrink-0 items-center justify-between border-t border-white/5 pt-3">
+            <div className="mt-1 flex shrink-0 items-center justify-between border-t border-white/5 pt-2">
               <button
                 onClick={prevPage}
                 disabled={!hasPrevPage}

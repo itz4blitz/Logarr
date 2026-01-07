@@ -339,6 +339,7 @@ function ServersPageContent() {
                         lastSeen={server.lastSeen}
                         lastFileSync={server.lastFileSync}
                         variant="badge"
+                        isChecking={testAllConnections.isPending}
                       />
                       <span className="text-muted-foreground text-xs">
                         {server.lastSeen
@@ -438,6 +439,7 @@ function ServersPageContent() {
                             lastSeen={server.lastSeen}
                             lastFileSync={server.lastFileSync}
                             variant="badge"
+                            isChecking={testAllConnections.isPending}
                           />
                         </TableCell>
                         <TableCell className="text-muted-foreground">

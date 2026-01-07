@@ -1,7 +1,6 @@
 import { Injectable, Inject, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { sql, count, eq, and, lt, inArray } from 'drizzle-orm';
 
-
 import { DATABASE_CONNECTION } from '../../database';
 import * as schema from '../../database/schema';
 import { SettingsService } from '../settings/settings.service';
@@ -184,14 +183,22 @@ export class RetentionService implements OnModuleInit, OnModuleDestroy {
       ]);
 
       this.logger.debug('Parallel fetch complete. Processing results...');
-      this.logger.debug(`dbSizeResult type: ${typeof dbSizeResult}, value: ${JSON.stringify(dbSizeResult)}`);
-      this.logger.debug(`tableSizesResult type: ${typeof tableSizesResult}, value: ${JSON.stringify(tableSizesResult)}`);
-      this.logger.debug(`globalAgeDistribution type: ${typeof globalAgeDistribution}, value: ${JSON.stringify(globalAgeDistribution)}`);
+      this.logger.debug(
+        `dbSizeResult type: ${typeof dbSizeResult}, value: ${JSON.stringify(dbSizeResult)}`
+      );
+      this.logger.debug(
+        `tableSizesResult type: ${typeof tableSizesResult}, value: ${JSON.stringify(tableSizesResult)}`
+      );
+      this.logger.debug(
+        `globalAgeDistribution type: ${typeof globalAgeDistribution}, value: ${JSON.stringify(globalAgeDistribution)}`
+      );
 
       const logCount = Number(logCountResult[0]?.count ?? 0);
 
       // Handle raw SQL result - postgres-js/drizzle returns { rows: [...] } object
-      const dbSizeRows = Array.isArray(dbSizeResult) ? dbSizeResult : (dbSizeResult as { rows: Array<{ size: string }> }).rows ?? [];
+      const dbSizeRows = Array.isArray(dbSizeResult)
+        ? dbSizeResult
+        : ((dbSizeResult as { rows: Array<{ size: string }> }).rows ?? []);
       const databaseSizeBytes = Number(dbSizeRows[0]?.size ?? 0);
 
       // Build level counts object
@@ -209,7 +216,10 @@ export class RetentionService implements OnModuleInit, OnModuleDestroy {
       }
 
       // Parse table sizes
-      const tableSizesRows = tableSizesResult as unknown as Array<{ table_name: string; size: string }>;
+      const tableSizesRows = tableSizesResult as unknown as Array<{
+        table_name: string;
+        size: string;
+      }>;
       const tableSizes = {
         logEntries: 0,
         issues: 0,
@@ -227,13 +237,15 @@ export class RetentionService implements OnModuleInit, OnModuleDestroy {
       }
 
       // Parse global age distribution
-      const ageRow = (globalAgeDistribution as unknown as Array<{
-        last_24h: string;
-        last_7d: string;
-        last_30d: string;
-        last_90d: string;
-        older: string;
-      }>)[0];
+      const ageRow = (
+        globalAgeDistribution as unknown as Array<{
+          last_24h: string;
+          last_7d: string;
+          last_30d: string;
+          last_90d: string;
+          older: string;
+        }>
+      )[0];
       const ageDistribution = {
         last24h: Number(ageRow?.last_24h ?? 0),
         last7d: Number(ageRow?.last_7d ?? 0),
@@ -352,21 +364,25 @@ export class RetentionService implements OnModuleInit, OnModuleDestroy {
       }
 
       // Parse age distribution
-      const ageRow = (ageDistResult as unknown as Array<{
-        last_24h: string;
-        last_7d: string;
-        last_30d: string;
-        last_90d: string;
-        older: string;
-      }>)[0];
+      const ageRow = (
+        ageDistResult as unknown as Array<{
+          last_24h: string;
+          last_7d: string;
+          last_30d: string;
+          last_90d: string;
+          older: string;
+        }>
+      )[0];
 
       // Parse cleanup eligible
-      const cleanupRow = (cleanupEligibleResult as unknown as Array<{
-        info: string;
-        debug: string;
-        warn: string;
-        error: string;
-      }>)[0];
+      const cleanupRow = (
+        cleanupEligibleResult as unknown as Array<{
+          info: string;
+          debug: string;
+          warn: string;
+          error: string;
+        }>
+      )[0];
       const eligibleInfo = Number(cleanupRow?.info ?? 0);
       const eligibleDebug = Number(cleanupRow?.debug ?? 0);
       const eligibleWarn = Number(cleanupRow?.warn ?? 0);
@@ -589,9 +605,7 @@ export class RetentionService implements OnModuleInit, OnModuleDestroy {
     // Use Drizzle's delete with a subquery approach
     const orphaned = await this.db
       .delete(schema.issueOccurrences)
-      .where(
-        sql`${schema.issueOccurrences.logEntryId} NOT IN (SELECT id FROM log_entries)`
-      )
+      .where(sql`${schema.issueOccurrences.logEntryId} NOT IN (SELECT id FROM log_entries)`)
       .returning({ id: schema.issueOccurrences.id });
 
     return orphaned.length;
@@ -629,10 +643,7 @@ export class RetentionService implements OnModuleInit, OnModuleDestroy {
     const deleted = await this.db
       .delete(schema.logEntries)
       .where(
-        and(
-          eq(schema.logEntries.serverId, serverId),
-          inArray(schema.logEntries.level, levels)
-        )
+        and(eq(schema.logEntries.serverId, serverId), inArray(schema.logEntries.level, levels))
       )
       .returning({ id: schema.logEntries.id });
 
@@ -648,9 +659,7 @@ export class RetentionService implements OnModuleInit, OnModuleDestroy {
   /**
    * Delete all logs for a specific server
    */
-  async deleteAllLogsByServer(
-    serverId: string
-  ): Promise<{ deleted: number; durationMs: number }> {
+  async deleteAllLogsByServer(serverId: string): Promise<{ deleted: number; durationMs: number }> {
     const startTime = Date.now();
     this.logger.log(`Deleting all logs for server ${serverId}`);
 
@@ -675,9 +684,7 @@ export class RetentionService implements OnModuleInit, OnModuleDestroy {
     const startTime = Date.now();
     this.logger.warn('Deleting ALL logs from database');
 
-    const deleted = await this.db
-      .delete(schema.logEntries)
-      .returning({ id: schema.logEntries.id });
+    const deleted = await this.db.delete(schema.logEntries).returning({ id: schema.logEntries.id });
 
     const durationMs = Date.now() - startTime;
     this.logger.log(`Deleted ${deleted.length} logs in ${durationMs}ms`);

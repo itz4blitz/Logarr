@@ -4,14 +4,14 @@
 
 **Mission control for your media server stack**
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white)](https://nextjs.org/)
-[![NestJS](https://img.shields.io/badge/NestJS-10-E0234E?logo=nestjs&logoColor=white)](https://nestjs.com/)
+[![NestJS](https://img.shields.io/badge/NestJS-11-E0234E?logo=nestjs&logoColor=white)](https://nestjs.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Unified logging, intelligent issue detection, and AI-powered analysis for Plex, Jellyfin, Emby, Sonarr, Radarr, Prowlarr, and more.
+Unified logging, intelligent issue detection, and AI-powered analysis for Plex, Jellyfin, Emby, Sonarr, Radarr, Prowlarr, Whisparr, and more.
 
 [Quick Start](#quick-start) · [Features](#features) · [Screenshots](#screenshots) · [Documentation](#documentation)
 
@@ -74,7 +74,7 @@ _Track active playback sessions, transcoding status, and user activity_
 ### AI Provider Settings
 
 ![Settings](apps/frontend/public/screenshots/settings.png)
-_Configure multiple AI providers for issue analysis (Anthropic, OpenAI, Google, Ollama)_
+_Configure multiple AI providers for issue analysis (Anthropic, OpenAI, Google, Ollama, LM Studio)_
 
 </div>
 
@@ -82,25 +82,25 @@ _Configure multiple AI providers for issue analysis (Anthropic, OpenAI, Google, 
 
 ## Features
 
-| Category             | Capabilities                                                                                    |
-| -------------------- | ----------------------------------------------------------------------------------------------- |
-| **Log Aggregation**  | Real-time streaming, full-text search, advanced filtering by server/level/source type           |
-| **File Ingestion**   | Direct container log reading, multi-line stack trace assembly, automatic rotation detection     |
-| **Issue Detection**  | Automatic error fingerprinting, deduplication, impact scoring, status tracking                  |
-| **AI Analysis**      | Root cause identification, actionable fixes, multi-provider support (Anthropic, OpenAI, Google) |
-| **Session Tracking** | Active playback monitoring, transcoding visibility, user attribution                            |
-| **Dashboard**        | System health, 24-hour activity timeline, top issues, now playing                               |
+| Category             | Capabilities                                                                                                       |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **Log Aggregation**  | Real-time streaming, full-text search, advanced filtering by server/level/source type                              |
+| **File Ingestion**   | Direct container log reading, multi-line stack trace assembly, automatic rotation detection                        |
+| **Issue Detection**  | Automatic error fingerprinting, deduplication, impact scoring, status tracking                                     |
+| **AI Analysis**      | Root cause identification, actionable fixes, multi-provider support (Anthropic, OpenAI, Google, Ollama, LM Studio) |
+| **Session Tracking** | Active playback monitoring, transcoding visibility, user attribution                                               |
+| **Dashboard**        | System health, 24-hour activity timeline, top issues, now playing                                                  |
 
 ---
 
 ## Supported Servers
 
-| Server       | Status       | Server   | Status       |
-| ------------ | ------------ | -------- | ------------ |
-| **Jellyfin** | ✅ Supported | **Plex** | ✅ Supported |
-| **Sonarr**   | ✅ Supported | **Emby** | ✅ Supported |
-| **Radarr**   | ✅ Supported | **Kodi** | 🚧 Planned   |
-| **Prowlarr** | ✅ Supported |          |              |
+| Server       | Status       | Server       | Status       |
+| ------------ | ------------ | ------------ | ------------ |
+| **Jellyfin** | ✅ Supported | **Plex**     | ✅ Supported |
+| **Sonarr**   | ✅ Supported | **Emby**     | ✅ Supported |
+| **Radarr**   | ✅ Supported | **Whisparr** | ✅ Supported |
+| **Prowlarr** | ✅ Supported | **Kodi**     | 🚧 Planned   |
 
 > Logarr uses a provider architecture—adding support for new servers is straightforward. [Contributions welcome!](#contributing)
 
@@ -153,17 +153,20 @@ flowchart TB
     end
 
     subgraph Providers
+        PX[Plex]
         JF[Jellyfin]
+        EM[Emby]
         SO[Sonarr]
         RA[Radarr]
         PR[Prowlarr]
+        WH[Whisparr]
     end
 
     FE <--> API
     FE <--> WS
     API <--> PG
     API <--> RD
-    API <--> JF & SO & RA & PR
+    API <--> PX & JF & EM & SO & RA & PR & WH
 ```
 
 ### How It Works
@@ -185,10 +188,20 @@ flowchart TB
 DATABASE_URL=postgresql://postgres:postgres@localhost:5433/logarr
 REDIS_URL=redis://localhost:6380
 
-# Optional - AI Analysis
+# Optional - AI Analysis (auto-configured on startup if set)
 ANTHROPIC_API_KEY=sk-ant-...
 OPENAI_API_KEY=sk-...
 GOOGLE_AI_API_KEY=...
+
+# Optional - Local AI
+OLLAMA_BASE_URL=http://localhost:11434
+LMSTUDIO_BASE_URL=http://localhost:1234/v1
+
+# Optional - Media Servers (auto-configured on startup if set)
+JELLYFIN_URL=http://jellyfin:8096
+JELLYFIN_API_KEY=...
+PLEX_URL=http://plex:32400
+PLEX_TOKEN=...
 
 # Optional - Data Retention (defaults shown)
 LOG_RETENTION_DAYS=30           # Days to keep info/debug logs
@@ -220,6 +233,8 @@ Issues and statistics are preserved even after logs are deleted. The Data Manage
 2. Select server type and enter URL + API key
 3. Test connection and save
 
+Alternatively, set environment variables (e.g., `JELLYFIN_URL` and `JELLYFIN_API_KEY`) and servers will be auto-configured on startup.
+
 ### File-Based Log Ingestion
 
 For deeper log analysis, Logarr can read log files directly from your media servers. This captures detailed application logs that APIs don't expose.
@@ -238,11 +253,12 @@ EMBY_LOGS_PATH=/path/to/emby/config/logs
 SONARR_LOGS_PATH=/path/to/sonarr/config/logs
 RADARR_LOGS_PATH=/path/to/radarr/config/logs
 PROWLARR_LOGS_PATH=/path/to/prowlarr/config/logs
+WHISPARR_LOGS_PATH=/path/to/whisparr/config/logs
 ```
 
-1. **Restart Logarr** — The docker-compose mounts these paths automatically.
+2. **Restart Logarr** — The docker-compose mounts these paths automatically.
 
-1. **Configure in UI** — Go to **Sources** → Edit your server → Enable file ingestion with the container path:
+3. **Configure in UI** — Go to **Sources** → Edit your server → Enable file ingestion with the container path:
 
 | Server   | Container Path    |
 | -------- | ----------------- |
@@ -252,17 +268,19 @@ PROWLARR_LOGS_PATH=/path/to/prowlarr/config/logs
 | Sonarr   | `/sonarr-logs`    |
 | Radarr   | `/radarr-logs`    |
 | Prowlarr | `/prowlarr-logs`  |
+| Whisparr | `/whisparr-logs`  |
 
 #### Common Log Locations
 
-| Server   | Docker                        | Linux                              | Windows                                           |
-| -------- | ----------------------------- | ---------------------------------- | ------------------------------------------------- |
-| Plex     | `/config/Library/.../Logs`    | `/var/lib/plexmediaserver/.../Logs`| `%LOCALAPPDATA%\Plex Media Server\Logs`           |
-| Jellyfin | `/config/log`                 | `/var/lib/jellyfin/log`            | `C:\ProgramData\Jellyfin\Server\log`              |
-| Emby     | `/config/logs`                | `/var/lib/emby/logs`               | `C:\ProgramData\Emby-Server\logs`                 |
-| Sonarr   | `/config/logs`                | `~/.config/Sonarr/logs`            | `C:\ProgramData\Sonarr\logs`                      |
-| Radarr   | `/config/logs`                | `~/.config/Radarr/logs`            | `C:\ProgramData\Radarr\logs`                      |
-| Prowlarr | `/config/logs`                | `~/.config/Prowlarr/logs`          | `C:\ProgramData\Prowlarr\logs`                    |
+| Server   | Docker                     | Linux                               | Windows                                 |
+| -------- | -------------------------- | ----------------------------------- | --------------------------------------- |
+| Plex     | `/config/Library/.../Logs` | `/var/lib/plexmediaserver/.../Logs` | `%LOCALAPPDATA%\Plex Media Server\Logs` |
+| Jellyfin | `/config/log`              | `/var/lib/jellyfin/log`             | `C:\ProgramData\Jellyfin\Server\log`    |
+| Emby     | `/config/logs`             | `/var/lib/emby/logs`                | `C:\ProgramData\Emby-Server\logs`       |
+| Sonarr   | `/config/logs`             | `~/.config/Sonarr/logs`             | `C:\ProgramData\Sonarr\logs`            |
+| Radarr   | `/config/logs`             | `~/.config/Radarr/logs`             | `C:\ProgramData\Radarr\logs`            |
+| Prowlarr | `/config/logs`             | `~/.config/Prowlarr/logs`           | `C:\ProgramData\Prowlarr\logs`          |
+| Whisparr | `/config/logs`             | `~/.config/Whisparr/logs`           | `C:\ProgramData\Whisparr\logs`          |
 
 ---
 
@@ -293,17 +311,18 @@ socket.on('session.started', (session) => {}); // Playback started
 ```
 logarr/
 ├── apps/
-│   ├── backend/           # NestJS API
-│   └── frontend/          # Next.js app
+│   ├── backend/            # NestJS API
+│   └── frontend/           # Next.js app
 ├── packages/
-│   ├── core/              # Shared types
-│   ├── provider-plex/     # Plex integration
-│   ├── provider-jellyfin/ # Jellyfin integration
-│   ├── provider-emby/     # Emby integration
-│   ├── provider-sonarr/   # Sonarr integration
-│   ├── provider-radarr/   # Radarr integration
-│   ├── provider-prowlarr/ # Prowlarr integration
-│   └── provider-arr/      # Base *arr provider
+│   ├── core/               # Shared types and utilities
+│   ├── provider-plex/      # Plex integration
+│   ├── provider-jellyfin/  # Jellyfin integration
+│   ├── provider-emby/      # Emby integration
+│   ├── provider-sonarr/    # Sonarr integration
+│   ├── provider-radarr/    # Radarr integration
+│   ├── provider-prowlarr/  # Prowlarr integration
+│   ├── provider-whisparr/  # Whisparr integration
+│   └── provider-arr/       # Base *arr provider
 └── docker-compose.yml
 ```
 
@@ -327,11 +346,6 @@ Guidelines: TypeScript strict mode, ESLint + Prettier, tests for new features.
 
 Logarr has comprehensive test coverage using [Vitest](https://vitest.dev/).
 
-| Package      | Tests | Coverage     |
-| ------------ | ----- | ------------ |
-| **Backend**  | 249   | 89.57% lines |
-| **Frontend** | 54    | 100% lines   |
-
 ### Running Tests
 
 ```bash
@@ -340,16 +354,16 @@ pnpm test:coverage     # Run with coverage report
 pnpm test:e2e          # Run Playwright E2E tests
 ```
 
-### Coverage by Module (Backend)
+### Test Packages
 
-| Module            | Statements | Branches | Functions | Lines |
-| ----------------- | ---------- | -------- | --------- | ----- |
-| logs.service      | 100%       | 98%      | 100%      | 100%  |
-| sessions.service  | 100%       | 92%      | 100%      | 100%  |
-| settings.service  | 100%       | 100%     | 100%      | 100%  |
-| dashboard.service | 98%        | 95%      | 100%      | 99%   |
-| servers.service   | 87%        | 78%      | 87%       | 88%   |
-| issues.service    | 79%        | 80%      | 74%       | 82%   |
+| Package                     | Description                            |
+| --------------------------- | -------------------------------------- |
+| `@logarr/backend`           | Backend services and controllers       |
+| `frontend`                  | React components, hooks, and utilities |
+| `@logarr/core`              | Core HTTP utilities                    |
+| `@logarr/provider-arr`      | *arr application log parser            |
+| `@logarr/provider-emby`     | Emby log parser                        |
+| `@logarr/provider-whisparr` | Whisparr provider                      |
 
 > Coverage thresholds are enforced at 80% for statements, branches, functions, and lines.
 

@@ -1519,7 +1519,7 @@ function IssueCard({
           <ProviderIcon providerId={sourceToProviderMap[issue.source]} size="md" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="line-clamp-2 text-sm font-medium leading-tight">{issue.title}</p>
+          <p className="line-clamp-2 text-sm leading-tight font-medium">{issue.title}</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <SeverityBadge severity={issue.severity} />
             <StatusBadge status={issue.status} />
@@ -1768,7 +1768,7 @@ function StatsCard({
             <Icon className="h-6 w-6" />
           </div>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-bold leading-none">{formattedValue}</span>
+            <span className="text-2xl leading-none font-bold">{formattedValue}</span>
             {subtext && <span className="text-muted-foreground text-xs">{subtext}</span>}
           </div>
           <p className="text-muted-foreground text-xs">{title}</p>
@@ -2182,7 +2182,7 @@ function IssuesPageContent() {
         ) : issues && issues.length > 0 ? (
           <>
             {/* Mobile Card View - scrollable, no pagination */}
-            <div className="flex flex-1 flex-col overflow-y-auto p-4 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-track]:bg-transparent sm:hidden">
+            <div className="flex flex-1 flex-col overflow-y-auto p-4 sm:hidden [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-track]:bg-transparent">
               <div className="space-y-3">
                 {issues.map((issue) => (
                   <IssueCard

@@ -42,13 +42,43 @@ services:
     container_name: logarr-backend
     restart: unless-stopped
     ports:
-      - '4001:4000'
+      - '${BACKEND_PORT:-4001}:4000'
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://postgres:postgres@db:5432/logarr
       REDIS_URL: redis://redis:6379
       BACKEND_PORT: 4000
-      CORS_ORIGIN: http://localhost:3001
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3001}
+      # AI Providers (auto-configured on startup if set)
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY:-}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
+      LMSTUDIO_BASE_URL: ${LMSTUDIO_BASE_URL:-}
+      # Media Servers (auto-configured on startup if set)
+      JELLYFIN_URL: ${JELLYFIN_URL:-}
+      JELLYFIN_API_KEY: ${JELLYFIN_API_KEY:-}
+      PLEX_URL: ${PLEX_URL:-}
+      PLEX_TOKEN: ${PLEX_TOKEN:-}
+      EMBY_URL: ${EMBY_URL:-}
+      EMBY_API_KEY: ${EMBY_API_KEY:-}
+      SONARR_URL: ${SONARR_URL:-}
+      SONARR_API_KEY: ${SONARR_API_KEY:-}
+      RADARR_URL: ${RADARR_URL:-}
+      RADARR_API_KEY: ${RADARR_API_KEY:-}
+      PROWLARR_URL: ${PROWLARR_URL:-}
+      PROWLARR_API_KEY: ${PROWLARR_API_KEY:-}
+      WHISPARR_URL: ${WHISPARR_URL:-}
+      WHISPARR_API_KEY: ${WHISPARR_API_KEY:-}
+      # Log paths - set to non-empty to enable file ingestion for that server
+      # The actual path inside container is fixed (e.g., /jellyfin-logs)
+      JELLYFIN_LOGS_PATH: ${JELLYFIN_LOGS_PATH:-}
+      PLEX_LOGS_PATH: ${PLEX_LOGS_PATH:-}
+      EMBY_LOGS_PATH: ${EMBY_LOGS_PATH:-}
+      SONARR_LOGS_PATH: ${SONARR_LOGS_PATH:-}
+      RADARR_LOGS_PATH: ${RADARR_LOGS_PATH:-}
+      PROWLARR_LOGS_PATH: ${PROWLARR_LOGS_PATH:-}
+      WHISPARR_LOGS_PATH: ${WHISPARR_LOGS_PATH:-}
     volumes:
       # Media server log mounts (optional - set paths in .env for file-based log ingestion)
       # In the Sources UI, configure paths as: /plex-logs, /jellyfin-logs, /emby-logs, etc.
@@ -58,6 +88,7 @@ services:
       - ${SONARR_LOGS_PATH:-/dev/null}:/sonarr-logs:ro
       - ${RADARR_LOGS_PATH:-/dev/null}:/radarr-logs:ro
       - ${PROWLARR_LOGS_PATH:-/dev/null}:/prowlarr-logs:ro
+      - ${WHISPARR_LOGS_PATH:-/dev/null}:/whisparr-logs:ro
     healthcheck:
       test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:4000/api']
       interval: 30s
@@ -79,10 +110,10 @@ services:
     container_name: logarr-frontend
     restart: unless-stopped
     ports:
-      - '3001:3000'
+      - '${FRONTEND_PORT:-3001}:3000'
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:4001/api
-      NEXT_PUBLIC_WS_URL: ws://localhost:4001
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4001/api}
+      NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-ws://localhost:4001}
     healthcheck:
       test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:3000']
       interval: 30s

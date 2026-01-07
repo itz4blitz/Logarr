@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 
 import { AppSidebar } from '@/components/app-sidebar';
+import { SyncStatusHeader } from '@/components/sync-banner';
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -53,11 +54,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
+
+          {/* Centered sync status indicator */}
+          <SyncStatusHeader />
         </header>
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:overflow-hidden">
-          <div className="flex min-h-0 flex-1 flex-col p-4 pt-4 sm:p-6 lg:pt-6">
-            {children}
-          </div>
+          <div className="flex min-h-0 flex-1 flex-col p-4 pt-4 sm:p-6 lg:pt-6">{children}</div>
         </div>
       </SidebarInset>
     </SidebarProvider>

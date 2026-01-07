@@ -6,7 +6,12 @@ import { SettingsService } from '../settings/settings.service';
 import { RetentionController } from './retention.controller';
 import { RetentionService } from './retention.service';
 
-import type { RetentionConfig, StorageStats, CleanupPreview, RetentionResult } from './retention.dto';
+import type {
+  RetentionConfig,
+  StorageStats,
+  CleanupPreview,
+  RetentionResult,
+} from './retention.dto';
 import type { RetentionSettings } from '../settings/settings.service';
 import type { TestingModule } from '@nestjs/testing';
 
@@ -406,16 +411,21 @@ describe('RetentionController', () => {
       const result = await controller.deleteServerLogsByLevel('server-123', { levels: ['error'] });
 
       expect(result).toEqual({ deleted: 50, durationMs: 250 });
-      expect(mockRetentionService.deleteLogsByServerAndLevel).toHaveBeenCalledWith('server-123', ['error']);
+      expect(mockRetentionService.deleteLogsByServerAndLevel).toHaveBeenCalledWith('server-123', [
+        'error',
+      ]);
     });
 
     it('should support multiple levels', async () => {
-      await controller.deleteServerLogsByLevel('server-123', { levels: ['error', 'warn', 'debug'] });
+      await controller.deleteServerLogsByLevel('server-123', {
+        levels: ['error', 'warn', 'debug'],
+      });
 
-      expect(mockRetentionService.deleteLogsByServerAndLevel).toHaveBeenCalledWith(
-        'server-123',
-        ['error', 'warn', 'debug']
-      );
+      expect(mockRetentionService.deleteLogsByServerAndLevel).toHaveBeenCalledWith('server-123', [
+        'error',
+        'warn',
+        'debug',
+      ]);
     });
 
     it('should log warning with levels', async () => {
@@ -423,7 +433,9 @@ describe('RetentionController', () => {
 
       await controller.deleteServerLogsByLevel('server-xyz', { levels: ['info', 'debug'] });
 
-      expect(warnSpy).toHaveBeenCalledWith('Deleting logs for server server-xyz, levels: info, debug');
+      expect(warnSpy).toHaveBeenCalledWith(
+        'Deleting logs for server server-xyz, levels: info, debug'
+      );
     });
 
     it('should return deletion count', async () => {

@@ -52,8 +52,13 @@ export class FileStateService {
 
   /**
    * Create a new file state entry
+   * @param skipBackfill If true, start from end of file (no historical scan)
    */
-  async createState(serverId: string, filePath: string): Promise<LogFileState> {
+  async createState(
+    serverId: string,
+    filePath: string,
+    skipBackfill = false
+  ): Promise<LogFileState> {
     const relativePath = this.getRelativePath(filePath);
     const absolutePath = resolve(filePath);
 
@@ -71,6 +76,9 @@ export class FileStateService {
       this.logger.warn(`Could not stat file ${absolutePath}`);
     }
 
+    // If skipping backfill, start from end of file
+    const initialOffset = skipBackfill ? fileSize : 0n;
+
     const [state] = await this.db
       .insert(schema.logFileState)
       .values({
@@ -78,7 +86,7 @@ export class FileStateService {
         filePath: relativePath,
         absolutePath,
         fileSize,
-        byteOffset: 0n,
+        byteOffset: initialOffset,
         lineNumber: 0,
         fileInode,
         fileModifiedAt,

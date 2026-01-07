@@ -80,6 +80,9 @@ importers:
       '@logarr/provider-sonarr':
         specifier: workspace:*
         version: link:../../packages/provider-sonarr
+      '@logarr/provider-whisparr':
+        specifier: workspace:*
+        version: link:../../packages/provider-whisparr
       '@nestjs/common':
         specifier: ^11.1.0
         version: 11.1.11(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -156,6 +159,9 @@ importers:
       '@types/supertest':
         specifier: ^6.0.3
         version: 6.0.3
+      dotenv-cli:
+        specifier: ^11.0.0
+        version: 11.0.0
       drizzle-kit:
         specifier: ^0.30.1
         version: 0.30.6
@@ -401,6 +407,9 @@ importers:
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
+      vitest:
+        specifier: ^4.0.16
+        version: 4.0.16(@types/node@22.19.3)(@vitest/ui@4.0.16)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(msw@2.12.7(@types/node@22.19.3)(typescript@5.9.3))(terser@5.44.1)
 
   packages/provider-emby:
     dependencies:
@@ -500,6 +509,25 @@ importers:
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
+
+  packages/provider-whisparr:
+    dependencies:
+      '@logarr/core':
+        specifier: workspace:*
+        version: link:../core
+      '@logarr/provider-arr':
+        specifier: workspace:*
+        version: link:../provider-arr
+    devDependencies:
+      tsup:
+        specifier: ^8.3.5
+        version: 8.5.1(@swc/core@1.15.8)(jiti@2.6.1)(postcss@8.5.6)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^4.0.16
+        version: 4.0.16(@types/node@22.19.3)(@vitest/ui@4.0.16)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(msw@2.12.7(@types/node@22.19.3)(typescript@5.9.3))(terser@5.44.1)
 
 packages:
 
@@ -3487,10 +3515,6 @@ packages:
 
   dotenv-expand@12.0.3:
     resolution: {integrity: sha512-uc47g4b+4k/M/SeaW1y4OApx+mtLWl92l5LMPP0GNXctZqELk+YGgOPIIC5elYmUH4OuoK3JLhuRUYegeySiFA==}
-    engines: {node: '>=12'}
-
-  dotenv@16.4.5:
-    resolution: {integrity: sha512-ZmdL2rui+eB2YwhsWzjInR8LldtZHGDoQ1ugH85ppHKwpUHL7j7rN0Ti9NCnGiQbhaZ11FpR+7ao1dNsmduNUg==}
     engines: {node: '>=12'}
 
   dotenv@16.4.7:
@@ -9278,9 +9302,7 @@ snapshots:
 
   dotenv-expand@12.0.3:
     dependencies:
-      dotenv: 16.4.5
-
-  dotenv@16.4.5: {}
+      dotenv: 16.4.7
 
   dotenv@16.4.7: {}
 

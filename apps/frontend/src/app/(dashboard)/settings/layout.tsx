@@ -49,9 +49,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
         </TabsList>
 
         {/* Tab Content - scrollbar on far right edge on mobile */}
-        <div className="mt-2 min-h-0 flex-1 overflow-y-auto lg:overflow-hidden">
-          {children}
-        </div>
+        <div className="mt-2 min-h-0 flex-1 overflow-y-auto lg:overflow-hidden">{children}</div>
       </Tabs>
     </div>
   );

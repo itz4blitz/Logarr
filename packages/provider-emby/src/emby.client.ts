@@ -136,10 +136,7 @@ export class EmbyClient extends EventEmitter {
       params['MinDate'] = options.minDate.toISOString();
     }
 
-    return this.get<EmbyQueryResult<EmbyActivityLogEntry>>(
-      '/System/ActivityLog/Entries',
-      params
-    );
+    return this.get<EmbyQueryResult<EmbyActivityLogEntry>>('/System/ActivityLog/Entries', params);
   }
 
   /**

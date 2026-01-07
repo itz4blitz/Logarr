@@ -41,6 +41,15 @@ export const issueSourceEnum = pgEnum('issue_source', [
 // Enum for log source tracking
 export const logSourceEnum = pgEnum('log_source', ['api', 'file']);
 
+// Enum for sync status tracking
+export const syncStatusEnum = pgEnum('sync_status', [
+  'idle', // Not syncing, watching for new logs
+  'pending', // Queued for sync but not started
+  'discovering', // Discovering log files
+  'syncing', // Actively syncing/backfilling
+  'error', // Sync failed
+]);
+
 /**
  * Servers table - stores connected media servers
  */
@@ -68,12 +77,22 @@ export const servers = pgTable(
     logPaths: text('log_paths').array(), // Multiple log paths
     logFilePatterns: text('log_file_patterns').array(), // e.g., ['log_*.log', '*.txt']
     lastFileSync: timestamp('last_file_sync', { withTimezone: true }),
+    // Sync status tracking for initial backfill progress
+    syncStatus: syncStatusEnum('sync_status').notNull().default('idle'),
+    syncProgress: integer('sync_progress').notNull().default(0), // 0-100 percentage
+    syncTotalFiles: integer('sync_total_files').notNull().default(0),
+    syncProcessedFiles: integer('sync_processed_files').notNull().default(0),
+    syncStartedAt: timestamp('sync_started_at', { withTimezone: true }),
+    syncCompletedAt: timestamp('sync_completed_at', { withTimezone: true }),
+    // Whether initial sync has ever completed (used to show "first run" state)
+    initialSyncCompleted: boolean('initial_sync_completed').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index('servers_provider_id_idx').on(table.providerId),
     index('servers_is_enabled_idx').on(table.isEnabled),
+    index('servers_sync_status_idx').on(table.syncStatus),
   ]
 );
 
@@ -590,14 +609,11 @@ export const analysisConversationsRelations = relations(analysisConversations, (
  * App settings table - stores runtime-configurable settings
  * Key-value store with JSON values for flexibility
  */
-export const appSettings = pgTable(
-  'app_settings',
-  {
-    key: text('key').primaryKey(),
-    value: jsonb('value').notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-  }
-);
+export const appSettings = pgTable('app_settings', {
+  key: text('key').primaryKey(),
+  value: jsonb('value').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
 
 /**
  * Retention history table - audit log of cleanup operations

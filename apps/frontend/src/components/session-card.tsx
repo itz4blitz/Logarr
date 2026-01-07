@@ -622,7 +622,6 @@ export function SessionCard({
                   </TooltipContent>
                 </Tooltip>
               ) : null)}
-
           </div>
         </div>
 
@@ -631,10 +630,7 @@ export function SessionCard({
           <Tooltip>
             <TooltipTrigger asChild>
               <Avatar className={cn('cursor-help', compact ? 'h-5 w-5' : 'h-6 w-6')}>
-                <AvatarImage
-                  src={userAvatarUrl || undefined}
-                  alt={session.userName || 'User'}
-                />
+                <AvatarImage src={userAvatarUrl || undefined} alt={session.userName || 'User'} />
                 <AvatarFallback
                   className={cn(
                     'bg-muted text-muted-foreground',
@@ -656,10 +652,7 @@ export function SessionCard({
           </Tooltip>
           <div className="min-w-0 flex-1">
             <p
-              className={cn(
-                'text-muted-foreground truncate',
-                compact ? 'text-[10px]' : 'text-xs'
-              )}
+              className={cn('text-muted-foreground truncate', compact ? 'text-[10px]' : 'text-xs')}
             >
               {session.userName || 'Unknown'} •{' '}
               {session.deviceName || session.clientName || 'Unknown'}
@@ -703,9 +696,7 @@ export function SessionCard({
                         ? 'Transcoding'
                         : getPlayMethodLabel(nowPlaying.playMethod)}
                     </p>
-                    {streamInfo && (
-                      <p className="text-muted-foreground text-xs">{streamInfo}</p>
-                    )}
+                    {streamInfo && <p className="text-muted-foreground text-xs">{streamInfo}</p>}
                     {nowPlaying.isTranscoding && transcodeReasons && (
                       <p className="border-border/50 mt-1 border-t pt-1 text-xs text-orange-400">
                         Reason: {transcodeReasons}
@@ -731,8 +722,7 @@ export function SessionCard({
                   <div className="space-y-1">
                     <p className="font-semibold">{session.deviceName || 'Unknown Device'}</p>
                     <p className="text-muted-foreground text-xs">
-                      {session.clientName}{' '}
-                      {session.clientVersion && `v${session.clientVersion}`}
+                      {session.clientName} {session.clientVersion && `v${session.clientVersion}`}
                     </p>
                   </div>
                 </TooltipContent>

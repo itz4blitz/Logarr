@@ -285,7 +285,9 @@ export class IssueContextService {
         userId: schema.issueOccurrences.userId,
         count: count(),
         lastSeen: sql<Date>`max(${schema.issueOccurrences.timestamp})`,
-        devices: sql<string[]>`array_agg(DISTINCT ${schema.logEntries.deviceId}) FILTER (WHERE ${schema.logEntries.deviceId} IS NOT NULL)`,
+        devices: sql<
+          string[]
+        >`array_agg(DISTINCT ${schema.logEntries.deviceId}) FILTER (WHERE ${schema.logEntries.deviceId} IS NOT NULL)`,
       })
       .from(schema.issueOccurrences)
       .innerJoin(schema.logEntries, eq(schema.issueOccurrences.logEntryId, schema.logEntries.id))

@@ -5,7 +5,12 @@ import { SettingsService, type RetentionSettings } from '../settings/settings.se
 
 import { RetentionService } from './retention.service';
 
-import type { StorageStats, CleanupPreview, RetentionResult, RetentionConfig } from './retention.dto';
+import type {
+  StorageStats,
+  CleanupPreview,
+  RetentionResult,
+  RetentionConfig,
+} from './retention.dto';
 
 @ApiTags('retention')
 @Controller('retention')

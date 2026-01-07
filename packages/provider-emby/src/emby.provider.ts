@@ -229,7 +229,8 @@ export class EmbyProvider implements MediaServerProvider {
             durationTicks: nowPlayingItem.RunTimeTicks,
             isPaused: playState.IsPaused,
             isMuted: playState.IsMuted,
-            isTranscoding: session.TranscodingInfo !== undefined && !session.TranscodingInfo.IsVideoDirect,
+            isTranscoding:
+              session.TranscodingInfo !== undefined && !session.TranscodingInfo.IsVideoDirect,
             transcodeReasons: session.TranscodingInfo?.TranscodeReasons as string[] | undefined,
             videoCodec: session.TranscodingInfo?.VideoCodec,
             audioCodec: session.TranscodingInfo?.AudioCodec,

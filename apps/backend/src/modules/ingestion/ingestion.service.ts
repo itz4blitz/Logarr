@@ -1,9 +1,12 @@
+import { setImmediate } from 'timers';
+
 import { EmbyProvider, EmbyClient } from '@logarr/provider-emby';
 import { JellyfinProvider, JellyfinClient } from '@logarr/provider-jellyfin';
 import { PlexProvider, PlexClient } from '@logarr/provider-plex';
 import { ProwlarrProvider } from '@logarr/provider-prowlarr';
 import { RadarrProvider } from '@logarr/provider-radarr';
 import { SonarrProvider } from '@logarr/provider-sonarr';
+import { WhisparrProvider } from '@logarr/provider-whisparr';
 import { Injectable, Inject, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 
@@ -16,7 +19,11 @@ import { LogsGateway } from '../logs/logs.gateway';
 import { SessionsGateway } from '../sessions/sessions.gateway';
 
 import type { MediaServerProvider, NormalizedSession, NormalizedActivity } from '@logarr/core';
-import type { EmbySession, EmbyPlaybackProgressData, EmbyPlaybackEventData } from '@logarr/provider-emby';
+import type {
+  EmbySession,
+  EmbyPlaybackProgressData,
+  EmbyPlaybackEventData,
+} from '@logarr/provider-emby';
 import type {
   JellyfinSession,
   JellyfinPlaybackProgressData,
@@ -71,6 +78,9 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
 
     const plexProvider = new PlexProvider();
     this.providers.set(plexProvider.id, plexProvider);
+
+    const whisparrProvider = new WhisparrProvider();
+    this.providers.set(whisparrProvider.id, whisparrProvider);
   }
 
   async onModuleInit() {
@@ -91,16 +101,46 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
       });
     }, 5000);
 
+    // Run initial setup in background - don't block app startup
+    // This prevents hanging if external servers are unreachable
+    setImmediate(() => {
+      this.initializeConnections().catch((err) => {
+        this.logger.error('Error during connection initialization:', err);
+      });
+    });
+
+    this.logger.log('Ingestion service initialized (connections starting in background)');
+  }
+
+  /**
+   * Initialize external connections in background (non-blocking)
+   * This runs after the app has started listening
+   */
+  private async initializeConnections() {
+    // Wait briefly for server seeding to complete
+    // ServerSeedService.onModuleInit runs concurrently, so give it time to insert servers
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
     // Initial poll for logs
-    await this.pollAllServers();
+    await this.pollAllServers().catch((err) => {
+      this.logger.warn('Initial server poll failed:', err);
+    });
 
     // Initial poll for sessions from all servers that support it
-    await this.pollAllSessions();
+    await this.pollAllSessions().catch((err) => {
+      this.logger.warn('Initial session poll failed:', err);
+    });
 
     // Connect WebSockets for real-time session updates
-    await this.connectJellyfinWebSockets();
-    await this.connectEmbyWebSockets();
-    await this.connectPlexWebSockets();
+    await this.connectJellyfinWebSockets().catch((err) => {
+      this.logger.warn('Failed to connect Jellyfin WebSockets:', err);
+    });
+    await this.connectEmbyWebSockets().catch((err) => {
+      this.logger.warn('Failed to connect Emby WebSockets:', err);
+    });
+    await this.connectPlexWebSockets().catch((err) => {
+      this.logger.warn('Failed to connect Plex WebSockets:', err);
+    });
 
     // Start file-based log ingestion for servers that have it enabled
     try {
@@ -698,10 +738,7 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
   /**
    * Handle real-time sessions update from Emby WebSocket
    */
-  private async handleEmbySessionsUpdate(
-    serverId: string,
-    embySessions: readonly EmbySession[]
-  ) {
+  private async handleEmbySessionsUpdate(serverId: string, embySessions: readonly EmbySession[]) {
     // Convert Emby sessions to normalized format (same as Jellyfin since APIs are similar)
     const normalizedSessions: NormalizedSession[] = embySessions.map((session) => ({
       id: session.Id,
@@ -727,7 +764,8 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
             durationTicks: session.NowPlayingItem.RunTimeTicks,
             isPaused: session.PlayState?.IsPaused ?? false,
             isMuted: session.PlayState?.IsMuted ?? false,
-            isTranscoding: session.TranscodingInfo !== undefined && !session.TranscodingInfo.IsVideoDirect,
+            isTranscoding:
+              session.TranscodingInfo !== undefined && !session.TranscodingInfo.IsVideoDirect,
             transcodeReasons: session.TranscodingInfo?.TranscodeReasons ?? undefined,
             playMethod: session.PlayState?.PlayMethod,
             videoCodec: session.TranscodingInfo?.VideoCodec,

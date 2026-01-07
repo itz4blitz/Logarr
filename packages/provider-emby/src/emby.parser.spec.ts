@@ -16,8 +16,7 @@ import {
 describe('Emby Parser', () => {
   describe('parseEmbyLogLine', () => {
     it('should parse a standard log line with source', () => {
-      const line =
-        '2024-01-15 10:30:45.123 Info HttpServer: HTTP Request completed';
+      const line = '2024-01-15 10:30:45.123 Info HttpServer: HTTP Request completed';
       const result = parseEmbyLogLine(line);
 
       expect(result).not.toBeNull();
@@ -28,8 +27,7 @@ describe('Emby Parser', () => {
     });
 
     it('should parse a debug log line', () => {
-      const line =
-        '2024-01-15 10:30:45.123 Debug MediaEncoder: Starting encode';
+      const line = '2024-01-15 10:30:45.123 Debug MediaEncoder: Starting encode';
       const result = parseEmbyLogLine(line);
 
       expect(result).not.toBeNull();
@@ -48,8 +46,7 @@ describe('Emby Parser', () => {
     });
 
     it('should parse an error log line', () => {
-      const line =
-        '2024-01-15 10:30:45.123 Error TranscodeJob: Failed to start';
+      const line = '2024-01-15 10:30:45.123 Error TranscodeJob: Failed to start';
       const result = parseEmbyLogLine(line);
 
       expect(result).not.toBeNull();
@@ -95,8 +92,7 @@ describe('Emby Parser', () => {
     });
 
     it('should extract device ID from message', () => {
-      const line =
-        '2024-01-15 10:30:45.123 Info Device: DeviceId=my-device connected';
+      const line = '2024-01-15 10:30:45.123 Info Device: DeviceId=my-device connected';
       const result = parseEmbyLogLine(line);
 
       expect(result).not.toBeNull();
@@ -122,14 +118,11 @@ describe('Emby Parser', () => {
     });
 
     it('should return null for exception declaration lines', () => {
-      expect(
-        parseEmbyLogLine('System.InvalidOperationException: Error occurred')
-      ).toBeNull();
+      expect(parseEmbyLogLine('System.InvalidOperationException: Error occurred')).toBeNull();
     });
 
     it('should preserve raw line in result', () => {
-      const line =
-        '2024-01-15 10:30:45.123 Info Test: Raw line preservation';
+      const line = '2024-01-15 10:30:45.123 Info Test: Raw line preservation';
       const result = parseEmbyLogLine(line);
 
       expect(result?.raw).toBe(line);
@@ -138,25 +131,19 @@ describe('Emby Parser', () => {
 
   describe('isEmbyLogContinuation', () => {
     it('should detect stack trace lines', () => {
-      expect(
-        isEmbyLogContinuation('   at System.Threading.Task.Run()')
-      ).toBe(true);
+      expect(isEmbyLogContinuation('   at System.Threading.Task.Run()')).toBe(true);
       expect(isEmbyLogContinuation('  at MyClass.MyMethod()')).toBe(true);
     });
 
     it('should detect exception declarations', () => {
+      expect(isEmbyLogContinuation('System.NullReferenceException: Object reference')).toBe(true);
       expect(
-        isEmbyLogContinuation('System.NullReferenceException: Object reference')
+        isEmbyLogContinuation(
+          'Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesException: Unable to resolve'
+        )
       ).toBe(true);
-      expect(
-        isEmbyLogContinuation('Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesException: Unable to resolve')
-      ).toBe(true);
-      expect(
-        isEmbyLogContinuation('Emby.Server.SomeException: Error')
-      ).toBe(true);
-      expect(
-        isEmbyLogContinuation('MediaBrowser.Common.SomeException: Error')
-      ).toBe(true);
+      expect(isEmbyLogContinuation('Emby.Server.SomeException: Error')).toBe(true);
+      expect(isEmbyLogContinuation('MediaBrowser.Common.SomeException: Error')).toBe(true);
     });
 
     it('should detect inner exception markers', () => {
@@ -173,9 +160,7 @@ describe('Emby Parser', () => {
     });
 
     it('should not detect regular log lines as continuations', () => {
-      expect(
-        isEmbyLogContinuation('2024-01-15 10:30:45.123 Info Test: Message')
-      ).toBe(false);
+      expect(isEmbyLogContinuation('2024-01-15 10:30:45.123 Info Test: Message')).toBe(false);
     });
 
     it('should return false for empty lines', () => {
@@ -239,7 +224,9 @@ describe('Emby Parser', () => {
     });
 
     it('should detect exception patterns', () => {
-      expect(isExceptionContinuation('System.ArgumentNullException: Value cannot be null')).toBe(true);
+      expect(isExceptionContinuation('System.ArgumentNullException: Value cannot be null')).toBe(
+        true
+      );
     });
 
     it('should return false for regular log lines', () => {
@@ -275,50 +262,32 @@ describe('Emby Parser', () => {
 
   describe('EMBY_CORRELATION_PATTERNS', () => {
     it('should have session ID pattern', () => {
-      const sessionPattern = EMBY_CORRELATION_PATTERNS.find(
-        (p) => p.name === 'sessionId'
-      );
+      const sessionPattern = EMBY_CORRELATION_PATTERNS.find((p) => p.name === 'sessionId');
       expect(sessionPattern).toBeDefined();
-      expect('SessionId=a1b2c3d4-e5f6-7890-abcd-ef1234567890').toMatch(
-        sessionPattern!.pattern
-      );
+      expect('SessionId=a1b2c3d4-e5f6-7890-abcd-ef1234567890').toMatch(sessionPattern!.pattern);
     });
 
     it('should have user ID pattern', () => {
-      const userPattern = EMBY_CORRELATION_PATTERNS.find(
-        (p) => p.name === 'userId'
-      );
+      const userPattern = EMBY_CORRELATION_PATTERNS.find((p) => p.name === 'userId');
       expect(userPattern).toBeDefined();
-      expect('UserId=12345678-90ab-cdef-1234-567890abcdef').toMatch(
-        userPattern!.pattern
-      );
+      expect('UserId=12345678-90ab-cdef-1234-567890abcdef').toMatch(userPattern!.pattern);
     });
 
     it('should have device ID pattern', () => {
-      const devicePattern = EMBY_CORRELATION_PATTERNS.find(
-        (p) => p.name === 'deviceId'
-      );
+      const devicePattern = EMBY_CORRELATION_PATTERNS.find((p) => p.name === 'deviceId');
       expect(devicePattern).toBeDefined();
       expect('DeviceId=my-device-123').toMatch(devicePattern!.pattern);
     });
 
     it('should have item ID pattern', () => {
-      const itemPattern = EMBY_CORRELATION_PATTERNS.find(
-        (p) => p.name === 'itemId'
-      );
+      const itemPattern = EMBY_CORRELATION_PATTERNS.find((p) => p.name === 'itemId');
       expect(itemPattern).toBeDefined();
-      expect('ItemId=abcd1234-5678-90ab-cdef-1234567890ab').toMatch(
-        itemPattern!.pattern
-      );
-      expect('/Items/abcd1234-5678-90ab-cdef-1234567890ab').toMatch(
-        itemPattern!.pattern
-      );
+      expect('ItemId=abcd1234-5678-90ab-cdef-1234567890ab').toMatch(itemPattern!.pattern);
+      expect('/Items/abcd1234-5678-90ab-cdef-1234567890ab').toMatch(itemPattern!.pattern);
     });
 
     it('should have client IP pattern', () => {
-      const ipPattern = EMBY_CORRELATION_PATTERNS.find(
-        (p) => p.name === 'clientIp'
-      );
+      const ipPattern = EMBY_CORRELATION_PATTERNS.find((p) => p.name === 'clientIp');
       expect(ipPattern).toBeDefined();
       expect('RemoteEndPoint=192.168.1.100').toMatch(ipPattern!.pattern);
       expect('ClientIP=10.0.0.1').toMatch(ipPattern!.pattern);

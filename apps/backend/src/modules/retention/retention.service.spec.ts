@@ -167,10 +167,10 @@ describe('RetentionService', () => {
       mockDb.select = vi.fn().mockImplementation(() => {
         callCount++;
         const counts = [
-          [{ count: 100 }],  // info
-          [{ count: 50 }],   // debug
-          [{ count: 25 }],   // warn
-          [{ count: 10 }],   // error
+          [{ count: 100 }], // info
+          [{ count: 50 }], // debug
+          [{ count: 25 }], // warn
+          [{ count: 10 }], // error
         ];
         const result = counts[callCount - 1] || [{ count: 0 }];
 
@@ -208,9 +208,9 @@ describe('RetentionService', () => {
         return {
           from: vi.fn().mockReturnValue({
             where: vi.fn().mockReturnValue({
-              then: vi.fn().mockImplementation((resolve) =>
-                Promise.resolve([{ count }]).then(resolve)
-              ),
+              then: vi
+                .fn()
+                .mockImplementation((resolve) => Promise.resolve([{ count }]).then(resolve)),
               [Symbol.toStringTag]: 'Promise',
             }),
           }),
@@ -227,9 +227,9 @@ describe('RetentionService', () => {
       mockDb.select = vi.fn().mockImplementation(() => ({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
-            then: vi.fn().mockImplementation((resolve) =>
-              Promise.resolve([{ count: 250 }]).then(resolve)
-            ),
+            then: vi
+              .fn()
+              .mockImplementation((resolve) => Promise.resolve([{ count: 250 }]).then(resolve)),
             [Symbol.toStringTag]: 'Promise',
           }),
         }),
@@ -245,9 +245,9 @@ describe('RetentionService', () => {
       mockDb.select = vi.fn().mockImplementation(() => ({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
-            then: vi.fn().mockImplementation((resolve) =>
-              Promise.resolve([{ count: 0 }]).then(resolve)
-            ),
+            then: vi
+              .fn()
+              .mockImplementation((resolve) => Promise.resolve([{ count: 0 }]).then(resolve)),
             [Symbol.toStringTag]: 'Promise',
           }),
         }),
@@ -264,9 +264,9 @@ describe('RetentionService', () => {
       mockDb.select = vi.fn().mockImplementation(() => ({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
-            then: vi.fn().mockImplementation((resolve) =>
-              Promise.resolve([{ count: null }]).then(resolve)
-            ),
+            then: vi
+              .fn()
+              .mockImplementation((resolve) => Promise.resolve([{ count: null }]).then(resolve)),
             [Symbol.toStringTag]: 'Promise',
           }),
         }),
@@ -281,9 +281,7 @@ describe('RetentionService', () => {
       mockDb.select = vi.fn().mockImplementation(() => ({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
-            then: vi.fn().mockImplementation((resolve) =>
-              Promise.resolve([]).then(resolve)
-            ),
+            then: vi.fn().mockImplementation((resolve) => Promise.resolve([]).then(resolve)),
             [Symbol.toStringTag]: 'Promise',
           }),
         }),
@@ -300,9 +298,9 @@ describe('RetentionService', () => {
       mockDb.select = vi.fn().mockImplementation(() => ({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
-            then: vi.fn().mockImplementation((resolve) =>
-              Promise.resolve([{ count: 42 }]).then(resolve)
-            ),
+            then: vi
+              .fn()
+              .mockImplementation((resolve) => Promise.resolve([{ count: 42 }]).then(resolve)),
             [Symbol.toStringTag]: 'Promise',
           }),
         }),
@@ -318,9 +316,9 @@ describe('RetentionService', () => {
       mockDb.select = vi.fn().mockImplementation(() => ({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
-            then: vi.fn().mockImplementation((resolve) =>
-              Promise.resolve([{ count: null }]).then(resolve)
-            ),
+            then: vi
+              .fn()
+              .mockImplementation((resolve) => Promise.resolve([{ count: null }]).then(resolve)),
             [Symbol.toStringTag]: 'Promise',
           }),
         }),
@@ -336,9 +334,7 @@ describe('RetentionService', () => {
       mockDb.select = vi.fn().mockImplementation(() => ({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
-            then: vi.fn().mockImplementation((resolve) =>
-              Promise.resolve([]).then(resolve)
-            ),
+            then: vi.fn().mockImplementation((resolve) => Promise.resolve([]).then(resolve)),
             [Symbol.toStringTag]: 'Promise',
           }),
         }),
@@ -404,20 +400,18 @@ describe('RetentionService', () => {
         // First 4 calls are for info, debug, warn, error
         // 5th call is for orphaned occurrences
         const results = [
-          [{ id: '1' }, { id: '2' }],       // 2 info
-          [{ id: '3' }],                     // 1 debug
+          [{ id: '1' }, { id: '2' }], // 2 info
+          [{ id: '3' }], // 1 debug
           [{ id: '4' }, { id: '5' }, { id: '6' }], // 3 warn
-          [{ id: '7' }],                     // 1 error
-          [{ id: '8' }],                     // 1 orphaned
+          [{ id: '7' }], // 1 error
+          [{ id: '8' }], // 1 orphaned
         ];
         const result = results[deleteCallCount - 1] || [];
 
         return {
           where: vi.fn().mockReturnValue({
             returning: vi.fn().mockReturnValue({
-              then: vi.fn().mockImplementation((resolve) =>
-                Promise.resolve(result).then(resolve)
-              ),
+              then: vi.fn().mockImplementation((resolve) => Promise.resolve(result).then(resolve)),
               [Symbol.toStringTag]: 'Promise',
             }),
           }),
@@ -475,9 +469,7 @@ describe('RetentionService', () => {
         return {
           where: vi.fn().mockReturnValue({
             returning: vi.fn().mockReturnValue({
-              then: vi.fn().mockImplementation((resolve) =>
-                Promise.resolve(result).then(resolve)
-              ),
+              then: vi.fn().mockImplementation((resolve) => Promise.resolve(result).then(resolve)),
               [Symbol.toStringTag]: 'Promise',
             }),
           }),
@@ -499,16 +491,17 @@ describe('RetentionService', () => {
         selectCallCount++;
         // Return different results based on call order
         const results: unknown[] = [
-          [{ count: 1000 }],           // Total log count
+          [{ count: 1000 }], // Total log count
           [{ oldest: '2024-01-01T00:00:00Z' }], // Oldest log
           [{ newest: '2024-12-31T00:00:00Z' }], // Newest log
-          [                              // Level counts
+          [
+            // Level counts
             { level: 'info', count: 500 },
             { level: 'debug', count: 200 },
             { level: 'warn', count: 200 },
             { level: 'error', count: 100 },
           ],
-          [],                            // Servers list (empty for simple test)
+          [], // Servers list (empty for simple test)
         ];
 
         const result = results[selectCallCount - 1] || [];
@@ -517,9 +510,7 @@ describe('RetentionService', () => {
           from: vi.fn().mockReturnValue({
             where: vi.fn().mockReturnThis(),
             groupBy: vi.fn().mockReturnThis(),
-            then: vi.fn().mockImplementation((resolve) =>
-              Promise.resolve(result).then(resolve)
-            ),
+            then: vi.fn().mockImplementation((resolve) => Promise.resolve(result).then(resolve)),
             [Symbol.toStringTag]: 'Promise',
           }),
         };
@@ -565,11 +556,11 @@ describe('RetentionService', () => {
       mockDb.select = vi.fn().mockImplementation(() => {
         selectCallCount++;
         const results: unknown[] = [
-          [{ count: 0 }],           // Total log count
-          [{ oldest: null }],       // Oldest log - null
-          [{ newest: null }],       // Newest log - null
-          [],                       // No level counts
-          [],                       // No servers
+          [{ count: 0 }], // Total log count
+          [{ oldest: null }], // Oldest log - null
+          [{ newest: null }], // Newest log - null
+          [], // No level counts
+          [], // No servers
         ];
 
         const result = results[selectCallCount - 1] || [];
@@ -578,9 +569,7 @@ describe('RetentionService', () => {
           from: vi.fn().mockReturnValue({
             where: vi.fn().mockReturnThis(),
             groupBy: vi.fn().mockReturnThis(),
-            then: vi.fn().mockImplementation((resolve) =>
-              Promise.resolve(result).then(resolve)
-            ),
+            then: vi.fn().mockImplementation((resolve) => Promise.resolve(result).then(resolve)),
             [Symbol.toStringTag]: 'Promise',
           }),
         };
@@ -605,7 +594,7 @@ describe('RetentionService', () => {
           [{ count: 100 }],
           [{ oldest: '2024-01-01' }],
           [{ newest: '2024-12-31' }],
-          [],  // Empty level counts
+          [], // Empty level counts
           [],
         ];
 
@@ -615,9 +604,7 @@ describe('RetentionService', () => {
           from: vi.fn().mockReturnValue({
             where: vi.fn().mockReturnThis(),
             groupBy: vi.fn().mockReturnThis(),
-            then: vi.fn().mockImplementation((resolve) =>
-              Promise.resolve(result).then(resolve)
-            ),
+            then: vi.fn().mockImplementation((resolve) => Promise.resolve(result).then(resolve)),
             [Symbol.toStringTag]: 'Promise',
           }),
         };
@@ -647,8 +634,8 @@ describe('RetentionService', () => {
           [{ newest: '2024-12-31' }],
           [
             { level: 'info', count: 50 },
-            { level: 'unknown_level', count: 25 },  // Unknown level
-            { level: null, count: 10 },  // Null level
+            { level: 'unknown_level', count: 25 }, // Unknown level
+            { level: null, count: 10 }, // Null level
           ],
           [],
         ];
@@ -659,9 +646,7 @@ describe('RetentionService', () => {
           from: vi.fn().mockReturnValue({
             where: vi.fn().mockReturnThis(),
             groupBy: vi.fn().mockReturnThis(),
-            then: vi.fn().mockImplementation((resolve) =>
-              Promise.resolve(result).then(resolve)
-            ),
+            then: vi.fn().mockImplementation((resolve) => Promise.resolve(result).then(resolve)),
             [Symbol.toStringTag]: 'Promise',
           }),
         };
@@ -757,15 +742,17 @@ describe('RetentionService', () => {
       mockDb.delete = vi.fn().mockImplementation(() => ({
         where: vi.fn().mockReturnValue({
           returning: vi.fn().mockReturnValue({
-            then: vi.fn().mockImplementation((resolve) =>
-              Promise.resolve([
-                { id: '1' },
-                { id: '2' },
-                { id: '3' },
-                { id: '4' },
-                { id: '5' },
-              ]).then(resolve)
-            ),
+            then: vi
+              .fn()
+              .mockImplementation((resolve) =>
+                Promise.resolve([
+                  { id: '1' },
+                  { id: '2' },
+                  { id: '3' },
+                  { id: '4' },
+                  { id: '5' },
+                ]).then(resolve)
+              ),
             [Symbol.toStringTag]: 'Promise',
           }),
         }),
@@ -782,9 +769,7 @@ describe('RetentionService', () => {
       mockDb.delete = vi.fn().mockImplementation(() => ({
         where: vi.fn().mockReturnValue({
           returning: vi.fn().mockReturnValue({
-            then: vi.fn().mockImplementation((resolve) =>
-              Promise.resolve([]).then(resolve)
-            ),
+            then: vi.fn().mockImplementation((resolve) => Promise.resolve([]).then(resolve)),
             [Symbol.toStringTag]: 'Promise',
           }),
         }),
@@ -799,9 +784,9 @@ describe('RetentionService', () => {
       mockDb.delete = vi.fn().mockImplementation(() => ({
         where: vi.fn().mockReturnValue({
           returning: vi.fn().mockReturnValue({
-            then: vi.fn().mockImplementation((resolve) =>
-              Promise.resolve([{ id: '1' }]).then(resolve)
-            ),
+            then: vi
+              .fn()
+              .mockImplementation((resolve) => Promise.resolve([{ id: '1' }]).then(resolve)),
             [Symbol.toStringTag]: 'Promise',
           }),
         }),
@@ -819,9 +804,7 @@ describe('RetentionService', () => {
       mockDb.delete = vi.fn().mockImplementation(() => ({
         where: vi.fn().mockReturnValue({
           returning: vi.fn().mockReturnValue({
-            then: vi.fn().mockImplementation((resolve) =>
-              Promise.resolve([]).then(resolve)
-            ),
+            then: vi.fn().mockImplementation((resolve) => Promise.resolve([]).then(resolve)),
             [Symbol.toStringTag]: 'Promise',
           }),
         }),
@@ -837,15 +820,21 @@ describe('RetentionService', () => {
       mockDb.delete = vi.fn().mockImplementation(() => ({
         where: vi.fn().mockReturnValue({
           returning: vi.fn().mockReturnValue({
-            then: vi.fn().mockImplementation((resolve) =>
-              Promise.resolve([{ id: '1' }, { id: '2' }]).then(resolve)
-            ),
+            then: vi
+              .fn()
+              .mockImplementation((resolve) =>
+                Promise.resolve([{ id: '1' }, { id: '2' }]).then(resolve)
+              ),
             [Symbol.toStringTag]: 'Promise',
           }),
         }),
       }));
 
-      const result = await service.deleteLogsByServerAndLevel('server-1', ['error', 'warn', 'info']);
+      const result = await service.deleteLogsByServerAndLevel('server-1', [
+        'error',
+        'warn',
+        'info',
+      ]);
 
       expect(result.deleted).toBe(2);
     });
@@ -856,13 +845,11 @@ describe('RetentionService', () => {
       mockDb.delete = vi.fn().mockImplementation(() => ({
         where: vi.fn().mockReturnValue({
           returning: vi.fn().mockReturnValue({
-            then: vi.fn().mockImplementation((resolve) =>
-              Promise.resolve([
-                { id: '1' },
-                { id: '2' },
-                { id: '3' },
-              ]).then(resolve)
-            ),
+            then: vi
+              .fn()
+              .mockImplementation((resolve) =>
+                Promise.resolve([{ id: '1' }, { id: '2' }, { id: '3' }]).then(resolve)
+              ),
             [Symbol.toStringTag]: 'Promise',
           }),
         }),
@@ -878,9 +865,7 @@ describe('RetentionService', () => {
       mockDb.delete = vi.fn().mockImplementation(() => ({
         where: vi.fn().mockReturnValue({
           returning: vi.fn().mockReturnValue({
-            then: vi.fn().mockImplementation((resolve) =>
-              Promise.resolve([]).then(resolve)
-            ),
+            then: vi.fn().mockImplementation((resolve) => Promise.resolve([]).then(resolve)),
             [Symbol.toStringTag]: 'Promise',
           }),
         }),
@@ -895,9 +880,11 @@ describe('RetentionService', () => {
       mockDb.delete = vi.fn().mockImplementation(() => ({
         where: vi.fn().mockReturnValue({
           returning: vi.fn().mockReturnValue({
-            then: vi.fn().mockImplementation((resolve) =>
-              Promise.resolve([{ id: '1' }, { id: '2' }]).then(resolve)
-            ),
+            then: vi
+              .fn()
+              .mockImplementation((resolve) =>
+                Promise.resolve([{ id: '1' }, { id: '2' }]).then(resolve)
+              ),
             [Symbol.toStringTag]: 'Promise',
           }),
         }),
@@ -915,9 +902,7 @@ describe('RetentionService', () => {
       mockDb.delete = vi.fn().mockImplementation(() => ({
         where: vi.fn().mockReturnValue({
           returning: vi.fn().mockReturnValue({
-            then: vi.fn().mockImplementation((resolve) =>
-              Promise.resolve([]).then(resolve)
-            ),
+            then: vi.fn().mockImplementation((resolve) => Promise.resolve([]).then(resolve)),
             [Symbol.toStringTag]: 'Promise',
           }),
         }),
@@ -934,22 +919,22 @@ describe('RetentionService', () => {
     it('should delete all logs globally', async () => {
       mockDb.delete = vi.fn().mockImplementation(() => ({
         returning: vi.fn().mockReturnValue({
-          then: vi.fn().mockImplementation((resolve) =>
-            Promise.resolve([
-              { id: '1' },
-              { id: '2' },
-              { id: '3' },
-              { id: '4' },
-              { id: '5' },
-            ]).then(resolve)
-          ),
+          then: vi
+            .fn()
+            .mockImplementation((resolve) =>
+              Promise.resolve([
+                { id: '1' },
+                { id: '2' },
+                { id: '3' },
+                { id: '4' },
+                { id: '5' },
+              ]).then(resolve)
+            ),
           [Symbol.toStringTag]: 'Promise',
         }),
         where: vi.fn().mockReturnValue({
           returning: vi.fn().mockReturnValue({
-            then: vi.fn().mockImplementation((resolve) =>
-              Promise.resolve([]).then(resolve)
-            ),
+            then: vi.fn().mockImplementation((resolve) => Promise.resolve([]).then(resolve)),
             [Symbol.toStringTag]: 'Promise',
           }),
         }),
@@ -964,16 +949,12 @@ describe('RetentionService', () => {
     it('should return zero when database is empty', async () => {
       mockDb.delete = vi.fn().mockImplementation(() => ({
         returning: vi.fn().mockReturnValue({
-          then: vi.fn().mockImplementation((resolve) =>
-            Promise.resolve([]).then(resolve)
-          ),
+          then: vi.fn().mockImplementation((resolve) => Promise.resolve([]).then(resolve)),
           [Symbol.toStringTag]: 'Promise',
         }),
         where: vi.fn().mockReturnValue({
           returning: vi.fn().mockReturnValue({
-            then: vi.fn().mockImplementation((resolve) =>
-              Promise.resolve([]).then(resolve)
-            ),
+            then: vi.fn().mockImplementation((resolve) => Promise.resolve([]).then(resolve)),
             [Symbol.toStringTag]: 'Promise',
           }),
         }),
@@ -987,16 +968,12 @@ describe('RetentionService', () => {
     it('should log warning for dangerous operation', async () => {
       mockDb.delete = vi.fn().mockImplementation(() => ({
         returning: vi.fn().mockReturnValue({
-          then: vi.fn().mockImplementation((resolve) =>
-            Promise.resolve([]).then(resolve)
-          ),
+          then: vi.fn().mockImplementation((resolve) => Promise.resolve([]).then(resolve)),
           [Symbol.toStringTag]: 'Promise',
         }),
         where: vi.fn().mockReturnValue({
           returning: vi.fn().mockReturnValue({
-            then: vi.fn().mockImplementation((resolve) =>
-              Promise.resolve([]).then(resolve)
-            ),
+            then: vi.fn().mockImplementation((resolve) => Promise.resolve([]).then(resolve)),
             [Symbol.toStringTag]: 'Promise',
           }),
         }),
@@ -1012,16 +989,12 @@ describe('RetentionService', () => {
     it('should clean up orphaned occurrences after deletion', async () => {
       mockDb.delete = vi.fn().mockImplementation(() => ({
         returning: vi.fn().mockReturnValue({
-          then: vi.fn().mockImplementation((resolve) =>
-            Promise.resolve([]).then(resolve)
-          ),
+          then: vi.fn().mockImplementation((resolve) => Promise.resolve([]).then(resolve)),
           [Symbol.toStringTag]: 'Promise',
         }),
         where: vi.fn().mockReturnValue({
           returning: vi.fn().mockReturnValue({
-            then: vi.fn().mockImplementation((resolve) =>
-              Promise.resolve([]).then(resolve)
-            ),
+            then: vi.fn().mockImplementation((resolve) => Promise.resolve([]).then(resolve)),
             [Symbol.toStringTag]: 'Promise',
           }),
         }),
@@ -1044,9 +1017,7 @@ describe('RetentionService', () => {
         }),
         where: vi.fn().mockReturnValue({
           returning: vi.fn().mockReturnValue({
-            then: vi.fn().mockImplementation((resolve) =>
-              Promise.resolve([]).then(resolve)
-            ),
+            then: vi.fn().mockImplementation((resolve) => Promise.resolve([]).then(resolve)),
             [Symbol.toStringTag]: 'Promise',
           }),
         }),

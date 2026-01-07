@@ -107,9 +107,7 @@ function createTestQueryClient() {
 
 function renderWithQueryClient(component: React.ReactElement) {
   const queryClient = createTestQueryClient();
-  return render(
-    <QueryClientProvider client={queryClient}>{component}</QueryClientProvider>
-  );
+  return render(<QueryClientProvider client={queryClient}>{component}</QueryClientProvider>);
 }
 
 describe('AiProvidersPage', () => {
@@ -396,9 +394,7 @@ describe('AiProvidersPage', () => {
       // Click on Anthropic (unconfigured provider) - in the "Add Provider" section
       const anthropicButtons = screen.getAllByText('Anthropic');
       // Click the one in the Add Provider section (should be a button)
-      const anthropicButton = anthropicButtons.find((el) =>
-        el.closest('button') !== null
-      );
+      const anthropicButton = anthropicButtons.find((el) => el.closest('button') !== null);
       expect(anthropicButton).toBeDefined();
       fireEvent.click(anthropicButton!.closest('button')!);
 
@@ -418,9 +414,7 @@ describe('AiProvidersPage', () => {
       // Click on OpenAI button in empty state
       const openaiButtons = screen.getAllByText('OpenAI');
       // Find one that's inside a button
-      const openaiButton = openaiButtons.find((el) =>
-        el.closest('button') !== null
-      );
+      const openaiButton = openaiButtons.find((el) => el.closest('button') !== null);
       expect(openaiButton).toBeDefined();
       fireEvent.click(openaiButton!.closest('button')!);
 
@@ -436,9 +430,7 @@ describe('AiProvidersPage', () => {
 
       // Click on Anthropic (unconfigured provider)
       const anthropicButtons = screen.getAllByText('Anthropic');
-      const anthropicButton = anthropicButtons.find((el) =>
-        el.closest('button') !== null
-      );
+      const anthropicButton = anthropicButtons.find((el) => el.closest('button') !== null);
       fireEvent.click(anthropicButton!.closest('button')!);
 
       await waitFor(() => {
@@ -451,9 +443,7 @@ describe('AiProvidersPage', () => {
 
       // Click on Anthropic
       const anthropicButtons = screen.getAllByText('Anthropic');
-      const anthropicButton = anthropicButtons.find((el) =>
-        el.closest('button') !== null
-      );
+      const anthropicButton = anthropicButtons.find((el) => el.closest('button') !== null);
       fireEvent.click(anthropicButton!.closest('button')!);
 
       await waitFor(() => {
@@ -467,9 +457,7 @@ describe('AiProvidersPage', () => {
 
       // Click on Anthropic
       const anthropicButtons = screen.getAllByText('Anthropic');
-      const anthropicButton = anthropicButtons.find((el) =>
-        el.closest('button') !== null
-      );
+      const anthropicButton = anthropicButtons.find((el) => el.closest('button') !== null);
       fireEvent.click(anthropicButton!.closest('button')!);
 
       await waitFor(() => {

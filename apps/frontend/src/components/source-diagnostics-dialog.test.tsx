@@ -100,12 +100,7 @@ describe('SourceDiagnosticsDialog', () => {
         error: 'Connection refused',
       };
 
-      render(
-        <SourceDiagnosticsDialog
-          {...defaultProps}
-          connectionStatus={disconnectedStatus}
-        />
-      );
+      render(<SourceDiagnosticsDialog {...defaultProps} connectionStatus={disconnectedStatus} />);
 
       expect(screen.getByText('Disconnected')).toBeInTheDocument();
       expect(screen.getByText('Connection refused')).toBeInTheDocument();
@@ -123,12 +118,7 @@ describe('SourceDiagnosticsDialog', () => {
         fileIngestionEnabled: false,
       };
 
-      render(
-        <SourceDiagnosticsDialog
-          {...defaultProps}
-          server={serverWithoutFileIngestion}
-        />
-      );
+      render(<SourceDiagnosticsDialog {...defaultProps} server={serverWithoutFileIngestion} />);
 
       expect(screen.queryByText('File Ingestion')).not.toBeInTheDocument();
     });
@@ -185,7 +175,9 @@ describe('SourceDiagnosticsDialog', () => {
       render(<SourceDiagnosticsDialog {...defaultProps} isLoading={true} />);
 
       // Find the refresh button by looking for disabled buttons in the dialog header
-      const disabledButtons = screen.getAllByRole('button').filter((btn) => btn.hasAttribute('disabled'));
+      const disabledButtons = screen
+        .getAllByRole('button')
+        .filter((btn) => btn.hasAttribute('disabled'));
       expect(disabledButtons.length).toBeGreaterThan(0);
     });
   });
@@ -238,9 +230,7 @@ describe('SourceDiagnosticsDialog', () => {
 
   describe('null/edge cases', () => {
     it('should handle null connectionStatus', () => {
-      render(
-        <SourceDiagnosticsDialog {...defaultProps} connectionStatus={null} />
-      );
+      render(<SourceDiagnosticsDialog {...defaultProps} connectionStatus={null} />);
 
       expect(screen.getByText('API Connection')).toBeInTheDocument();
       expect(screen.getByText('Disconnected')).toBeInTheDocument();
@@ -252,9 +242,7 @@ describe('SourceDiagnosticsDialog', () => {
         logPaths: [],
       };
 
-      render(
-        <SourceDiagnosticsDialog {...defaultProps} server={serverNoLogPaths} />
-      );
+      render(<SourceDiagnosticsDialog {...defaultProps} server={serverNoLogPaths} />);
 
       expect(screen.queryByText('Configured Paths:')).not.toBeInTheDocument();
     });
@@ -265,9 +253,7 @@ describe('SourceDiagnosticsDialog', () => {
         logFilePatterns: [],
       };
 
-      render(
-        <SourceDiagnosticsDialog {...defaultProps} server={serverNoPatterns} />
-      );
+      render(<SourceDiagnosticsDialog {...defaultProps} server={serverNoPatterns} />);
 
       expect(screen.queryByText('File Patterns:')).not.toBeInTheDocument();
     });
@@ -278,9 +264,7 @@ describe('SourceDiagnosticsDialog', () => {
         lastError: 'Authentication failed',
       };
 
-      render(
-        <SourceDiagnosticsDialog {...defaultProps} server={serverWithError} />
-      );
+      render(<SourceDiagnosticsDialog {...defaultProps} server={serverWithError} />);
 
       expect(screen.getByText(/Last Error:/)).toBeInTheDocument();
       expect(screen.getByText('Authentication failed')).toBeInTheDocument();
@@ -292,9 +276,7 @@ describe('SourceDiagnosticsDialog', () => {
         fileIngestionError: 'Permission denied',
       };
 
-      render(
-        <SourceDiagnosticsDialog {...defaultProps} server={serverWithFileError} />
-      );
+      render(<SourceDiagnosticsDialog {...defaultProps} server={serverWithFileError} />);
 
       expect(screen.getByText(/File Ingestion Error:/)).toBeInTheDocument();
       expect(screen.getByText('Permission denied')).toBeInTheDocument();

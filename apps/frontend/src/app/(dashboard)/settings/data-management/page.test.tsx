@@ -156,9 +156,7 @@ function createTestQueryClient() {
 
 function renderWithQueryClient(component: React.ReactElement) {
   const queryClient = createTestQueryClient();
-  return render(
-    <QueryClientProvider client={queryClient}>{component}</QueryClientProvider>
-  );
+  return render(<QueryClientProvider client={queryClient}>{component}</QueryClientProvider>);
 }
 
 describe('DataManagementPage', () => {
@@ -452,9 +450,7 @@ describe('DataManagementPage', () => {
       fireEvent.click(screen.getByText('Run Now'));
 
       await waitFor(() => {
-        expect(toast.success).toHaveBeenCalledWith(
-          expect.stringContaining('185 logs removed')
-        );
+        expect(toast.success).toHaveBeenCalledWith(expect.stringContaining('185 logs removed'));
       });
     });
 
@@ -704,9 +700,7 @@ describe('DataManagementPage', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
 
       await waitFor(() => {
-        expect(toast.success).toHaveBeenCalledWith(
-          expect.stringContaining('10,000 logs')
-        );
+        expect(toast.success).toHaveBeenCalledWith(expect.stringContaining('10,000 logs'));
       });
     });
 

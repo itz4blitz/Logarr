@@ -18,7 +18,9 @@ import { RedisModule } from './redis/redis.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: ['.env.local', '.env', '../../.env.local', '../../.env'],
+      // Environment variables are injected by 1Password CLI (op run --env-file)
+      // No need to read .env files - they're already in process.env
+      ignoreEnvFile: true,
     }),
     LoggerModule,
     DatabaseModule,

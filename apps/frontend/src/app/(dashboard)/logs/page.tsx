@@ -692,11 +692,7 @@ function LogsPageContent() {
                 </span>
               </SelectItem>
               {servers?.map((server) => (
-                <SelectItem
-                  key={server.id}
-                  value={server.id}
-                  className="py-2"
-                >
+                <SelectItem key={server.id} value={server.id} className="py-2">
                   <span className="flex items-center gap-2">
                     <ProviderIcon providerId={server.providerId} size="sm" />
                     <span className="flex-1">{server.name}</span>
