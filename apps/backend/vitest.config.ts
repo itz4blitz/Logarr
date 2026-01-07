@@ -38,6 +38,11 @@ export default defineConfig({
         'src/database/schema.ts',
         // AI provider has external API dependencies - better tested via integration/E2E
         'src/modules/settings/ai-provider.service.ts',
+        // Seed services run once at startup - tested via integration/E2E
+        'src/modules/servers/server-seed.service.ts',
+        'src/modules/settings/ai-provider-seed.service.ts',
+        // Barrel export files
+        'src/modules/retention/index.ts',
       ],
       thresholds: {
         statements: 80,
