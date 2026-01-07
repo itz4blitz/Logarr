@@ -116,7 +116,7 @@ export function MetricCard({
           </div>
 
           <div className="flex items-end justify-between gap-3">
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div
                 className={cn(
                   'text-2xl leading-none font-bold tracking-tight text-zinc-100 tabular-nums',
@@ -132,13 +132,16 @@ export function MetricCard({
               )}
             </div>
 
-            {trend && trend.length > 1 && (
-              <Sparkline
-                data={trend}
-                className="shrink-0 opacity-80 transition-opacity group-hover:opacity-100"
-                positive={!valueClassName?.includes('red')}
-              />
-            )}
+            {/* Sparkline or placeholder to maintain consistent layout */}
+            <div className="h-8 w-16 shrink-0">
+              {trend && trend.length > 1 && (
+                <Sparkline
+                  data={trend}
+                  className="h-full w-full opacity-80 transition-opacity group-hover:opacity-100"
+                  positive={!valueClassName?.includes('red')}
+                />
+              )}
+            </div>
           </div>
         </>
       )}

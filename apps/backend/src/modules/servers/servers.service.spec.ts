@@ -20,6 +20,7 @@ describe('ServersService', () => {
     stopServerFileIngestion: vi.fn(),
     validateLogPaths: vi.fn(),
     getStatus: vi.fn().mockReturnValue({ tailers: [] }),
+    isServerWatching: vi.fn().mockReturnValue(false),
   };
 
   const mockIngestionService = {
@@ -436,6 +437,51 @@ describe('ServersService', () => {
       await service.testConnection('server-1');
 
       expect(mockFileIngestionService.restartServerFileIngestion).not.toHaveBeenCalled();
+    });
+
+    it('should not restart file ingestion if already watching (sync complete)', async () => {
+      const serverWithIngestion = {
+        ...mockServer,
+        fileIngestionEnabled: true,
+        logPaths: ['/var/log/jellyfin'],
+      };
+      configureMockDb(mockDb, { select: [serverWithIngestion], update: [serverWithIngestion] });
+      mockFileIngestionService.validateLogPaths.mockResolvedValue({
+        valid: true,
+        results: [{ path: '/var/log/jellyfin', accessible: true }],
+      });
+      // No active tailers (sync completed, files are being watched)
+      mockFileIngestionService.getStatus.mockReturnValue({ tailers: [] });
+      // But server is already in watching state
+      mockFileIngestionService.isServerWatching.mockReturnValue(true);
+
+      await service.testConnection('server-1');
+
+      expect(mockFileIngestionService.restartServerFileIngestion).not.toHaveBeenCalled();
+    });
+
+    it('should start file ingestion if not tailing and not watching', async () => {
+      const serverWithIngestion = {
+        ...mockServer,
+        fileIngestionEnabled: true,
+        logPaths: ['/var/log/jellyfin'],
+      };
+      configureMockDb(mockDb, { select: [serverWithIngestion], update: [serverWithIngestion] });
+      mockFileIngestionService.validateLogPaths.mockResolvedValue({
+        valid: true,
+        results: [{ path: '/var/log/jellyfin', accessible: true }],
+      });
+      // No active tailers
+      mockFileIngestionService.getStatus.mockReturnValue({ tailers: [] });
+      // Not watching either
+      mockFileIngestionService.isServerWatching.mockReturnValue(false);
+
+      await service.testConnection('server-1');
+
+      expect(mockFileIngestionService.restartServerFileIngestion).toHaveBeenCalledWith(
+        'server-1',
+        expect.any(Map)
+      );
     });
   });
 

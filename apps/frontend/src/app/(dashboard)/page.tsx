@@ -90,7 +90,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Main Content Grid - fills remaining height on desktop, scrollable on mobile */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 auto-rows-[minmax(250px,1fr)] gap-4 lg:grid-cols-3 lg:grid-rows-[1fr_1fr] lg:auto-rows-auto">
+      <div className="grid min-h-0 flex-1 auto-rows-[minmax(250px,1fr)] grid-cols-1 gap-4 lg:auto-rows-auto lg:grid-cols-3 lg:grid-rows-[1fr_1fr]">
         {/* Activity Chart - spans 2 columns */}
         <div className="min-h-0 lg:col-span-2">
           <ActivityChart data={data?.activityChart || []} loading={loading} />

@@ -74,21 +74,33 @@ describe('HTTP Utilities', () => {
     });
 
     it('should generate Docker suggestion for localhost connection refused', () => {
-      const error = new HttpError('Connection refused', 'connection_refused', 'http://localhost:8096');
+      const error = new HttpError(
+        'Connection refused',
+        'connection_refused',
+        'http://localhost:8096'
+      );
 
       expect(error.suggestion).toContain('host.docker.internal');
       expect(error.suggestion).toContain('Docker');
     });
 
     it('should generate generic suggestion for non-localhost connection refused', () => {
-      const error = new HttpError('Connection refused', 'connection_refused', 'http://192.168.1.100:8096');
+      const error = new HttpError(
+        'Connection refused',
+        'connection_refused',
+        'http://192.168.1.100:8096'
+      );
 
       expect(error.suggestion).not.toContain('host.docker.internal');
       expect(error.suggestion).toContain('server is running');
     });
 
     it('should generate suggestion for 127.0.0.1 connection refused', () => {
-      const error = new HttpError('Connection refused', 'connection_refused', 'http://127.0.0.1:8096');
+      const error = new HttpError(
+        'Connection refused',
+        'connection_refused',
+        'http://127.0.0.1:8096'
+      );
 
       expect(error.suggestion).toContain('host.docker.internal');
     });
@@ -360,12 +372,10 @@ describe('HTTP Utilities', () => {
     });
 
     it('should retry on network errors', async () => {
-      mockFetch
-        .mockRejectedValueOnce(new Error('fetch failed'))
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ success: true }),
-        });
+      mockFetch.mockRejectedValueOnce(new Error('fetch failed')).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ success: true }),
+      });
 
       const promise = httpRequest('http://example.com/api', { retries: 1 });
 

@@ -29,15 +29,9 @@ export class SourcesPage extends BasePage {
     this.diagnosticsRefreshButton = this.diagnosticsDialog.getByRole('button', {
       name: /refresh/i,
     });
-    this.apiConnectionSection = this.diagnosticsDialog.locator(
-      'text=API Connection'
-    );
-    this.fileIngestionSection = this.diagnosticsDialog.locator(
-      'text=File Ingestion'
-    );
-    this.configuredPaths = this.diagnosticsDialog.locator(
-      'text=Configured Paths'
-    );
+    this.apiConnectionSection = this.diagnosticsDialog.locator('text=API Connection');
+    this.fileIngestionSection = this.diagnosticsDialog.locator('text=File Ingestion');
+    this.configuredPaths = this.diagnosticsDialog.locator('text=Configured Paths');
   }
 
   async goto() {
@@ -79,7 +73,7 @@ export class SourcesPage extends BasePage {
   async getConnectionStatus(sourceName: string): Promise<string> {
     const card = this.getSourceCard(sourceName);
     const badge = card.locator('[data-testid="connection-status"]');
-    return await badge.textContent() || '';
+    return (await badge.textContent()) || '';
   }
 
   /**
@@ -102,9 +96,7 @@ export class SourcesPage extends BasePage {
    * Get all configured paths from diagnostics dialog
    */
   async getConfiguredPaths(): Promise<string[]> {
-    const pathElements = this.diagnosticsDialog.locator(
-      '[data-testid="configured-path"]'
-    );
+    const pathElements = this.diagnosticsDialog.locator('[data-testid="configured-path"]');
     const count = await pathElements.count();
     const paths: string[] = [];
     for (let i = 0; i < count; i++) {
@@ -118,9 +110,7 @@ export class SourcesPage extends BasePage {
    * Expand a path in diagnostics to see discovered files
    */
   async expandPath(index: number) {
-    const pathCollapsibles = this.diagnosticsDialog.locator(
-      '[data-state="closed"]'
-    );
+    const pathCollapsibles = this.diagnosticsDialog.locator('[data-state="closed"]');
     const collapsible = pathCollapsibles.nth(index);
     await collapsible.click();
   }

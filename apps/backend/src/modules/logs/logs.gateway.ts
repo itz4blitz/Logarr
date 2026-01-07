@@ -23,6 +23,21 @@ interface BroadcastLog {
   logSource?: 'api' | 'file';
 }
 
+interface FileIngestionProgress {
+  serverId: string;
+  serverName: string;
+  status: 'discovering' | 'processing' | 'watching' | 'error';
+  totalFiles: number;
+  processedFiles: number;
+  skippedFiles: number;
+  activeFiles: number;
+  queuedFiles: number;
+  currentFiles: string[];
+  error?: string;
+  progress: number;
+  isInitialSync: boolean;
+}
+
 // CORS_ORIGIN is validated at startup via validateEnv() in main.ts
 // If missing, app will fail fast before this gateway loads
 @WebSocketGateway({
@@ -37,6 +52,8 @@ export class LogsGateway {
   server: Server;
 
   private subscriptions = new Map<string, LogSubscription>();
+  /** Current sync progress per server - clients can request this on connect */
+  private currentProgress = new Map<string, FileIngestionProgress>();
 
   @SubscribeMessage('subscribe')
   handleSubscribe(@ConnectedSocket() client: Socket, @MessageBody() data: LogSubscription) {
@@ -49,6 +66,18 @@ export class LogsGateway {
   handleUnsubscribe(@ConnectedSocket() client: Socket) {
     this.subscriptions.delete(client.id);
     return { unsubscribed: true };
+  }
+
+  /**
+   * Handle request for current sync status (sent on client connect)
+   */
+  @SubscribeMessage('get-sync-status')
+  handleGetSyncStatus(@ConnectedSocket() client: Socket) {
+    // Send current progress for all servers to the requesting client
+    for (const progress of this.currentProgress.values()) {
+      client.emit('file-ingestion:progress', progress);
+    }
+    return { received: true, serverCount: this.currentProgress.size };
   }
 
   handleDisconnect(client: Socket) {
@@ -122,18 +151,22 @@ export class LogsGateway {
   /**
    * Broadcast file ingestion progress for a server
    */
-  broadcastFileIngestionProgress(progress: {
-    serverId: string;
-    serverName: string;
-    status: 'discovering' | 'processing' | 'watching' | 'error';
-    totalFiles: number;
-    processedFiles: number;
-    skippedFiles: number;
-    activeFiles: number;
-    queuedFiles: number;
-    currentFiles: string[];
-    error?: string;
-  }) {
+  broadcastFileIngestionProgress(progress: FileIngestionProgress) {
+    // Store current progress so late-connecting clients can request it
+    this.currentProgress.set(progress.serverId, progress);
+
+    // Log for debugging (only status changes or every 10%)
+    const shouldLog =
+      progress.status === 'discovering' ||
+      progress.status === 'watching' ||
+      progress.status === 'error' ||
+      progress.progress % 10 === 0;
+    if (shouldLog) {
+      console.log(
+        `[SyncBroadcast] ${progress.serverName}: ${progress.status} ${progress.progress}% (${progress.processedFiles}/${progress.totalFiles}) isInitial=${progress.isInitialSync}`
+      );
+    }
+
     // Broadcast to all connected clients
     this.server.emit('file-ingestion:progress', progress);
   }

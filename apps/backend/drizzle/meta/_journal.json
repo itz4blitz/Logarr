@@ -26,22 +26,29 @@
     {
       "idx": 3,
       "version": "7",
+      "when": 1767474000000,
+      "tag": "0003_add-file-ingestion-status",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
       "when": 1767560000000,
       "tag": "0004_add-playback-thumbnail",
       "breakpoints": true
     },
     {
-      "idx": 4,
+      "idx": 5,
       "version": "7",
       "when": 1767660000000,
       "tag": "0005_add_performance_indexes",
       "breakpoints": true
     },
     {
-      "idx": 5,
+      "idx": 6,
       "version": "7",
       "when": 1767666844279,
-      "tag": "0005_add-retention-tables",
+      "tag": "0006_add-retention-tables",
       "breakpoints": true
     }
   ]

@@ -15,6 +15,7 @@ export {
   LIDARR_LOG_FILE_CONFIG,
   READARR_LOG_FILE_CONFIG,
   PROWLARR_LOG_FILE_CONFIG,
+  WHISPARR_LOG_FILE_CONFIG,
 } from './arr.parser.js';
 
 // Types

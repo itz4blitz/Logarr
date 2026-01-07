@@ -47,9 +47,7 @@ describe('ScrollArea', () => {
   });
 
   it('should handle long content', () => {
-    const longContent = Array.from({ length: 100 }, (_, i) => (
-      <div key={i}>Line {i + 1}</div>
-    ));
+    const longContent = Array.from({ length: 100 }, (_, i) => <div key={i}>Line {i + 1}</div>);
 
     render(<ScrollArea className="h-[200px]">{longContent}</ScrollArea>);
 

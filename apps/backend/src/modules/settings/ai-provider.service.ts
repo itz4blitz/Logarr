@@ -204,7 +204,8 @@ class OpenAiStrategy implements AiProviderStrategy {
         if (id.startsWith('ft:')) return false;
         // Exclude models owned by user organizations (fine-tuned/custom)
         const ownedBy = m.owned_by ?? '';
-        if (ownedBy !== '' && !['openai', 'system', 'openai-internal'].includes(ownedBy)) return false;
+        if (ownedBy !== '' && !['openai', 'system', 'openai-internal'].includes(ownedBy))
+          return false;
         // Exclude non-chat model types
         if (
           id.includes('instruct') ||
@@ -224,7 +225,9 @@ class OpenAiStrategy implements AiProviderStrategy {
           return false;
         }
         // Include only standard GPT chat models
-        return id.includes('gpt-4') || id.includes('gpt-3.5') || id.includes('o1') || id.includes('o3');
+        return (
+          id.includes('gpt-4') || id.includes('gpt-3.5') || id.includes('o1') || id.includes('o3')
+        );
       })
       .sort((a, b) => (b.created ?? 0) - (a.created ?? 0))
       .slice(0, 15); // Limit to top 15 models

@@ -24,23 +24,11 @@ import type {
 export const EMBY_LOG_FILE_CONFIG: LogFileConfig = {
   defaultPaths: {
     docker: ['/config/logs'],
-    linux: [
-      '/var/lib/emby/logs',
-      '/var/lib/emby-server/logs',
-      '~/.local/share/emby/logs',
-    ],
-    windows: [
-      '%PROGRAMDATA%\\Emby-Server\\logs',
-      '%APPDATA%\\Emby-Server\\logs',
-    ],
+    linux: ['/var/lib/emby/logs', '/var/lib/emby-server/logs', '~/.local/share/emby/logs'],
+    windows: ['%PROGRAMDATA%\\Emby-Server\\logs', '%APPDATA%\\Emby-Server\\logs'],
     macos: ['~/Library/Application Support/Emby-Server/logs'],
   },
-  filePatterns: [
-    'embyserver*.txt',
-    'embyserver.txt',
-    'server*.log',
-    'hardware*.txt',
-  ],
+  filePatterns: ['embyserver*.txt', 'embyserver.txt', 'server*.log', 'hardware*.txt'],
   encoding: 'utf-8',
   rotatesDaily: true,
   datePattern: /embyserver_(\d{8})(_\d+)?\.txt$/,
@@ -109,7 +97,10 @@ export const EMBY_CORRELATION_PATTERNS: readonly CorrelationPattern[] = [
   { name: 'mediaSourceId', pattern: /MediaSourceId[=:\s]+"?([a-f0-9-]+)"?/i },
 
   // Client IP: IP address patterns
-  { name: 'clientIp', pattern: /(?:RemoteEndPoint|ClientIP|from)\s*[=:\s]*(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/i },
+  {
+    name: 'clientIp',
+    pattern: /(?:RemoteEndPoint|ClientIP|from)\s*[=:\s]*(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/i,
+  },
 ];
 
 // =============================================================================

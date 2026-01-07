@@ -40,7 +40,10 @@ export function LogDistributionChart({ data, loading }: LogDistributionChartProp
 
   if (loading) {
     return (
-      <div ref={containerRef} className="bg-card flex h-full flex-col overflow-hidden rounded-xl border p-4">
+      <div
+        ref={containerRef}
+        className="bg-card flex h-full flex-col overflow-hidden rounded-xl border p-4"
+      >
         <div className="mb-3 flex items-center justify-between">
           <Skeleton className="h-4 w-28" />
           <Skeleton className="h-3 w-16" />
@@ -113,7 +116,10 @@ export function LogDistributionChart({ data, loading }: LogDistributionChartProp
   const maxSourceCount = Math.max(...(data.topSources?.map((s) => s.count) || [1]), 1);
 
   return (
-    <div ref={containerRef} className="bg-card flex h-full flex-col overflow-hidden rounded-xl border p-4">
+    <div
+      ref={containerRef}
+      className="bg-card flex h-full flex-col overflow-hidden rounded-xl border p-4"
+    >
       {/* Header */}
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold tracking-tight text-zinc-200">Log Distribution</h3>

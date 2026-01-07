@@ -1,7 +1,15 @@
 import { createHash } from 'crypto';
 import { statSync } from 'fs';
 
-import { Injectable, Inject, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  Logger,
+  OnModuleInit,
+  OnModuleDestroy,
+  Optional,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { eq, and } from 'drizzle-orm';
 
 import { DATABASE_CONNECTION } from '../../database';
@@ -31,12 +39,19 @@ export interface FileIngestionProgress {
   serverName: string;
   status: 'discovering' | 'processing' | 'watching' | 'error';
   totalFiles: number;
+  /** Number of files that have started processing (tailer created) */
   processedFiles: number;
+  /** Number of files that have completed their initial read */
+  filesCompleted: number;
   skippedFiles: number;
   activeFiles: number;
   queuedFiles: number;
   currentFiles: string[];
   error?: string;
+  /** Progress percentage (0-100) - based on filesCompleted, not processedFiles */
+  progress: number;
+  /** Whether this is the initial sync (never completed before) */
+  isInitialSync: boolean;
 }
 
 // Type guard for providers with file ingestion support
@@ -101,6 +116,27 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
   private providerMap: Map<string, MediaServerProvider> = new Map();
   /** Cached settings - loaded on first use */
   private cachedSettings: FileIngestionSettings | null = null;
+  /** Whether to skip historical backfill (BACKFILL=false) */
+  private readonly skipBackfill: boolean;
+  /** Throttle progress broadcasts - track last broadcast time per server */
+  private lastBroadcastTime: Map<string, number> = new Map();
+  /** Minimum interval between progress broadcasts (ms) */
+  private readonly BROADCAST_THROTTLE_MS = 500;
+  /** Track which files have completed initial read per server */
+  private filesCompletedMap: Map<string, Set<string>> = new Map();
+
+  /** Batch buffer for log entries - prevents individual inserts */
+  private batchBuffer: Array<{
+    serverId: string;
+    entry: ParsedLogEntry;
+    filePath: string;
+  }> = [];
+  /** Timer for flushing batch buffer */
+  private batchFlushTimer: NodeJS.Timeout | null = null;
+  /** Maximum entries to buffer before forcing flush */
+  private readonly BATCH_SIZE = 100;
+  /** Maximum time to wait before flushing batch (ms) */
+  private readonly BATCH_TIMEOUT_MS = 500;
 
   constructor(
     @Inject(DATABASE_CONNECTION)
@@ -110,8 +146,19 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
     private readonly logsGateway: LogsGateway,
     private readonly issuesService: IssuesService,
     private readonly issuesGateway: IssuesGateway,
-    private readonly settingsService: SettingsService
-  ) {}
+    private readonly settingsService: SettingsService,
+    @Optional() private readonly configService?: ConfigService
+  ) {
+    // BACKFILL=false means skip backfill (start from now)
+    // BACKFILL=true or not set means do backfill (process historical)
+    const backfillEnv = this.configService?.get<string>('BACKFILL');
+    this.skipBackfill = backfillEnv?.toLowerCase() === 'false';
+    if (this.skipBackfill) {
+      this.logger.log(
+        'BACKFILL=false: Will skip historical log processing, watching for new entries only'
+      );
+    }
+  }
 
   /**
    * Get file ingestion settings, with caching for performance
@@ -140,6 +187,8 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy(): Promise<void> {
+    // Flush any pending batch entries before stopping
+    await this.flushBatchBuffer();
     await this.stopAllTailers();
   }
 
@@ -217,6 +266,13 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
     this.logger.log(`Starting file ingestion for ${server.name}`);
     this.logger.log(`  Paths: ${paths.join(', ')}`);
     this.logger.log(`  Patterns: ${patterns.join(', ')}`);
+    if (this.skipBackfill) {
+      this.logger.log(`  Mode: Watch only (BACKFILL=false)`);
+    }
+
+    // Check if this is the initial sync (never completed before)
+    // If skipBackfill is true, we treat it as not an initial sync (no banner needed)
+    const isInitialSync = this.skipBackfill ? false : !server.initialSyncCompleted;
 
     // Initialize progress tracking
     const progress: FileIngestionProgress = {
@@ -225,13 +281,21 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
       status: 'discovering',
       totalFiles: 0,
       processedFiles: 0,
+      filesCompleted: 0,
       skippedFiles: 0,
       activeFiles: 0,
       queuedFiles: 0,
       currentFiles: [],
+      progress: 0,
+      isInitialSync,
     };
     this.progressMap.set(server.id, progress);
-    this.broadcastProgress(progress);
+    // Initialize files completed tracking for this server
+    this.filesCompletedMap.set(server.id, new Set());
+    this.broadcastProgress(progress, true); // Force initial broadcast
+
+    // Update database with sync status
+    await this.updateSyncStatus(server.id, 'discovering', 0, 0, 0);
 
     // Validate paths exist
     for (const path of paths) {
@@ -249,7 +313,9 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
         `No log files found for server ${server.name} in paths: ${paths.join(', ')}`
       );
       progress.status = 'watching';
-      this.broadcastProgress(progress);
+      progress.progress = 100;
+      this.broadcastProgress(progress, true); // Force completion broadcast
+      await this.markSyncComplete(server.id);
       return;
     }
 
@@ -264,14 +330,16 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
 
     this.logger.log(
       `Found ${allLogFiles.length} log files for ${server.name}, ` +
-      `${recentFiles.length} recent (last ${settings.maxFileAgeDays} days), ` +
-      `${skippedFiles.length} skipped (older)`
+        `${recentFiles.length} recent (last ${settings.maxFileAgeDays} days), ` +
+        `${skippedFiles.length} skipped (older)`
     );
 
     if (recentFiles.length === 0) {
       this.logger.log(`No recent log files to process for ${server.name}`);
       progress.status = 'watching';
-      this.broadcastProgress(progress);
+      progress.progress = 100;
+      this.broadcastProgress(progress, true); // Force completion broadcast
+      await this.markSyncComplete(server.id);
       return;
     }
 
@@ -287,8 +355,12 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
     // Queue files for batched processing
     this.fileQueue.set(server.id, [...recentFiles]);
     progress.queuedFiles = recentFiles.length;
+    progress.totalFiles = recentFiles.length;
     progress.status = 'processing';
-    this.broadcastProgress(progress);
+    this.broadcastProgress(progress, true); // Force status change broadcast
+
+    // Update database with sync status (now syncing)
+    await this.updateSyncStatus(server.id, 'syncing', 0, recentFiles.length, 0);
 
     // Start processing the queue with concurrency limit
     await this.processFileQueue(server.id, provider);
@@ -323,6 +395,7 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Process queued files with concurrency limit
+   * NOTE: This method only starts tailers - actual completion is tracked via onInitialReadComplete
    */
   private async processFileQueue(serverId: string, provider: MediaServerProvider): Promise<void> {
     const queue = this.fileQueue.get(serverId);
@@ -336,11 +409,17 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
     const settings = await this.getSettings();
 
     // Process files up to the concurrency limit
+    const completedSet = this.filesCompletedMap.get(serverId) ?? new Set();
+
     while (queue.length > 0) {
-      // Count currently active tailers for this server
-      const activeTailers = Array.from(this.tailers.keys()).filter(
-        (id) => id.startsWith(`${serverId}:`)
-      ).length;
+      // Count tailers still doing initial read (not completed yet)
+      // Once a tailer completes its initial read, it shouldn't count toward concurrency
+      const activeTailers = Array.from(this.tailers.keys()).filter((id) => {
+        if (!id.startsWith(`${serverId}:`)) return false;
+        const filePath = id.substring(serverId.length + 1);
+        // Only count if NOT completed
+        return !completedSet.has(filePath);
+      }).length;
 
       if (activeTailers >= settings.maxConcurrentTailers) {
         // Wait a bit before checking again
@@ -351,7 +430,8 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
       const filePath = queue.shift();
       if (filePath === undefined || filePath === '') break;
 
-      // Update progress
+      // Update progress - but progress % is based on filesCompleted, not processedFiles
+      // Progress only updates when files FINISH, not when they START
       progress.queuedFiles = queue.length;
       progress.activeFiles = activeTailers + 1;
       progress.currentFiles = this.getCurrentFilesForServer(serverId);
@@ -366,18 +446,31 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
         await this.sleep(settings.tailerStartDelayMs);
       } catch (error) {
         this.logger.error(`Failed to start tailing ${filePath}:`, error);
+        // Still count as "completed" for progress purposes (failed = done)
+        this.handleFileInitialReadComplete(serverId, filePath);
       }
     }
 
-    // All files processed, now in watching mode
-    progress.status = 'watching';
+    // Queue is empty, but tailers may still be reading
+    // DO NOT set status to 'watching' here - let handleFileInitialReadComplete do it
+    // when all files have actually completed their initial read
     progress.queuedFiles = 0;
     progress.currentFiles = this.getCurrentFilesForServer(serverId);
-    this.broadcastProgress(progress);
+
+    // If no files were queued (edge case), mark as complete
+    if (progress.totalFiles === 0) {
+      progress.status = 'watching';
+      progress.progress = 100;
+      this.broadcastProgress(progress, true);
+      await this.markSyncComplete(serverId);
+    } else {
+      // Just broadcast current state - completion will be handled by handleFileInitialReadComplete
+      this.broadcastProgress(progress);
+    }
 
     this.logger.log(
-      `File ingestion for server ${progress.serverName} complete: ` +
-      `${progress.processedFiles} files active, ${progress.skippedFiles} skipped`
+      `Queue processing complete for ${progress.serverName}: ` +
+        `${progress.processedFiles} tailers started, waiting for initial reads to complete`
     );
   }
 
@@ -407,10 +500,132 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Broadcast progress update via WebSocket
+   * Handle a file completing its initial read
+   * Called by LogFileTailer's onInitialReadComplete callback
    */
-  private broadcastProgress(progress: FileIngestionProgress): void {
+  private handleFileInitialReadComplete(serverId: string, filePath: string): void {
+    const completedSet = this.filesCompletedMap.get(serverId);
+    const progress = this.progressMap.get(serverId);
+
+    if (!completedSet || !progress) {
+      return;
+    }
+
+    // Mark this file as completed
+    completedSet.add(filePath);
+    progress.filesCompleted = completedSet.size;
+
+    // Calculate progress based on filesCompleted, not processedFiles
+    const progressPct =
+      progress.totalFiles > 0
+        ? Math.round((progress.filesCompleted / progress.totalFiles) * 100)
+        : 0;
+    progress.progress = progressPct;
+
+    // Update current files list (remove completed file)
+    progress.currentFiles = this.getCurrentFilesForServer(serverId);
+    progress.activeFiles = progress.processedFiles - progress.filesCompleted;
+
+    this.logger.debug(
+      `File completed: ${this.getFileName(filePath)} for ${progress.serverName} ` +
+        `(${progress.filesCompleted}/${progress.totalFiles} = ${progressPct}%)`
+    );
+
+    // Check if ALL files have completed their initial read
+    if (progress.filesCompleted >= progress.totalFiles && progress.queuedFiles === 0) {
+      progress.status = 'watching';
+      progress.progress = 100;
+      this.broadcastProgress(progress, true); // Force completion broadcast
+      void this.markSyncComplete(serverId);
+      this.logger.log(
+        `File ingestion for ${progress.serverName} complete: ` +
+          `${progress.filesCompleted} files processed, ${progress.skippedFiles} skipped`
+      );
+    } else {
+      this.broadcastProgress(progress);
+    }
+
+    // Update database with current progress
+    void this.updateSyncStatus(
+      serverId,
+      progress.status === 'watching' ? 'idle' : 'syncing',
+      progressPct,
+      progress.totalFiles,
+      progress.filesCompleted
+    );
+  }
+
+  /**
+   * Broadcast progress update via WebSocket (throttled to prevent UI overload)
+   * @param progress The progress to broadcast
+   * @param force If true, broadcast immediately regardless of throttle
+   */
+  private broadcastProgress(progress: FileIngestionProgress, force = false): void {
+    const now = Date.now();
+    const lastBroadcast = this.lastBroadcastTime.get(progress.serverId) ?? 0;
+
+    // Always broadcast on status changes, completion, or when forced
+    const isImportantUpdate =
+      force ||
+      progress.status === 'watching' ||
+      progress.status === 'error' ||
+      progress.progress === 100 ||
+      progress.progress === 0;
+
+    // Throttle regular progress updates to prevent UI overload
+    if (!isImportantUpdate && now - lastBroadcast < this.BROADCAST_THROTTLE_MS) {
+      return;
+    }
+
+    this.lastBroadcastTime.set(progress.serverId, now);
     this.logsGateway.broadcastFileIngestionProgress(progress);
+  }
+
+  /**
+   * Update sync status in the database
+   */
+  private async updateSyncStatus(
+    serverId: string,
+    status: 'idle' | 'pending' | 'discovering' | 'syncing' | 'error',
+    progress: number,
+    totalFiles: number,
+    processedFiles: number
+  ): Promise<void> {
+    try {
+      await this.db
+        .update(schema.servers)
+        .set({
+          syncStatus: status,
+          syncProgress: progress,
+          syncTotalFiles: totalFiles,
+          syncProcessedFiles: processedFiles,
+          syncStartedAt: status === 'discovering' ? new Date() : undefined,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.servers.id, serverId));
+    } catch (error) {
+      this.logger.warn(`Failed to update sync status for server ${serverId}:`, error);
+    }
+  }
+
+  /**
+   * Mark sync as complete in the database
+   */
+  private async markSyncComplete(serverId: string): Promise<void> {
+    try {
+      await this.db
+        .update(schema.servers)
+        .set({
+          syncStatus: 'idle',
+          syncProgress: 100,
+          syncCompletedAt: new Date(),
+          initialSyncCompleted: true,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.servers.id, serverId));
+    } catch (error) {
+      this.logger.warn(`Failed to mark sync complete for server ${serverId}:`, error);
+    }
   }
 
   /**
@@ -425,6 +640,15 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
    */
   getServerProgress(serverId: string): FileIngestionProgress | undefined {
     return this.progressMap.get(serverId);
+  }
+
+  /**
+   * Check if a server is already watching (sync complete)
+   * Used to avoid unnecessary restarts during connection tests
+   */
+  isServerWatching(serverId: string): boolean {
+    const progress = this.progressMap.get(serverId);
+    return progress?.status === 'watching';
   }
 
   /**
@@ -444,15 +668,16 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
     }
 
     // Get or create file state
+    // If skipBackfill is true, new files start from end (no historical processing)
     const state =
       (await this.fileStateService.getState(serverId, filePath)) ??
-      (await this.fileStateService.createState(serverId, filePath));
+      (await this.fileStateService.createState(serverId, filePath, this.skipBackfill));
 
     // Create processor for multi-line handling
     const processor = new LogFileProcessor(provider);
     processor.setFilePath(filePath);
 
-    // Create tailer
+    // Create tailer with completion callback for accurate progress tracking
     const tailer = new LogFileTailer(
       {
         serverId,
@@ -492,6 +717,10 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
           }
 
           await this.fileStateService.updateState(serverId, filePath, updates);
+        },
+        // Called when initial read completes - this drives the progress bar
+        onInitialReadComplete: () => {
+          this.handleFileInitialReadComplete(serverId, filePath);
         },
       },
       processor,
@@ -547,20 +776,58 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Process a parsed log entry
+   * Process a parsed log entry - queues for batch insert
    */
   private async processEntry(
     serverId: string,
     entry: ParsedLogEntry,
     filePath: string
   ): Promise<typeof schema.logEntries.$inferSelect | null> {
-    // Generate deduplication key
-    const dedupKey = this.generateDeduplicationKey(entry);
+    // Queue entry for batch insert
+    this.queueEntryForBatch(serverId, entry, filePath);
+    return null; // Actual insert happens in batch
+  }
 
-    // Insert with conflict handling for deduplication
-    const result = await this.db
-      .insert(schema.logEntries)
-      .values({
+  /**
+   * Queue an entry for batch insert
+   */
+  private queueEntryForBatch(serverId: string, entry: ParsedLogEntry, filePath: string): void {
+    this.batchBuffer.push({ serverId, entry, filePath });
+
+    // Start timer if not already running
+    if (this.batchFlushTimer === null) {
+      this.batchFlushTimer = setTimeout(() => {
+        void this.flushBatchBuffer();
+      }, this.BATCH_TIMEOUT_MS);
+    }
+
+    // Flush immediately if buffer is full
+    if (this.batchBuffer.length >= this.BATCH_SIZE) {
+      void this.flushBatchBuffer();
+    }
+  }
+
+  /**
+   * Flush the batch buffer - insert all queued entries
+   */
+  private async flushBatchBuffer(): Promise<void> {
+    // Clear timer
+    if (this.batchFlushTimer !== null) {
+      clearTimeout(this.batchFlushTimer);
+      this.batchFlushTimer = null;
+    }
+
+    // Get and clear buffer
+    const entries = this.batchBuffer.splice(0, this.batchBuffer.length);
+    if (entries.length === 0) {
+      return;
+    }
+
+    this.logger.debug(`Flushing batch of ${entries.length} log entries`);
+
+    try {
+      // Prepare values for bulk insert
+      const values = entries.map(({ serverId, entry, filePath }) => ({
         serverId,
         timestamp: entry.timestamp,
         level: entry.level,
@@ -576,56 +843,132 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
         metadata: entry.metadata ?? null,
         exception: entry.exception ?? null,
         stackTrace: entry.stackTrace ?? null,
-        logSource: 'file',
+        logSource: 'file' as const,
         logFilePath: filePath,
-        deduplicationKey: dedupKey,
-      })
-      .onConflictDoNothing({
-        target: [schema.logEntries.serverId, schema.logEntries.deduplicationKey],
-      })
-      .returning();
+        deduplicationKey: this.generateDeduplicationKey(entry),
+      }));
 
-    const inserted = result[0];
-    if (inserted === undefined) {
-      return null;
-    }
+      // Bulk insert with conflict handling
+      const inserted = await this.db
+        .insert(schema.logEntries)
+        .values(values)
+        .onConflictDoNothing({
+          target: [schema.logEntries.serverId, schema.logEntries.deduplicationKey],
+        })
+        .returning();
 
-    this.logger.debug(`Ingested log entry from file: ${entry.message.substring(0, 50)}...`);
+      // Broadcast inserted entries and process issues
+      for (const entry of inserted) {
+        // Broadcast to WebSocket clients
+        const logData: Parameters<typeof this.logsGateway.broadcastLog>[0] = {
+          id: entry.id,
+          serverId: entry.serverId,
+          timestamp: entry.timestamp,
+          level: entry.level,
+          message: entry.message,
+          logSource: 'file',
+        };
+        if (entry.source !== null && entry.source !== '') {
+          logData.source = entry.source;
+        }
+        this.logsGateway.broadcastLog(logData);
 
-    // Broadcast to WebSocket clients
-    const logData: Parameters<typeof this.logsGateway.broadcastLog>[0] = {
-      id: inserted.id,
-      serverId,
-      timestamp: inserted.timestamp,
-      level: inserted.level,
-      message: inserted.message,
-      logSource: 'file',
-    };
-    if (inserted.source !== null && inserted.source !== '') {
-      logData.source = inserted.source;
-    }
-    this.logsGateway.broadcastLog(logData);
-
-    // Process for issue detection (errors and warnings)
-    if (['error', 'warn'].includes(inserted.level)) {
-      try {
-        const issueId = await this.issuesService.processLogEntry(inserted);
-        if (issueId !== null && issueId !== '') {
-          const issue = await this.issuesService.findOne(issueId);
-          if (issue !== null) {
-            if (issue.occurrenceCount === 1) {
-              this.issuesGateway.broadcastNewIssue(issue);
-            } else {
-              this.issuesGateway.broadcastIssueUpdate(issue);
+        // Process for issue detection (errors and warnings)
+        if (['error', 'warn'].includes(entry.level)) {
+          try {
+            const issueId = await this.issuesService.processLogEntry(entry);
+            if (issueId !== null && issueId !== '') {
+              const issue = await this.issuesService.findOne(issueId);
+              if (issue !== null) {
+                if (issue.occurrenceCount === 1) {
+                  this.issuesGateway.broadcastNewIssue(issue);
+                } else {
+                  this.issuesGateway.broadcastIssueUpdate(issue);
+                }
+              }
             }
+          } catch (err) {
+            this.logger.warn(`Failed to process issue for log entry ${entry.id}:`, err);
           }
         }
-      } catch (err) {
-        this.logger.warn(`Failed to process issue for log entry ${inserted.id}:`, err);
+      }
+
+      this.logger.debug(
+        `Batch insert complete: ${inserted.length} of ${values.length} entries inserted`
+      );
+    } catch (error) {
+      this.logger.error('Batch insert failed, falling back to individual inserts:', error);
+      // Fallback to individual inserts
+      for (const { serverId, entry, filePath } of entries) {
+        await this.processEntrySingle(serverId, entry, filePath);
       }
     }
+  }
 
-    return inserted;
+  /**
+   * Process a single entry (fallback for batch failures)
+   */
+  private async processEntrySingle(
+    serverId: string,
+    entry: ParsedLogEntry,
+    filePath: string
+  ): Promise<typeof schema.logEntries.$inferSelect | null> {
+    // Generate deduplication key
+    const dedupKey = this.generateDeduplicationKey(entry);
+
+    try {
+      // Insert with conflict handling for deduplication
+      const result = await this.db
+        .insert(schema.logEntries)
+        .values({
+          serverId,
+          timestamp: entry.timestamp,
+          level: entry.level,
+          message: entry.message,
+          source: entry.source ?? null,
+          threadId: entry.threadId ?? null,
+          raw: entry.raw,
+          sessionId: entry.sessionId ?? null,
+          userId: entry.userId ?? null,
+          deviceId: entry.deviceId ?? null,
+          itemId: entry.itemId ?? null,
+          playSessionId: entry.playSessionId ?? null,
+          metadata: entry.metadata ?? null,
+          exception: entry.exception ?? null,
+          stackTrace: entry.stackTrace ?? null,
+          logSource: 'file',
+          logFilePath: filePath,
+          deduplicationKey: dedupKey,
+        })
+        .onConflictDoNothing({
+          target: [schema.logEntries.serverId, schema.logEntries.deduplicationKey],
+        })
+        .returning();
+
+      const inserted = result[0];
+      if (inserted === undefined) {
+        return null;
+      }
+
+      // Broadcast to WebSocket clients
+      const logData: Parameters<typeof this.logsGateway.broadcastLog>[0] = {
+        id: inserted.id,
+        serverId,
+        timestamp: inserted.timestamp,
+        level: inserted.level,
+        message: inserted.message,
+        logSource: 'file',
+      };
+      if (inserted.source !== null && inserted.source !== '') {
+        logData.source = inserted.source;
+      }
+      this.logsGateway.broadcastLog(logData);
+
+      return inserted;
+    } catch (error) {
+      this.logger.warn(`Failed to insert log entry: ${error}`);
+      return null;
+    }
   }
 
   /**
@@ -647,7 +990,10 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
   /**
    * Restart file ingestion for a server (e.g., after config change)
    */
-  async restartServerFileIngestion(serverId: string, providers: Map<string, MediaServerProvider>): Promise<void> {
+  async restartServerFileIngestion(
+    serverId: string,
+    providers: Map<string, MediaServerProvider>
+  ): Promise<void> {
     await this.stopServerFileIngestion(serverId);
 
     const [server] = await this.db

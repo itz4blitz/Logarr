@@ -141,7 +141,9 @@ export class SettingsService {
       updates.push(this.setSetting(SETTINGS_KEYS.RETENTION_INFO_DAYS, settings.infoRetentionDays));
     }
     if (settings.errorRetentionDays !== undefined) {
-      updates.push(this.setSetting(SETTINGS_KEYS.RETENTION_ERROR_DAYS, settings.errorRetentionDays));
+      updates.push(
+        this.setSetting(SETTINGS_KEYS.RETENTION_ERROR_DAYS, settings.errorRetentionDays)
+      );
     }
     if (settings.batchSize !== undefined) {
       updates.push(this.setSetting(SETTINGS_KEYS.RETENTION_BATCH_SIZE, settings.batchSize));
@@ -212,26 +214,28 @@ export class SettingsService {
   /**
    * Get retention history
    */
-  async getRetentionHistory(limit = 20): Promise<Array<{
-    id: string;
-    startedAt: Date;
-    completedAt: Date | null;
-    infoDeleted: number;
-    debugDeleted: number;
-    warnDeleted: number;
-    errorDeleted: number;
-    orphanedOccurrencesDeleted: number;
-    totalDeleted: number;
-    status: string;
-    errorMessage: string | null;
-  }>> {
+  async getRetentionHistory(limit = 20): Promise<
+    Array<{
+      id: string;
+      startedAt: Date;
+      completedAt: Date | null;
+      infoDeleted: number;
+      debugDeleted: number;
+      warnDeleted: number;
+      errorDeleted: number;
+      orphanedOccurrencesDeleted: number;
+      totalDeleted: number;
+      status: string;
+      errorMessage: string | null;
+    }>
+  > {
     const results = await this.db
       .select()
       .from(schema.retentionHistory)
       .orderBy(desc(schema.retentionHistory.startedAt))
       .limit(limit);
 
-    return results.map(r => ({
+    return results.map((r) => ({
       id: r.id,
       startedAt: r.startedAt,
       completedAt: r.completedAt,
@@ -281,16 +285,19 @@ export class SettingsService {
   /**
    * Update a retention history record
    */
-  async updateRetentionRun(id: string, data: {
-    completedAt?: Date;
-    infoDeleted?: number;
-    debugDeleted?: number;
-    warnDeleted?: number;
-    errorDeleted?: number;
-    orphanedOccurrencesDeleted?: number;
-    status?: 'running' | 'completed' | 'failed';
-    errorMessage?: string;
-  }): Promise<void> {
+  async updateRetentionRun(
+    id: string,
+    data: {
+      completedAt?: Date;
+      infoDeleted?: number;
+      debugDeleted?: number;
+      warnDeleted?: number;
+      errorDeleted?: number;
+      orphanedOccurrencesDeleted?: number;
+      status?: 'running' | 'completed' | 'failed';
+      errorMessage?: string;
+    }
+  ): Promise<void> {
     await this.db
       .update(schema.retentionHistory)
       .set({

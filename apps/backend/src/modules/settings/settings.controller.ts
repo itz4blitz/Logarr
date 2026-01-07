@@ -12,7 +12,11 @@ import {
 } from '@nestjs/common';
 
 import { AiProviderService } from './ai-provider.service';
-import { SettingsService, type RetentionSettings, type FileIngestionSettings } from './settings.service';
+import {
+  SettingsService,
+  type RetentionSettings,
+  type FileIngestionSettings,
+} from './settings.service';
 
 import type {
   CreateAiProviderDto,

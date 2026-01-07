@@ -34,6 +34,7 @@ export default defineConfig({
         'src/hooks/use-issue-socket.ts',
         'src/hooks/use-log-socket.ts',
         'src/hooks/use-session-socket.ts',
+        'src/hooks/use-sync-status.ts',
         'src/hooks/use-mobile.ts',
         'src/hooks/use-fit-to-viewport.ts',
         'src/hooks/use-api.ts',

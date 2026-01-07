@@ -247,13 +247,20 @@ export default function DataManagementPage() {
 
   const hasUnsavedFileIngestionChanges =
     fileIngestionSettings &&
-    (localFileIngestionSettings.maxConcurrentTailers !== fileIngestionSettings.maxConcurrentTailers ||
+    (localFileIngestionSettings.maxConcurrentTailers !==
+      fileIngestionSettings.maxConcurrentTailers ||
       localFileIngestionSettings.maxFileAgeDays !== fileIngestionSettings.maxFileAgeDays ||
       localFileIngestionSettings.tailerStartDelayMs !== fileIngestionSettings.tailerStartDelayMs);
 
   // Calculate age distribution percentages for visualization
   const totalLogs = stats?.logCount || 0;
-  const ageData = stats?.ageDistribution || { last24h: 0, last7d: 0, last30d: 0, last90d: 0, older: 0 };
+  const ageData = stats?.ageDistribution || {
+    last24h: 0,
+    last7d: 0,
+    last30d: 0,
+    last90d: 0,
+    older: 0,
+  };
   const getAgePercentage = (count: number) => (totalLogs > 0 ? (count / totalLogs) * 100 : 0);
 
   return (
@@ -274,13 +281,17 @@ export default function DataManagementPage() {
                 </Button>
                 <div>
                   <div className="text-muted-foreground text-[10px] uppercase">Total Logs</div>
-                  <div className="text-lg font-bold sm:text-xl">{formatCount(stats?.logCount || 0)}</div>
+                  <div className="text-lg font-bold sm:text-xl">
+                    {formatCount(stats?.logCount || 0)}
+                  </div>
                 </div>
               </div>
               <div className="bg-border hidden h-8 w-px sm:block" />
               <div>
                 <div className="text-muted-foreground text-[10px] uppercase">Database</div>
-                <div className="text-lg font-bold sm:text-xl">{stats?.databaseSizeFormatted || '0 B'}</div>
+                <div className="text-lg font-bold sm:text-xl">
+                  {stats?.databaseSizeFormatted || '0 B'}
+                </div>
               </div>
               <div className="bg-border hidden h-8 w-px sm:block" />
               <div className="col-span-2 flex justify-between gap-3 text-sm sm:col-span-1 sm:justify-start">
@@ -314,11 +325,13 @@ export default function DataManagementPage() {
               {stats?.oldestLogTimestamp && (
                 <div className="text-muted-foreground text-[10px] sm:text-right">
                   <div>
-                    Oldest: {formatDistanceToNow(new Date(stats.oldestLogTimestamp), { addSuffix: true })}
+                    Oldest:{' '}
+                    {formatDistanceToNow(new Date(stats.oldestLogTimestamp), { addSuffix: true })}
                   </div>
                   {stats.newestLogTimestamp && (
                     <div>
-                      Newest: {formatDistanceToNow(new Date(stats.newestLogTimestamp), { addSuffix: true })}
+                      Newest:{' '}
+                      {formatDistanceToNow(new Date(stats.newestLogTimestamp), { addSuffix: true })}
                     </div>
                   )}
                 </div>
@@ -326,7 +339,7 @@ export default function DataManagementPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 text-[10px] text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-7 text-[10px]"
                 onClick={() =>
                   setDeleteDialog({
                     open: true,
@@ -394,7 +407,11 @@ export default function DataManagementPage() {
               {stats?.tableSizes ? (
                 <div className="flex-1 space-y-1.5">
                   {[
-                    { label: 'Log Entries', value: stats.tableSizes.logEntries, color: 'bg-blue-500' },
+                    {
+                      label: 'Log Entries',
+                      value: stats.tableSizes.logEntries,
+                      color: 'bg-blue-500',
+                    },
                     { label: 'Issues', value: stats.tableSizes.issues, color: 'bg-rose-500' },
                     { label: 'Sessions', value: stats.tableSizes.sessions, color: 'bg-amber-500' },
                     {
@@ -404,7 +421,9 @@ export default function DataManagementPage() {
                     },
                   ].map((table) => {
                     const percentage =
-                      stats.tableSizes!.total > 0 ? (table.value / stats.tableSizes!.total) * 100 : 0;
+                      stats.tableSizes!.total > 0
+                        ? (table.value / stats.tableSizes!.total) * 100
+                        : 0;
                     return (
                       <div key={table.label} className="space-y-0.5">
                         <div className="flex items-center justify-between text-[10px]">
@@ -464,13 +483,20 @@ export default function DataManagementPage() {
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-medium">{server.serverName}</span>
                             <div className="flex gap-1 text-[10px]">
-                              <span className="text-rose-500">{formatCount(server.logCountsByLevel.error)}</span>
-                              <span className="text-amber-500">{formatCount(server.logCountsByLevel.warn)}</span>
-                              <span className="text-blue-500">{formatCount(server.logCountsByLevel.info)}</span>
+                              <span className="text-rose-500">
+                                {formatCount(server.logCountsByLevel.error)}
+                              </span>
+                              <span className="text-amber-500">
+                                {formatCount(server.logCountsByLevel.warn)}
+                              </span>
+                              <span className="text-blue-500">
+                                {formatCount(server.logCountsByLevel.info)}
+                              </span>
                             </div>
                           </div>
                           <div className="text-muted-foreground text-[10px]">
-                            {formatCount(server.logCount)} logs · {serverPercentage.toFixed(1)}% · {server.estimatedSizeFormatted}
+                            {formatCount(server.logCount)} logs · {serverPercentage.toFixed(1)}% ·{' '}
+                            {server.estimatedSizeFormatted}
                           </div>
                         </div>
                         {isExpanded ? (
@@ -538,18 +564,30 @@ export default function DataManagementPage() {
                                   const width = (level.value / maxLevel) * 100;
                                   const LevelIcon = level.icon;
                                   return (
-                                    <div key={level.label} className="group flex items-center gap-1.5">
-                                      <LevelIcon className={cn('h-3 w-3 shrink-0', level.iconColor)} />
+                                    <div
+                                      key={level.label}
+                                      className="group flex items-center gap-1.5"
+                                    >
+                                      <LevelIcon
+                                        className={cn('h-3 w-3 shrink-0', level.iconColor)}
+                                      />
                                       <div className="bg-muted/30 relative h-2.5 flex-1 overflow-hidden rounded">
                                         <div
                                           className={cn(
                                             'absolute inset-y-0 left-0 rounded transition-all',
                                             level.color
                                           )}
-                                          style={{ width: `${Math.max(width, level.value > 0 ? 2 : 0)}%` }}
+                                          style={{
+                                            width: `${Math.max(width, level.value > 0 ? 2 : 0)}%`,
+                                          }}
                                         />
                                       </div>
-                                      <span className={cn('w-8 text-right text-[9px] font-medium', level.textColor)}>
+                                      <span
+                                        className={cn(
+                                          'w-8 text-right text-[9px] font-medium',
+                                          level.textColor
+                                        )}
+                                      >
                                         {formatCount(level.value)}
                                       </span>
                                       <button
@@ -566,14 +604,20 @@ export default function DataManagementPage() {
                                             });
                                           }
                                         }}
-                                        disabled={level.value === 0 || deleteByLevelMutation.isPending}
+                                        disabled={
+                                          level.value === 0 || deleteByLevelMutation.isPending
+                                        }
                                         className={cn(
                                           'rounded p-0.5 opacity-0 transition-opacity group-hover:opacity-100',
                                           level.value > 0
                                             ? 'hover:bg-destructive/20 text-muted-foreground hover:text-destructive'
-                                            : 'cursor-not-allowed text-muted-foreground/30'
+                                            : 'text-muted-foreground/30 cursor-not-allowed'
                                         )}
-                                        title={level.value > 0 ? `Delete ${level.label} logs` : 'No logs to delete'}
+                                        title={
+                                          level.value > 0
+                                            ? `Delete ${level.label} logs`
+                                            : 'No logs to delete'
+                                        }
                                       >
                                         <Trash2 className="h-3 w-3" />
                                       </button>
@@ -585,7 +629,7 @@ export default function DataManagementPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="mt-2 h-6 w-full text-[9px] text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 mt-2 h-6 w-full text-[9px]"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setDeleteDialog({
@@ -596,7 +640,9 @@ export default function DataManagementPage() {
                                     count: server.logCount,
                                   });
                                 }}
-                                disabled={server.logCount === 0 || deleteServerLogsMutation.isPending}
+                                disabled={
+                                  server.logCount === 0 || deleteServerLogsMutation.isPending
+                                }
                               >
                                 <Trash2 className="mr-1 h-3 w-3" />
                                 Delete All ({formatCount(server.logCount)})
@@ -611,12 +657,25 @@ export default function DataManagementPage() {
                               </div>
                               <div className="space-y-1">
                                 {[
-                                  { label: '<24h', value: server.ageDistribution.last24h, color: 'bg-emerald-500' },
-                                  { label: '1-7d', value: server.ageDistribution.last7d, color: 'bg-blue-500' },
-                                  { label: '7-30d', value: server.ageDistribution.last30d, color: 'bg-amber-500' },
+                                  {
+                                    label: '<24h',
+                                    value: server.ageDistribution.last24h,
+                                    color: 'bg-emerald-500',
+                                  },
+                                  {
+                                    label: '1-7d',
+                                    value: server.ageDistribution.last7d,
+                                    color: 'bg-blue-500',
+                                  },
+                                  {
+                                    label: '7-30d',
+                                    value: server.ageDistribution.last30d,
+                                    color: 'bg-amber-500',
+                                  },
                                   {
                                     label: '>30d',
-                                    value: server.ageDistribution.last90d + server.ageDistribution.older,
+                                    value:
+                                      server.ageDistribution.last90d + server.ageDistribution.older,
                                     color: 'bg-rose-500',
                                   },
                                 ].map((bucket) => {
@@ -639,7 +698,9 @@ export default function DataManagementPage() {
                                             'absolute inset-y-0 left-0 rounded transition-all',
                                             bucket.color
                                           )}
-                                          style={{ width: `${Math.max(width, bucket.value > 0 ? 2 : 0)}%` }}
+                                          style={{
+                                            width: `${Math.max(width, bucket.value > 0 ? 2 : 0)}%`,
+                                          }}
                                         />
                                       </div>
                                       <span className="w-10 shrink-0 text-right text-[9px] font-medium">
@@ -662,26 +723,38 @@ export default function DataManagementPage() {
                                   <div className="flex items-center justify-between text-[9px]">
                                     <span className="text-muted-foreground">Info/Debug</span>
                                     <span className="font-medium text-amber-500">
-                                      {formatCount(server.eligibleForCleanup.info + server.eligibleForCleanup.debug)}
+                                      {formatCount(
+                                        server.eligibleForCleanup.info +
+                                          server.eligibleForCleanup.debug
+                                      )}
                                     </span>
                                   </div>
                                   <div className="flex items-center justify-between text-[9px]">
                                     <span className="text-muted-foreground">Error/Warn</span>
                                     <span className="font-medium text-amber-500">
-                                      {formatCount(server.eligibleForCleanup.warn + server.eligibleForCleanup.error)}
+                                      {formatCount(
+                                        server.eligibleForCleanup.warn +
+                                          server.eligibleForCleanup.error
+                                      )}
                                     </span>
                                   </div>
                                   <div className="border-border/50 flex items-center justify-between border-t pt-1.5 text-[9px]">
                                     <span className="font-medium">Eligible</span>
                                     <span className="font-bold text-rose-500">
-                                      {formatCount(server.eligibleForCleanup.total)} ({Math.round((server.eligibleForCleanup.total / server.logCount) * 100)}%)
+                                      {formatCount(server.eligibleForCleanup.total)} (
+                                      {Math.round(
+                                        (server.eligibleForCleanup.total / server.logCount) * 100
+                                      )}
+                                      %)
                                     </span>
                                   </div>
                                 </div>
                               ) : (
                                 <div className="flex items-center gap-2 rounded-md bg-emerald-500/10 px-2 py-2">
                                   <CheckCircle className="h-4 w-4 shrink-0 text-emerald-500" />
-                                  <span className="text-[10px] font-medium text-emerald-500">All Clean</span>
+                                  <span className="text-[10px] font-medium text-emerald-500">
+                                    All Clean
+                                  </span>
                                 </div>
                               )}
                             </div>
@@ -732,7 +805,12 @@ export default function DataManagementPage() {
                     />
                   </div>
                 </div>
-                <div className={cn('space-y-2', !localSettings.enabled && 'pointer-events-none opacity-50')}>
+                <div
+                  className={cn(
+                    'space-y-2',
+                    !localSettings.enabled && 'pointer-events-none opacity-50'
+                  )}
+                >
                   <div className="flex items-center gap-3">
                     <Label className="w-24 shrink-0 text-[10px]">Info/Debug</Label>
                     <Slider
@@ -820,7 +898,10 @@ export default function DataManagementPage() {
                     <Slider
                       value={[localFileIngestionSettings.maxConcurrentTailers]}
                       onValueChange={([value]) =>
-                        setLocalFileIngestionSettings((prev) => ({ ...prev, maxConcurrentTailers: value }))
+                        setLocalFileIngestionSettings((prev) => ({
+                          ...prev,
+                          maxConcurrentTailers: value,
+                        }))
                       }
                       min={1}
                       max={20}
@@ -834,7 +915,10 @@ export default function DataManagementPage() {
                       value={localFileIngestionSettings.maxConcurrentTailers}
                       onChange={(e) => {
                         const value = Math.max(1, Math.min(20, parseInt(e.target.value) || 1));
-                        setLocalFileIngestionSettings((prev) => ({ ...prev, maxConcurrentTailers: value }));
+                        setLocalFileIngestionSettings((prev) => ({
+                          ...prev,
+                          maxConcurrentTailers: value,
+                        }));
                       }}
                       className="h-5 w-14 text-center text-[10px]"
                     />
@@ -844,7 +928,10 @@ export default function DataManagementPage() {
                     <Slider
                       value={[localFileIngestionSettings.maxFileAgeDays]}
                       onValueChange={([value]) =>
-                        setLocalFileIngestionSettings((prev) => ({ ...prev, maxFileAgeDays: value }))
+                        setLocalFileIngestionSettings((prev) => ({
+                          ...prev,
+                          maxFileAgeDays: value,
+                        }))
                       }
                       min={1}
                       max={365}
@@ -858,7 +945,10 @@ export default function DataManagementPage() {
                       value={localFileIngestionSettings.maxFileAgeDays}
                       onChange={(e) => {
                         const value = Math.max(1, Math.min(365, parseInt(e.target.value) || 1));
-                        setLocalFileIngestionSettings((prev) => ({ ...prev, maxFileAgeDays: value }));
+                        setLocalFileIngestionSettings((prev) => ({
+                          ...prev,
+                          maxFileAgeDays: value,
+                        }));
                       }}
                       className="h-5 w-14 text-center text-[10px]"
                     />
@@ -868,7 +958,10 @@ export default function DataManagementPage() {
                     <Slider
                       value={[localFileIngestionSettings.tailerStartDelayMs]}
                       onValueChange={([value]) =>
-                        setLocalFileIngestionSettings((prev) => ({ ...prev, tailerStartDelayMs: value }))
+                        setLocalFileIngestionSettings((prev) => ({
+                          ...prev,
+                          tailerStartDelayMs: value,
+                        }))
                       }
                       min={0}
                       max={5000}
@@ -883,7 +976,10 @@ export default function DataManagementPage() {
                       value={localFileIngestionSettings.tailerStartDelayMs}
                       onChange={(e) => {
                         const value = Math.max(0, Math.min(5000, parseInt(e.target.value) || 0));
-                        setLocalFileIngestionSettings((prev) => ({ ...prev, tailerStartDelayMs: value }));
+                        setLocalFileIngestionSettings((prev) => ({
+                          ...prev,
+                          tailerStartDelayMs: value,
+                        }));
                       }}
                       className="h-5 w-[4.5rem] text-center text-[10px]"
                     />
@@ -908,7 +1004,10 @@ export default function DataManagementPage() {
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-[10px]">
                       <span className="text-muted-foreground">Eligible:</span>
-                      <span className="font-medium">{formatCount(preview.totalLogsToDelete)} (~{preview.estimatedSpaceSavingsFormatted})</span>
+                      <span className="font-medium">
+                        {formatCount(preview.totalLogsToDelete)} (~
+                        {preview.estimatedSpaceSavingsFormatted})
+                      </span>
                     </div>
                     <Button
                       size="sm"
@@ -962,7 +1061,9 @@ export default function DataManagementPage() {
                           </span>
                         </div>
                         <span className="text-muted-foreground">
-                          {item.status === 'completed' ? `${formatCount(item.totalDeleted)}` : item.status}
+                          {item.status === 'completed'
+                            ? `${formatCount(item.totalDeleted)}`
+                            : item.status}
                         </span>
                       </div>
                     ))}
@@ -975,10 +1076,13 @@ export default function DataManagementPage() {
       </div>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog((prev) => ({ ...prev, open }))}>
+      <AlertDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog((prev) => ({ ...prev, open }))}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+            <AlertDialogTitle className="text-destructive flex items-center gap-2">
               <AlertTriangle className="h-5 w-5" />
               {deleteDialog.type === 'all'
                 ? 'Delete All Logs'
@@ -994,12 +1098,16 @@ export default function DataManagementPage() {
                   </>
                 ) : deleteDialog.type === 'server' ? (
                   <>
-                    This will permanently delete <strong>{formatCount(deleteDialog.count ?? 0)} logs</strong> from{' '}
+                    This will permanently delete{' '}
+                    <strong>{formatCount(deleteDialog.count ?? 0)} logs</strong> from{' '}
                     <strong>{deleteDialog.serverName}</strong>.
                   </>
                 ) : (
                   <>
-                    This will permanently delete <strong>{formatCount(deleteDialog.count ?? 0)} {deleteDialog.level}</strong>{' '}
+                    This will permanently delete{' '}
+                    <strong>
+                      {formatCount(deleteDialog.count ?? 0)} {deleteDialog.level}
+                    </strong>{' '}
                     logs from <strong>{deleteDialog.serverName}</strong>.
                   </>
                 )}
@@ -1020,7 +1128,9 @@ export default function DataManagementPage() {
             >
               {(deleteByLevelMutation.isPending ||
                 deleteServerLogsMutation.isPending ||
-                deleteAllLogsMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                deleteAllLogsMutation.isPending) && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

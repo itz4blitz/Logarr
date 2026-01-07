@@ -898,7 +898,7 @@ export function SessionDetailModal({
 
   // Find the current session from live data, fallback to prop
   const session = initialSession
-    ? allSessions?.find((s) => s.id === initialSession.id) ?? initialSession
+    ? (allSessions?.find((s) => s.id === initialSession.id) ?? initialSession)
     : null;
 
   // Reset tab when session changes

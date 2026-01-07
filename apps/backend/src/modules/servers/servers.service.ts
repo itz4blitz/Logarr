@@ -4,6 +4,7 @@ import { PlexProvider } from '@logarr/provider-plex';
 import { ProwlarrProvider } from '@logarr/provider-prowlarr';
 import { RadarrProvider } from '@logarr/provider-radarr';
 import { SonarrProvider } from '@logarr/provider-sonarr';
+import { WhisparrProvider } from '@logarr/provider-whisparr';
 import { Injectable, Inject, NotFoundException, forwardRef, Logger } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 
@@ -47,6 +48,9 @@ export class ServersService {
 
     const prowlarrProvider = new ProwlarrProvider();
     this.providers.set(prowlarrProvider.id, prowlarrProvider);
+
+    const whisparrProvider = new WhisparrProvider();
+    this.providers.set(whisparrProvider.id, whisparrProvider);
   }
 
   async findAll() {
@@ -296,12 +300,13 @@ export class ServersService {
           })
           .where(eq(schema.servers.id, id));
 
-        // If paths are valid and file ingestion isn't running, start it
+        // If paths are valid and file ingestion isn't already running/watching, start it
         if (validation.valid) {
           const status = this.fileIngestionService.getStatus();
           const alreadyTailing = status.tailers.some((t) => t.startsWith(`${id}:`));
+          const alreadyWatching = this.fileIngestionService.isServerWatching(id);
 
-          if (!alreadyTailing) {
+          if (!alreadyTailing && !alreadyWatching) {
             this.logger.log(
               `Starting file ingestion for server ${id} after successful path validation`
             );

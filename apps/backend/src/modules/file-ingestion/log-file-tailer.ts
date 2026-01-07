@@ -1,5 +1,6 @@
 import { createReadStream, statSync, unwatchFile } from 'fs';
 import { createInterface } from 'readline';
+import { setImmediate } from 'timers';
 
 import type { LogFileProcessor } from './log-file-processor';
 import type { MediaServerProvider, ParsedLogEntry } from '@logarr/core';
@@ -32,6 +33,8 @@ interface TailOptions {
   onError: (error: Error) => void;
   onRotation?: () => void;
   onStateChange?: (state: Partial<LogFileState>) => Promise<void>;
+  /** Called when the initial read (from offset to EOF) completes */
+  onInitialReadComplete?: () => void;
 }
 
 /**
@@ -50,6 +53,7 @@ export class LogFileTailer {
   private readonly onError: (error: Error) => void;
   private readonly onRotation?: () => void;
   private readonly onStateChange?: (state: Partial<LogFileState>) => Promise<void>;
+  private readonly onInitialReadComplete?: () => void;
   private readonly processor: LogFileProcessor;
   private readonly provider: MediaServerProvider;
 
@@ -61,6 +65,13 @@ export class LogFileTailer {
   private readLineInterface: Interface | null = null;
   private watchInterval: NodeJS.Timeout | null = null;
 
+  /** Buffer for lines to process asynchronously (prevents blocking readline) */
+  private lineBuffer: Array<{ line: string; lineNumber: number; bytes: number }> = [];
+  /** Whether we're currently draining the buffer */
+  private isProcessingBuffer: boolean = false;
+  /** Whether the initial read has completed */
+  private initialReadComplete: boolean = false;
+
   constructor(options: TailOptions, processor: LogFileProcessor, provider: MediaServerProvider) {
     this.serverId = options.serverId;
     this.filePath = options.filePath;
@@ -71,6 +82,9 @@ export class LogFileTailer {
     }
     if (options.onStateChange) {
       this.onStateChange = options.onStateChange;
+    }
+    if (options.onInitialReadComplete) {
+      this.onInitialReadComplete = options.onInitialReadComplete;
     }
     this.processor = processor;
     this.provider = provider;
@@ -111,8 +125,8 @@ export class LogFileTailer {
       this.lastInode = currentInode;
       this.lastSize = currentSize;
 
-      // Read existing content from offset
-      await this.readFromOffset();
+      // Read existing content from offset (mark as initial read for completion callback)
+      await this.readFromOffset(true);
 
       // Start watching for changes
       this.startWatching();
@@ -171,8 +185,9 @@ export class LogFileTailer {
 
   /**
    * Read file content from the current offset
+   * Uses non-blocking buffer approach to prevent UI freezing
    */
-  private async readFromOffset(): Promise<void> {
+  private async readFromOffset(isInitialRead = false): Promise<void> {
     return new Promise((resolve, reject) => {
       const startOffset = Number(this.currentOffset);
 
@@ -188,16 +203,28 @@ export class LogFileTailer {
 
       let bytesRead = 0;
 
-      this.readLineInterface.on('line', async (line) => {
-        // Account for line content + newline character
-        bytesRead += Buffer.byteLength(line, 'utf-8') + 1;
+      // CRITICAL: Don't await in 'line' handler - buffer synchronously
+      this.readLineInterface.on('line', (line) => {
+        const bytes = Buffer.byteLength(line, 'utf-8') + 1;
+        bytesRead += bytes;
         this.lineNumber++;
 
-        await this.processLine(line);
+        // Buffer the line for async processing
+        this.lineBuffer.push({
+          line,
+          lineNumber: this.lineNumber,
+          bytes,
+        });
+
+        // Start background processing if not already running
+        this.startBufferProcessing();
       });
 
       this.readLineInterface.on('close', async () => {
         this.currentOffset += BigInt(bytesRead);
+
+        // Wait for buffer to drain before completing
+        await this.drainBuffer();
 
         // Persist state after reading
         if (this.onStateChange && bytesRead > 0) {
@@ -208,13 +235,96 @@ export class LogFileTailer {
           }
         }
 
+        // Signal initial read completion (only on first read)
+        if (isInitialRead && !this.initialReadComplete) {
+          this.initialReadComplete = true;
+          this.onInitialReadComplete?.();
+        }
+
         resolve();
       });
 
       this.readLineInterface.on('error', (error) => {
         this.onError(error);
+        // Signal completion even on error so progress tracking works
+        if (isInitialRead && !this.initialReadComplete) {
+          this.initialReadComplete = true;
+          this.onInitialReadComplete?.();
+        }
         reject(error);
       });
+    });
+  }
+
+  /**
+   * Start processing buffered lines in the background
+   */
+  private startBufferProcessing(): void {
+    if (this.isProcessingBuffer) {
+      return;
+    }
+
+    this.isProcessingBuffer = true;
+
+    // Process in next tick to not block current execution
+    setImmediate(() => this.processBufferedLines());
+  }
+
+  /**
+   * Process buffered lines asynchronously
+   */
+  private async processBufferedLines(): Promise<void> {
+    try {
+      while (this.lineBuffer.length > 0) {
+        const item = this.lineBuffer.shift();
+        if (item) {
+          await this.processLine(item.line);
+        }
+      }
+    } catch (error) {
+      // Log error but don't crash - continue processing
+      this.onError(error as Error);
+    } finally {
+      // Always mark as not processing so drainBuffer() can complete
+      this.isProcessingBuffer = false;
+
+      // If more items were added while we were processing, restart
+      if (this.lineBuffer.length > 0) {
+        this.startBufferProcessing();
+      }
+    }
+  }
+
+  /**
+   * Wait for all buffered lines to be processed (with timeout)
+   */
+  private async drainBuffer(): Promise<void> {
+    // If not processing and buffer is empty, we're done
+    if (!this.isProcessingBuffer && this.lineBuffer.length === 0) {
+      return;
+    }
+
+    // Wait for processing to complete with a timeout
+    const DRAIN_TIMEOUT_MS = 60000; // 60 seconds max wait
+    const startTime = Date.now();
+
+    return new Promise((resolve) => {
+      const checkDrained = () => {
+        if (!this.isProcessingBuffer && this.lineBuffer.length === 0) {
+          resolve();
+        } else if (Date.now() - startTime > DRAIN_TIMEOUT_MS) {
+          // Timeout - force completion to avoid hanging forever
+          console.warn(
+            `[LogFileTailer] drainBuffer timeout for ${this.filePath}, ${this.lineBuffer.length} items remaining`
+          );
+          this.lineBuffer.length = 0; // Clear remaining items
+          this.isProcessingBuffer = false;
+          resolve();
+        } else {
+          setImmediate(checkDrained);
+        }
+      };
+      checkDrained();
     });
   }
 

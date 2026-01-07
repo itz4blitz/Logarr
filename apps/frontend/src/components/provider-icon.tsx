@@ -106,11 +106,26 @@ function SonarrIcon({ className }: { className?: string }) {
 function RadarrIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" className={className}>
+      {/* Light background for visibility on dark UIs */}
+      <rect width="512" height="512" rx="64" fill="#f5f5f5" />
       <path
         d="m80.3 80.8 3.9 372.4c-31.4 3.9-54.9-11.8-54.9-43.1l-3.9-309.7c0-98 90.2-121.5 145.1-82.3l278.3 160.7c39.2 27.4 47 78.4 27.4 113.7-3.9-27.4-15.7-43.1-39.2-58.8L123.4 57.2C99.9 41.6 80.3 45.5 80.3 80.8m-23.5 392c23.5 7.8 47 3.9 66.6-7.8l321.5-188.2c19.6 27.4 15.7 54.9-7.8 70.6L166.5 504.2c-39.2 19.6-90.1 0-109.7-31.4"
         fill="#24292e"
       />
       <path d="M150.9 363 343 253.3 154.8 147.4z" fill="#ffc230" />
+    </svg>
+  );
+}
+
+// Official Whisparr logo (pink W)
+function WhisparrIcon({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200" className={className}>
+      <circle cx="600" cy="600" r="566" fill="#ff69b4" stroke="#333" strokeWidth="60" />
+      <path
+        fill="#333"
+        d="M142.192 966.227q-15.382-.001-10.144-22.122 5.008-21.159 28.128-53.858l228.19-267.361Q493.552 499.784 548.963 420.92q55.402-78.862 63.14-111.562 3.643-15.389-4.794-23.083-8.428-7.695-21.418-10.581t-24.953-2.887q-72.634-.004-226.195 100.012-43.339 27.89-82.3 62.511-38.953 34.622-74.776 74.053-69.93 78.862-82.675 132.72-9.793 41.356 22.34 50.014 11.913 3.848 28.148 3.849 30.763.002 65.62-17.308t70.285-44.238q27.225-21.158 30.643-21.157 3.418 0 .969 6.732-9.905 20.197-33.884 38.47-23.98 18.272-54.848 33.173-30.876 14.91-60.58 23.08-29.705 8.177-51.075 8.176-34.181-.002-55.142-19.724-20.977-19.713-11.866-58.184 13.88-58.668 94.805-144.261 77.678-82.709 178.384-147.142 41.408-26.928 94.216-51.455 52.8-24.517 104.406-40.388 51.607-15.862 89.206-15.86 67.506.004 55.673 50.016-14.34 60.591-130.567 208.698Q450.346 606.54 323.12 746.951q-105.3 116.37-106.155 116.37 2.555 0 105.478-99.058 63.27-61.55 117.92-110.12 54.64-48.563 100.035-85.108 22.27-18.273 54.39-45.686l74.95-63.95q37.202-30.774 71.737-55.778 34.543-25.005 58.47-25.003 24.78.001 29.288 13.466-104.56 109.637-210.475 268.324-75.565 113.486-89.453 172.154-8.19 34.623 4.402 50.012 12.593 15.39 39.083 15.391 29.054.002 65.428-18.27 36.365-18.272 74.808-47.123 38.45-28.85 73.302-60.588Q911.002 660.425 999.831 530.59q69.424-101.944 83.757-162.536 1.365-5.77 2.076-10.579t.77-8.656q-17.953-.001-33.453-21.161-10.088-11.542-7.127-24.045 2.73-11.541 13.1-19.235 10.363-7.693 21.472-7.693 16.235.001 20.061 16.352 1.593 7.694 9.117 19.236 5.018 7.694 3.251 11.541 3.08 8.656 15.043 8.657t25.379-11.54q13.407-11.54 26.225-11.54 6.836 0 5.471 5.771-2.5 10.58-21.013 20.197-10.14 6.731-22.556 8.654-7.067.962-14.014 1.438-6.955.485-13.33-1.44 1.15 38.472-3.175 56.745-18.206 76.942-112.062 199.082-47.034 61.551-101.882 116.37-54.839 54.818-118.345 102.903-126.61 98.094-206.935 98.09-88.015-.005-66.166-92.335 10.238-43.28 39.56-98.584 29.323-55.297 64.517-110.116l97.254-150.994q-45.336 32.698-73.72 53.37-28.4 20.681-47.625 35.107t-36.845 29.328q-17.635 14.91-42.289 36.068-27.053 24.043-73.53 68.759-46.469 44.724-110.028 111.084L191.35 935.453q-11.276 11.54-24.662 21.157-13.387 9.617-24.495 9.617"
+      />
     </svg>
   );
 }
@@ -289,15 +304,9 @@ function LMStudioIcon({ className }: { className?: string }) {
       {/* Background */}
       <rect width="24" height="24" rx="4" fill="#635BE1" />
       {/* L */}
-      <path
-        d="M5 6h2v10h4v2H5V6z"
-        fill="white"
-      />
+      <path d="M5 6h2v10h4v2H5V6z" fill="white" />
       {/* M */}
-      <path
-        d="M13 6h2.5l1.5 6 1.5-6H21v12h-2V10l-1.5 6h-2L14 10v8h-2V6h1z"
-        fill="white"
-      />
+      <path d="M13 6h2.5l1.5 6 1.5-6H21v12h-2V10l-1.5 6h-2L14 10v8h-2V6h1z" fill="white" />
     </svg>
   );
 }
@@ -327,11 +336,7 @@ function SQLiteIcon({ className }: { className?: string }) {
   };
 
   return (
-    <svg
-      viewBox="8 10.52 240 237.48"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-    >
+    <svg viewBox="8 10.52 240 237.48" xmlns="http://www.w3.org/2000/svg" className={className}>
       <defs>
         <linearGradient id={gradientIds.a}>
           <stop offset="0" style={{ stopColor: '#ababab', stopOpacity: 1 }} />
@@ -438,7 +443,12 @@ function SQLiteIcon({ className }: { className?: string }) {
       <g transform="matrix(8.59688 0 0 6.30047 -78.796 85.965)">
         <path
           d="M23.941 8.037c-7.625 0-13.825 2.13-13.825 5.475v6.558c0 3.345 6.2 5.648 13.825 5.648s14.072-2.303 14.072-5.648v-6.558c0-3.345-6.447-5.475-14.072-5.475"
-          style={{ fill: `url(#${gradientIds.j})`, fillOpacity: 1, stroke: 'none', strokeWidth: 0.769 }}
+          style={{
+            fill: `url(#${gradientIds.j})`,
+            fillOpacity: 1,
+            stroke: 'none',
+            strokeWidth: 0.769,
+          }}
         />
         <ellipse
           cx="24"
@@ -455,13 +465,24 @@ function SQLiteIcon({ className }: { className?: string }) {
         />
         <path
           d="m13.643 18 .256 5.876 4.672 1.084-.142-5.603s2.071-.04 5.428-.254c-5.216-.233-11.183-2.725-13.214-4.18 1.417 2.093 3 3.077 3 3.077"
-          style={{ opacity: 0.493671, fill: `url(#${gradientIds.l})`, fillOpacity: 1, stroke: 'none', strokeWidth: 1 }}
+          style={{
+            opacity: 0.493671,
+            fill: `url(#${gradientIds.l})`,
+            fillOpacity: 1,
+            stroke: 'none',
+            strokeWidth: 1,
+          }}
         />
       </g>
       <g transform="matrix(8.59688 0 0 6.30047 -78.967 22.701)">
         <path
           d="M23.941 8.036c-7.625 0-13.825 2.131-13.825 5.476v6.558c0 3.345 6.2 5.648 13.825 5.648s14.072-2.303 14.072-5.648v-6.558c0-3.345-6.447-5.476-14.072-5.476"
-          style={{ fill: `url(#${gradientIds.m})`, fillOpacity: 1, stroke: 'none', strokeWidth: 0.769 }}
+          style={{
+            fill: `url(#${gradientIds.m})`,
+            fillOpacity: 1,
+            stroke: 'none',
+            strokeWidth: 0.769,
+          }}
         />
         <ellipse
           cx="24"
@@ -478,13 +499,24 @@ function SQLiteIcon({ className }: { className?: string }) {
         />
         <path
           d="m13.643 18 .256 5.876 4.672 1.084-.142-5.603s2.071-.04 5.428-.254c-5.216-.233-11.183-2.725-13.214-4.179 1.417 2.092 3 3.076 3 3.076"
-          style={{ opacity: 0.493671, fill: `url(#${gradientIds.o})`, fillOpacity: 1, stroke: 'none', strokeWidth: 1 }}
+          style={{
+            opacity: 0.493671,
+            fill: `url(#${gradientIds.o})`,
+            fillOpacity: 1,
+            stroke: 'none',
+            strokeWidth: 1,
+          }}
         />
       </g>
       <g transform="matrix(8.59688 0 0 6.30047 -78.956 -40.054)">
         <path
           d="M23.941 8.037c-7.625 0-13.825 2.13-13.825 5.475v6.558c0 3.345 6.2 5.648 13.825 5.648s14.072-2.303 14.072-5.648v-6.558c0-3.345-6.447-5.475-14.072-5.475"
-          style={{ fill: `url(#${gradientIds.p})`, fillOpacity: 1, stroke: 'none', strokeWidth: 0.769 }}
+          style={{
+            fill: `url(#${gradientIds.p})`,
+            fillOpacity: 1,
+            stroke: 'none',
+            strokeWidth: 0.769,
+          }}
         />
         <ellipse
           cx="24"
@@ -501,7 +533,13 @@ function SQLiteIcon({ className }: { className?: string }) {
         />
         <path
           d="m13.643 18 .256 5.876 4.672 1.084-.142-5.603s2.071-.04 5.428-.255c-5.216-.233-11.183-2.724-13.214-4.178 1.417 2.093 3 3.076 3 3.076"
-          style={{ opacity: 0.493671, fill: `url(#${gradientIds.r})`, fillOpacity: 1, stroke: 'none', strokeWidth: 1 }}
+          style={{
+            opacity: 0.493671,
+            fill: `url(#${gradientIds.r})`,
+            fillOpacity: 1,
+            stroke: 'none',
+            strokeWidth: 1,
+          }}
         />
       </g>
     </svg>
@@ -512,7 +550,8 @@ function SQLiteIcon({ className }: { className?: string }) {
 function PlexIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" className={className}>
-      <rect width="512" height="512" fill="#282a2d" rx="15%" />
+      {/* Lighter background for visibility on dark UIs */}
+      <rect width="512" height="512" fill="#3d3f42" rx="15%" />
       <path fill="#e5a00d" d="M256 70H148l108 186-108 186h108l108-186z" />
     </svg>
   );
@@ -576,6 +615,7 @@ const providerIcons: Record<string, React.ComponentType<{ className?: string }>>
   sonarr: SonarrIcon,
   radarr: RadarrIcon,
   prowlarr: ProwlarrIcon,
+  whisparr: WhisparrIcon,
   lidarr: LidarrIcon,
   readarr: ReadarrIcon,
   sqlite: SQLiteIcon,
@@ -602,6 +642,7 @@ export const providerMeta: Record<string, { name: string; color: string; bgColor
   sonarr: { name: 'Sonarr', color: '#00CCFF', bgColor: 'bg-sky-500/10' },
   radarr: { name: 'Radarr', color: '#FFC230', bgColor: 'bg-yellow-500/10' },
   prowlarr: { name: 'Prowlarr', color: '#E66001', bgColor: 'bg-orange-500/10' },
+  whisparr: { name: 'Whisparr', color: '#FF69B4', bgColor: 'bg-pink-500/10' },
   lidarr: { name: 'Lidarr', color: '#00C853', bgColor: 'bg-green-500/10' },
   readarr: { name: 'Readarr', color: '#8B0000', bgColor: 'bg-red-500/10' },
   sqlite: { name: 'SQLite', color: '#003B57', bgColor: 'bg-slate-500/10' },

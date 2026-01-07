@@ -35,12 +35,7 @@ export class HttpError extends Error {
   readonly url: string;
   readonly suggestion: string;
 
-  constructor(
-    message: string,
-    type: HttpErrorType,
-    url: string,
-    statusCode?: number
-  ) {
+  constructor(message: string, type: HttpErrorType, url: string, statusCode?: number) {
     super(message);
     this.name = 'HttpError';
     this.type = type;
@@ -51,8 +46,7 @@ export class HttpError extends Error {
 
   static getSuggestion(type: HttpErrorType, url: string): string {
     const urlObj = new URL(url);
-    const isLocalhost =
-      urlObj.hostname === 'localhost' || urlObj.hostname === '127.0.0.1';
+    const isLocalhost = urlObj.hostname === 'localhost' || urlObj.hostname === '127.0.0.1';
 
     switch (type) {
       case 'timeout':
@@ -105,15 +99,8 @@ function categorizeError(error: unknown, url: string): HttpError {
   }
 
   // Connection refused
-  if (
-    lowerMessage.includes('econnrefused') ||
-    lowerMessage.includes('connection refused')
-  ) {
-    return new HttpError(
-      `Connection refused to ${url}: ${message}`,
-      'connection_refused',
-      url
-    );
+  if (lowerMessage.includes('econnrefused') || lowerMessage.includes('connection refused')) {
+    return new HttpError(`Connection refused to ${url}: ${message}`, 'connection_refused', url);
   }
 
   // Timeout errors
@@ -132,11 +119,7 @@ function categorizeError(error: unknown, url: string): HttpError {
     lowerMessage.includes('certificate') ||
     lowerMessage.includes('cert')
   ) {
-    return new HttpError(
-      `SSL/TLS error connecting to ${url}: ${message}`,
-      'ssl',
-      url
-    );
+    return new HttpError(`SSL/TLS error connecting to ${url}: ${message}`, 'ssl', url);
   }
 
   // Network errors
@@ -146,19 +129,11 @@ function categorizeError(error: unknown, url: string): HttpError {
     lowerMessage.includes('econnreset') ||
     lowerMessage.includes('socket')
   ) {
-    return new HttpError(
-      `Network error connecting to ${url}: ${message}`,
-      'network',
-      url
-    );
+    return new HttpError(`Network error connecting to ${url}: ${message}`, 'network', url);
   }
 
   // Unknown error
-  return new HttpError(
-    `Failed to connect to ${url}: ${message}`,
-    'unknown',
-    url
-  );
+  return new HttpError(`Failed to connect to ${url}: ${message}`, 'unknown', url);
 }
 
 /**
@@ -189,20 +164,13 @@ function sleep(ms: number): Promise<void> {
  */
 function isRetryableError(error: HttpError): boolean {
   // Retry on timeout, network issues, and server errors (5xx)
-  return (
-    error.type === 'timeout' ||
-    error.type === 'network' ||
-    error.type === 'server_error'
-  );
+  return error.type === 'timeout' || error.type === 'network' || error.type === 'server_error';
 }
 
 /**
  * Make an HTTP request with timeout, retries, and enhanced error handling
  */
-export async function httpRequest<T>(
-  url: string,
-  options: HttpRequestOptions = {}
-): Promise<T> {
+export async function httpRequest<T>(url: string, options: HttpRequestOptions = {}): Promise<T> {
   const {
     timeout = DEFAULT_TIMEOUT_MS,
     retries = DEFAULT_RETRIES,
@@ -269,11 +237,7 @@ export async function httpRequest<T>(
     } catch (error) {
       // Handle abort (timeout)
       if (error instanceof Error && error.name === 'AbortError') {
-        lastError = new HttpError(
-          `Request timed out after ${timeout}ms`,
-          'timeout',
-          url
-        );
+        lastError = new HttpError(`Request timed out after ${timeout}ms`, 'timeout', url);
       } else {
         lastError = categorizeError(error, url);
       }

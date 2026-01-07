@@ -31,7 +31,9 @@ vi.mock('next/navigation', () => ({
 
 // Mock the sidebar UI components
 vi.mock('@/components/ui/sidebar', () => ({
-  Sidebar: ({ children }: { children: React.ReactNode }) => <div data-testid="sidebar">{children}</div>,
+  Sidebar: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="sidebar">{children}</div>
+  ),
   SidebarContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   SidebarFooter: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="sidebar-footer">{children}</div>
@@ -114,7 +116,9 @@ describe('AppSidebar', () => {
             <div data-testid="sidebar-footer">{children}</div>
           ),
           SidebarGroup: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-          SidebarGroupContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+          SidebarGroupContent: ({ children }: { children: React.ReactNode }) => (
+            <div>{children}</div>
+          ),
           SidebarGroupLabel: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
           SidebarHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
           SidebarMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,

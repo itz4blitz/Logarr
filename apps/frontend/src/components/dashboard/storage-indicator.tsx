@@ -5,12 +5,7 @@ import { formatDistanceToNow } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useStorageStats, useCleanupPreview, useRunCleanup } from '@/hooks/use-api';
 import { cn } from '@/lib/utils';
 
@@ -42,11 +37,11 @@ export function StorageIndicator() {
 
   return (
     <TooltipProvider>
-      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+      <div className="text-muted-foreground flex items-center gap-4 text-sm">
         {/* Log count */}
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="flex items-center gap-1.5 cursor-help">
+            <div className="flex cursor-help items-center gap-1.5">
               <Database className="h-4 w-4" />
               <span className="tabular-nums">{formatCount(stats.logCount)} logs</span>
             </div>
@@ -56,19 +51,19 @@ export function StorageIndicator() {
               <p className="font-medium">Log Counts by Level:</p>
               <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
                 <span>Error:</span>
-                <span className="tabular-nums text-red-400">
+                <span className="text-red-400 tabular-nums">
                   {formatCount(stats.logCountsByLevel.error)}
                 </span>
                 <span>Warn:</span>
-                <span className="tabular-nums text-yellow-400">
+                <span className="text-yellow-400 tabular-nums">
                   {formatCount(stats.logCountsByLevel.warn)}
                 </span>
                 <span>Info:</span>
-                <span className="tabular-nums text-blue-400">
+                <span className="text-blue-400 tabular-nums">
                   {formatCount(stats.logCountsByLevel.info)}
                 </span>
                 <span>Debug:</span>
-                <span className="tabular-nums text-zinc-400">
+                <span className="text-zinc-400 tabular-nums">
                   {formatCount(stats.logCountsByLevel.debug)}
                 </span>
               </div>
@@ -79,7 +74,7 @@ export function StorageIndicator() {
         {/* Database size */}
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="flex items-center gap-1.5 cursor-help">
+            <div className="flex cursor-help items-center gap-1.5">
               <HardDrive className="h-4 w-4" />
               <span>{stats.databaseSizeFormatted}</span>
             </div>
@@ -93,7 +88,7 @@ export function StorageIndicator() {
         {stats.oldestLogTimestamp && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60 cursor-help">
+              <div className="text-muted-foreground/60 flex cursor-help items-center gap-1.5 text-xs">
                 <Clock className="h-3 w-3" />
                 <span>
                   {formatDistanceToNow(new Date(stats.oldestLogTimestamp), { addSuffix: false })}
@@ -109,10 +104,11 @@ export function StorageIndicator() {
         {/* Retention policy info */}
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="flex items-center gap-1.5 text-xs cursor-help">
+            <div className="flex cursor-help items-center gap-1.5 text-xs">
               <Trash2 className="h-3 w-3" />
               <span>
-                {stats.retentionConfig.infoRetentionDays}d / {stats.retentionConfig.errorRetentionDays}d
+                {stats.retentionConfig.infoRetentionDays}d /{' '}
+                {stats.retentionConfig.errorRetentionDays}d
               </span>
             </div>
           </TooltipTrigger>
@@ -137,12 +133,14 @@ export function StorageIndicator() {
                 size="sm"
                 className={cn(
                   'h-6 px-2 text-xs',
-                  cleanupMutation.isPending && 'opacity-50 cursor-wait'
+                  cleanupMutation.isPending && 'cursor-wait opacity-50'
                 )}
                 onClick={() => cleanupMutation.mutate()}
                 disabled={cleanupMutation.isPending}
               >
-                {cleanupMutation.isPending ? 'Cleaning...' : `Clean ${formatCount(preview.totalLogsToDelete)}`}
+                {cleanupMutation.isPending
+                  ? 'Cleaning...'
+                  : `Clean ${formatCount(preview.totalLogsToDelete)}`}
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="max-w-xs">

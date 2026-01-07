@@ -137,6 +137,26 @@ export const PROWLARR_LOG_FILE_CONFIG: LogFileConfig = {
 };
 
 /**
+ * Log file configuration for Whisparr
+ */
+export const WHISPARR_LOG_FILE_CONFIG: LogFileConfig = {
+  defaultPaths: {
+    docker: ['/config/logs'],
+    linux: ['~/.config/Whisparr/logs', '/var/lib/whisparr/logs', '~/.local/share/Whisparr/logs'],
+    windows: [
+      '%APPDATA%\\Whisparr\\logs',
+      '%LOCALAPPDATA%\\Whisparr\\logs',
+      'C:\\ProgramData\\Whisparr\\logs',
+    ],
+    macos: ['~/.config/Whisparr/logs', '~/Library/Application Support/Whisparr/logs'],
+  },
+  filePatterns: ['whisparr.txt', 'whisparr.*.txt', '*.log'],
+  encoding: 'utf-8',
+  rotatesDaily: true,
+  datePattern: /whisparr\.(\d{4}-\d{2}-\d{2})\.txt$/,
+};
+
+/**
  * Generic arr log file configuration (fallback)
  */
 export const ARR_LOG_FILE_CONFIG: LogFileConfig = {

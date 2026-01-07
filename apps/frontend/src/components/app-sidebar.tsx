@@ -339,7 +339,9 @@ export function AppSidebar() {
           <Tooltip>
             <TooltipTrigger asChild>
               <span className="text-muted-foreground cursor-default font-mono text-[10px]">
-                {isCollapsed ? process.env.NEXT_PUBLIC_APP_VERSION : `v${process.env.NEXT_PUBLIC_APP_VERSION}`}
+                {isCollapsed
+                  ? process.env.NEXT_PUBLIC_APP_VERSION
+                  : `v${process.env.NEXT_PUBLIC_APP_VERSION}`}
               </span>
             </TooltipTrigger>
             <TooltipContent side="top">
