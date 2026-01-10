@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { DATABASE_CONNECTION } from '../../database';
 import { createMockDb } from '../../test/mock-db';
+import { AuditService } from '../audit/audit.service';
 
 import { ProxyAuditService } from './proxy-audit.service';
 
@@ -11,9 +12,13 @@ import type { TestingModule } from '@nestjs/testing';
 describe('ProxyAuditService', () => {
   let service: ProxyAuditService;
   let mockDb: ReturnType<typeof createMockDb>;
+  let mockAuditService: { createLog: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     mockDb = createMockDb();
+    mockAuditService = {
+      createLog: vi.fn().mockResolvedValue(undefined),
+    };
     vi.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
@@ -23,6 +28,10 @@ describe('ProxyAuditService', () => {
           provide: DATABASE_CONNECTION,
           useValue: mockDb,
         },
+        {
+          provide: AuditService,
+          useValue: mockAuditService,
+        },
       ],
     }).compile();
 
@@ -30,10 +39,10 @@ describe('ProxyAuditService', () => {
   });
 
   describe('logRequest', () => {
-    it('should log successful request', () => {
+    it('should log successful request', async () => {
       const consoleSpy = vi.spyOn(service['logger'], 'log').mockImplementation(() => {});
 
-      service.logRequest({
+      await service.logRequest({
         userId: 'user-123',
         serverId: 'server-456',
         serverName: 'My Sonarr',
@@ -45,15 +54,13 @@ describe('ProxyAuditService', () => {
         success: true,
       });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Proxy: GET My Sonarr/queue - 200 (150ms)'
-      );
+      expect(consoleSpy).toHaveBeenCalledWith('Proxy: GET My Sonarr/queue - 200 (150ms)');
     });
 
-    it('should log failed request', () => {
+    it('should log failed request', async () => {
       const consoleSpy = vi.spyOn(service['logger'], 'error').mockImplementation(() => {});
 
-      service.logRequest({
+      await service.logRequest({
         userId: 'user-123',
         serverId: 'server-456',
         serverName: 'My Radarr',
@@ -70,16 +77,14 @@ describe('ProxyAuditService', () => {
       );
     });
 
-    it('should handle database insert errors gracefully', () => {
+    it('should handle database insert errors gracefully', async () => {
       const consoleSpy = vi.spyOn(service['logger'], 'error').mockImplementation(() => {});
 
-      // Make logger.log throw to simulate error in the try block
-      vi.spyOn(service['logger'], 'log').mockImplementation(() => {
-        throw new Error('Database connection failed');
-      });
+      // Make auditService.createLog throw to simulate error
+      mockAuditService.createLog.mockRejectedValue(new Error('Database connection failed'));
 
       // Should not throw despite database error
-      expect(() => {
+      await expect(
         service.logRequest({
           userId: 'user-123',
           serverId: 'server-456',
@@ -90,18 +95,18 @@ describe('ProxyAuditService', () => {
           statusCode: 200,
           responseTime: 100,
           success: true,
-        });
-      }).not.toThrow();
+        })
+      ).resolves.not.toThrow();
 
       expect(consoleSpy).toHaveBeenCalledWith(
         'Failed to write audit log: Database connection failed'
       );
     });
 
-    it('should handle request without status code', () => {
+    it('should handle request without status code', async () => {
       const consoleSpy = vi.spyOn(service['logger'], 'log').mockImplementation(() => {});
 
-      service.logRequest({
+      await service.logRequest({
         userId: 'user-123',
         serverId: 'server-456',
         serverName: 'My qBittorrent',
@@ -117,10 +122,10 @@ describe('ProxyAuditService', () => {
       );
     });
 
-    it('should handle request without error message', () => {
+    it('should handle request without error message', async () => {
       const consoleSpy = vi.spyOn(service['logger'], 'error').mockImplementation(() => {});
 
-      service.logRequest({
+      await service.logRequest({
         userId: 'user-123',
         serverId: 'server-456',
         serverName: 'Test Service',
@@ -132,12 +137,10 @@ describe('ProxyAuditService', () => {
         success: false,
       });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('FAILED: undefined')
-      );
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('FAILED: undefined'));
     });
 
-    it('should include all required fields in log entry', () => {
+    it('should include all required fields in log entry', async () => {
       const consoleSpy = vi.spyOn(service['logger'], 'log').mockImplementation(() => {});
 
       const entry = {
@@ -152,7 +155,7 @@ describe('ProxyAuditService', () => {
         success: true,
       };
 
-      service.logRequest(entry);
+      await service.logRequest(entry);
 
       expect(consoleSpy).toHaveBeenCalledWith(
         `Proxy: ${entry.method} ${entry.serverName}/${entry.endpoint} - ${entry.statusCode} (${entry.responseTime}ms)`

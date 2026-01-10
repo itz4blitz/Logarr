@@ -1,4 +1,4 @@
-import { randomBytes, createHash } from 'crypto';
+import { randomBytes, pbkdf2Sync } from 'crypto';
 
 import { Inject, Injectable, Logger, NotFoundException, ConflictException } from '@nestjs/common';
 import { eq, and, sql } from 'drizzle-orm';
@@ -321,9 +321,15 @@ export class ApiKeysService {
   }
 
   /**
-   * Hash an API key using SHA-256
+   * Hash an API key using PBKDF2 for computational resistance
+   * Uses a fixed salt so the same key always maps to the same hash for lookup
    */
   private hashKey(key: string): string {
-    return createHash('sha256').update(key).digest('hex');
+    const iterations = 100_000;
+    const keyLength = 32; // 256-bit derived key
+    const digest = 'sha256';
+    const salt = 'logarr-api-key-hash-v1';
+
+    return pbkdf2Sync(key, salt, iterations, keyLength, digest).toString('hex');
   }
 }

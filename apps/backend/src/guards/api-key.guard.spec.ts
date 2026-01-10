@@ -51,10 +51,16 @@ describe('ApiKeyGuard', () => {
 
     guard = module.get<ApiKeyGuard>(ApiKeyGuard);
 
-    // Mock execution context
+    // Mock execution context with both getRequest and getResponse
+    const mockResponse = {
+      statusCode: 200,
+      on: vi.fn(),
+    };
+
     mockContext = {
       switchToHttp: vi.fn().mockReturnValue({
         getRequest: vi.fn(),
+        getResponse: vi.fn().mockReturnValue(mockResponse),
       }),
     } as unknown as ExecutionContext;
   });
