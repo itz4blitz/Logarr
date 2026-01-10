@@ -38,6 +38,8 @@ export default defineConfig({
         'src/hooks/use-mobile.ts',
         'src/hooks/use-fit-to-viewport.ts',
         'src/hooks/use-api.ts',
+        // WebSocket utilities - require browser APIs, better tested via E2E
+        'src/lib/websocket.ts',
         // API and config files - tested through integration/E2E
         'src/lib/api.ts',
         'src/lib/config.ts',
