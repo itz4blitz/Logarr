@@ -6,8 +6,8 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { sql, eq, and } from 'drizzle-orm';
 
 import { DATABASE_CONNECTION } from './database/database.module';
-import { REDIS_CLIENT } from './redis/redis.module';
 import * as schema from './database/schema';
+import { REDIS_CLIENT } from './redis/redis.module';
 
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import type Redis from 'ioredis';

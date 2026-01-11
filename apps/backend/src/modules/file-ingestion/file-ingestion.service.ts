@@ -273,7 +273,7 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
   /**
    * Reset file states that may be stale due to log rotation or container restart
    */
-  private async resetStaleFileStates(serverId: string, logPaths: string[]): Promise<void> {
+  private async resetStaleFileStates(serverId: string, _logPaths: string[]): Promise<void> {
     try {
       const { statSync } = await import('fs');
 
@@ -298,7 +298,7 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
 
             await this.fileStateService.resetState(serverId, state.filePath);
           }
-        } catch (error) {
+        } catch (_error) {
           // File doesn't exist or not accessible - reset state
           this.logger.log(`Resetting state for inaccessible file: ${state.filePath}`);
           await this.fileStateService.resetState(serverId, state.filePath);
