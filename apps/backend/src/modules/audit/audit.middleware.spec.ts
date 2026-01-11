@@ -1,8 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
+
+import { AuditGateway } from './audit.gateway';
 import { AuditMiddleware } from './audit.middleware';
 import { AuditService } from './audit.service';
-import { AuditGateway } from './audit.gateway';
-import { Request, Response } from 'express';
+
+import type { TestingModule } from '@nestjs/testing';
+import type { Request, Response } from 'express';
 
 describe('AuditMiddleware', () => {
   let middleware: AuditMiddleware;

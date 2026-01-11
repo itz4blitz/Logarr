@@ -135,9 +135,7 @@ describe('RetentionService', () => {
       vi.setSystemTime(new Date('2024-01-15T03:00:00'));
 
       // Mock the runScheduledCleanup before init
-      const runScheduledCleanupSpy = vi
-        .spyOn(service as any, 'runScheduledCleanup')
-        .mockResolvedValue(undefined);
+      vi.spyOn(service as any, 'runScheduledCleanup').mockResolvedValue(undefined);
 
       await service.onModuleInit();
 

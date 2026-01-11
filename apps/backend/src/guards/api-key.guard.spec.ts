@@ -93,13 +93,13 @@ describe('ApiKeyGuard', () => {
         apiKey: undefined,
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       vi.spyOn(guard as any, 'extractApiKeyFromHeader').mockReturnValue(
         mockRequest.headers['x-api-key'] as string
       );
       vi.mocked(mockApiKeysService.validateApiKey).mockResolvedValue(mockApiKey);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (mockContext.switchToHttp().getRequest as any).mockReturnValue(mockRequest);
 
       const result = await guard.canActivate(mockContext);
@@ -118,9 +118,9 @@ describe('ApiKeyGuard', () => {
         apiKey: undefined,
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       vi.spyOn(guard as any, 'extractApiKeyFromHeader').mockReturnValue(undefined);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (mockContext.switchToHttp().getRequest as any).mockReturnValue(mockRequest);
 
       await expect(guard.canActivate(mockContext)).rejects.toThrow(UnauthorizedException);
@@ -137,9 +137,9 @@ describe('ApiKeyGuard', () => {
         apiKey: undefined,
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       vi.spyOn(guard as any, 'extractApiKeyFromHeader').mockReturnValue('');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (mockContext.switchToHttp().getRequest as any).mockReturnValue(mockRequest);
 
       await expect(guard.canActivate(mockContext)).rejects.toThrow(UnauthorizedException);
@@ -153,13 +153,13 @@ describe('ApiKeyGuard', () => {
         apiKey: undefined,
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       vi.spyOn(guard as any, 'extractApiKeyFromHeader').mockReturnValue(
         mockRequest.headers['x-api-key']
       );
       vi.mocked(mockApiKeysService.validateApiKey).mockResolvedValue(null);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (mockContext.switchToHttp().getRequest as any).mockReturnValue(mockRequest);
 
       await expect(guard.canActivate(mockContext)).rejects.toThrow(UnauthorizedException);
@@ -175,13 +175,13 @@ describe('ApiKeyGuard', () => {
         apiKey: undefined,
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       vi.spyOn(guard as any, 'extractApiKeyFromHeader').mockReturnValue(
         mockRequest.headers['x-api-key']
       );
       vi.mocked(mockApiKeysService.validateApiKey).mockResolvedValue(null);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (mockContext.switchToHttp().getRequest as any).mockReturnValue(mockRequest);
 
       await expect(guard.canActivate(mockContext)).rejects.toThrow(UnauthorizedException);
@@ -214,13 +214,13 @@ describe('ApiKeyGuard', () => {
         apiKey: undefined,
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       vi.spyOn(guard as any, 'extractApiKeyFromHeader').mockReturnValue(
         mockRequest.headers['x-api-key']
       );
       vi.mocked(mockApiKeysService.validateApiKey).mockResolvedValue(mockApiKey);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (mockContext.switchToHttp().getRequest as any).mockReturnValue(mockRequest);
 
       await guard.canActivate(mockContext);
@@ -261,13 +261,13 @@ describe('ApiKeyGuard', () => {
         apiKey: undefined,
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       vi.spyOn(guard as any, 'extractApiKeyFromHeader').mockReturnValue(
         mockRequest.headers['x-api-key']
       );
       vi.mocked(mockApiKeysService.validateApiKey).mockResolvedValue(mockApiKey);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (mockContext.switchToHttp().getRequest as any).mockReturnValue(mockRequest);
 
       await guard.canActivate(mockContext);
@@ -311,13 +311,13 @@ describe('ApiKeyGuard', () => {
           apiKey: undefined,
         };
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         vi.spyOn(guard as any, 'extractApiKeyFromHeader').mockReturnValue(
           mockRequest.headers['x-api-key']
         );
         vi.mocked(mockApiKeysService.validateApiKey).mockResolvedValue(mockApiKey);
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         (mockContext.switchToHttp().getRequest as any).mockReturnValue(mockRequest);
 
         const result = await guard.canActivate(mockContext);
@@ -336,7 +336,7 @@ describe('ApiKeyGuard', () => {
         },
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const guardInstance = guard as any;
       const result = guardInstance.extractApiKeyFromHeader(mockRequest);
 
@@ -348,7 +348,7 @@ describe('ApiKeyGuard', () => {
         headers: {},
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const guardInstance = guard as any;
       const result = guardInstance.extractApiKeyFromHeader(mockRequest);
 
@@ -362,7 +362,7 @@ describe('ApiKeyGuard', () => {
         },
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const guardInstance = guard as any;
       const result = guardInstance.extractApiKeyFromHeader(mockRequest);
 
@@ -376,7 +376,7 @@ describe('ApiKeyGuard', () => {
         },
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const guardInstance = guard as any;
       const result = guardInstance.extractApiKeyFromHeader(mockRequest);
 
@@ -390,7 +390,7 @@ describe('ApiKeyGuard', () => {
         },
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const guardInstance = guard as any;
       const result = guardInstance.extractApiKeyFromHeader(mockRequest);
 
@@ -404,7 +404,7 @@ describe('ApiKeyGuard', () => {
         },
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const guardInstance = guard as any;
       const result = guardInstance.extractApiKeyFromHeader(mockRequest);
 
@@ -420,7 +420,7 @@ describe('ApiKeyGuard', () => {
         },
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const guardInstance = guard as any;
       const result = guardInstance.extractApiKeyFromHeader(mockRequest);
 
@@ -437,7 +437,7 @@ describe('ApiKeyGuard', () => {
         ip: '127.0.0.1',
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const guardInstance = guard as any;
       const result = guardInstance.extractIpAddress(mockRequest);
 
@@ -452,7 +452,7 @@ describe('ApiKeyGuard', () => {
         ip: '127.0.0.1',
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const guardInstance = guard as any;
       const result = guardInstance.extractIpAddress(mockRequest);
 
@@ -467,7 +467,7 @@ describe('ApiKeyGuard', () => {
         ip: '127.0.0.1',
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const guardInstance = guard as any;
       const result = guardInstance.extractIpAddress(mockRequest);
 
@@ -480,7 +480,7 @@ describe('ApiKeyGuard', () => {
         ip: '192.168.1.1',
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const guardInstance = guard as any;
       const result = guardInstance.extractIpAddress(mockRequest);
 
@@ -495,7 +495,7 @@ describe('ApiKeyGuard', () => {
         ip: '127.0.0.1',
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const guardInstance = guard as any;
       const result = guardInstance.extractIpAddress(mockRequest);
 
@@ -510,7 +510,7 @@ describe('ApiKeyGuard', () => {
         ip: '127.0.0.1',
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const guardInstance = guard as any;
       const result = guardInstance.extractIpAddress(mockRequest);
 
@@ -525,7 +525,7 @@ describe('ApiKeyGuard', () => {
         ip: '127.0.0.1',
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const guardInstance = guard as any;
       const result = guardInstance.extractIpAddress(mockRequest);
 
@@ -541,7 +541,7 @@ describe('ApiKeyGuard', () => {
         ip: '10.0.0.1',
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const guardInstance = guard as any;
       const result = guardInstance.extractIpAddress(mockRequest);
 
@@ -587,15 +587,15 @@ describe('ApiKeyGuard', () => {
         on: onMock,
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       vi.spyOn(guard as any, 'extractApiKeyFromHeader').mockReturnValue(
         mockRequest.headers['x-api-key'] as string
       );
       vi.mocked(mockApiKeysService.validateApiKey).mockResolvedValue(mockApiKey);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (mockContext.switchToHttp().getRequest as any).mockReturnValue(mockRequest);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (mockContext.switchToHttp().getResponse as any).mockReturnValue(mockResponse);
 
       await guard.canActivate(mockContext);
@@ -647,15 +647,15 @@ describe('ApiKeyGuard', () => {
       // Add logUsage mock
       (mockApiKeysService as any).logUsage = vi.fn().mockResolvedValue(undefined);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       vi.spyOn(guard as any, 'extractApiKeyFromHeader').mockReturnValue(
         mockRequest.headers['x-api-key'] as string
       );
       vi.mocked(mockApiKeysService.validateApiKey).mockResolvedValue(mockApiKey);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (mockContext.switchToHttp().getRequest as any).mockReturnValue(mockRequest);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (mockContext.switchToHttp().getResponse as any).mockReturnValue(mockResponse);
 
       await guard.canActivate(mockContext);
@@ -722,15 +722,15 @@ describe('ApiKeyGuard', () => {
 
       (mockApiKeysService as any).logUsage = vi.fn().mockResolvedValue(undefined);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       vi.spyOn(guard as any, 'extractApiKeyFromHeader').mockReturnValue(
         mockRequest.headers['x-api-key'] as string
       );
       vi.mocked(mockApiKeysService.validateApiKey).mockResolvedValue(mockApiKey);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (mockContext.switchToHttp().getRequest as any).mockReturnValue(mockRequest);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (mockContext.switchToHttp().getResponse as any).mockReturnValue(mockResponse);
 
       await guard.canActivate(mockContext);
@@ -792,15 +792,15 @@ describe('ApiKeyGuard', () => {
 
       (mockApiKeysService as any).logUsage = vi.fn().mockRejectedValue(new Error('DB error'));
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       vi.spyOn(guard as any, 'extractApiKeyFromHeader').mockReturnValue(
         mockRequest.headers['x-api-key'] as string
       );
       vi.mocked(mockApiKeysService.validateApiKey).mockResolvedValue(mockApiKey);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (mockContext.switchToHttp().getRequest as any).mockReturnValue(mockRequest);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (mockContext.switchToHttp().getResponse as any).mockReturnValue(mockResponse);
 
       await guard.canActivate(mockContext);
@@ -838,13 +838,13 @@ describe('ApiKeyGuard', () => {
         apiKey: undefined,
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       vi.spyOn(guard as any, 'extractApiKeyFromHeader').mockReturnValue(
         mockRequest.headers['x-api-key']
       );
       vi.mocked(mockApiKeysService.validateApiKey).mockResolvedValue(mockApiKey);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (mockContext.switchToHttp().getRequest as any).mockReturnValue(mockRequest);
 
       await guard.canActivate(mockContext);
@@ -884,13 +884,13 @@ describe('ApiKeyGuard', () => {
         existingProperty: 'should-preserve',
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       vi.spyOn(guard as any, 'extractApiKeyFromHeader').mockReturnValue(
         mockRequest.headers['x-api-key']
       );
       vi.mocked(mockApiKeysService.validateApiKey).mockResolvedValue(mockApiKey);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (mockContext.switchToHttp().getRequest as any).mockReturnValue(mockRequest);
 
       await guard.canActivate(mockContext);

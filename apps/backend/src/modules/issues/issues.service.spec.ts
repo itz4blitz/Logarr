@@ -983,7 +983,7 @@ describe('IssuesService', () => {
         where: vi.fn().mockResolvedValue([]),
       }));
 
-      const result = await service.mergeIssues({ issueIds: ['issue-1', 'issue-2'] });
+      await service.mergeIssues({ issueIds: ['issue-1', 'issue-2'] });
 
       expect(mockDb.update).toHaveBeenCalled();
       expect(mockDb.delete).toHaveBeenCalled();
@@ -1121,7 +1121,7 @@ describe('IssuesService', () => {
 
       const progressCallback = vi.fn();
 
-      const result = await service.backfillFromLogs(undefined, progressCallback);
+      await service.backfillFromLogs(undefined, progressCallback);
 
       expect(progressCallback).toHaveBeenCalledWith(expect.objectContaining({ status: 'started' }));
       expect(progressCallback).toHaveBeenCalledWith(

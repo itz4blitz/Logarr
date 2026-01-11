@@ -1,6 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { AuditService, CreateAuditLogDto, AuditLogFilters } from './audit.service';
+import { Test } from '@nestjs/testing';
+
 import { DATABASE_CONNECTION } from '../../database';
+
+import { AuditService } from './audit.service';
+
+import type { CreateAuditLogDto, AuditLogFilters } from './audit.service';
+import type { TestingModule } from '@nestjs/testing';
 
 describe('AuditService', () => {
   let service: AuditService;
