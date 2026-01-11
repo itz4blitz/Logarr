@@ -218,11 +218,16 @@ export class AppController {
     const status: FileIngestionStatus['status'] =
       healthyServers === 0 ? 'error' : healthyServers < enabledServers.length ? 'degraded' : 'ok';
 
-    return {
+    const result: FileIngestionStatus = {
       status,
       enabledServers: enabledServers.length,
       healthyServers,
-      error: errors.length > 0 ? errors.join('; ') : undefined,
     };
+
+    if (errors.length > 0) {
+      result.error = errors.join('; ');
+    }
+
+    return result;
   }
 }

@@ -21,6 +21,7 @@ describe('ServersService', () => {
     validateLogPaths: vi.fn(),
     getStatus: vi.fn().mockReturnValue({ tailers: [] }),
     isServerWatching: vi.fn().mockReturnValue(false),
+    resetServerState: vi.fn(),
   };
 
   const mockIngestionService = {
@@ -1011,6 +1012,122 @@ describe('ServersService', () => {
         'server-1',
         expect.anything()
       );
+    });
+  });
+
+  describe('resetFileIngestionState', () => {
+    it('should return error when file ingestion is not enabled', async () => {
+      const serverWithoutIngestion = {
+        ...mockServer,
+        fileIngestionEnabled: false,
+      };
+      configureMockDb(mockDb, { select: [serverWithoutIngestion] });
+
+      const result = await service.resetFileIngestionState('server-1');
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('File ingestion is not enabled for this server');
+    });
+
+    it('should successfully reset file ingestion state', async () => {
+      const serverWithIngestion = {
+        ...mockServer,
+        fileIngestionEnabled: true,
+        logPaths: ['/var/log/jellyfin'],
+      };
+      configureMockDb(mockDb, { select: [serverWithIngestion], update: [serverWithIngestion] });
+
+      mockFileIngestionService.stopServerFileIngestion.mockResolvedValue(undefined);
+      mockFileIngestionService.resetServerState.mockResolvedValue(undefined);
+      mockFileIngestionService.restartServerFileIngestion.mockResolvedValue(undefined);
+
+      const result = await service.resetFileIngestionState('server-1');
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('File ingestion state reset and restarted successfully');
+      expect(mockFileIngestionService.stopServerFileIngestion).toHaveBeenCalledWith('server-1');
+      expect(mockFileIngestionService.resetServerState).toHaveBeenCalledWith('server-1');
+      expect(mockDb.update).toHaveBeenCalled();
+      expect(mockFileIngestionService.restartServerFileIngestion).toHaveBeenCalled();
+    });
+
+    it('should handle errors during reset process', async () => {
+      const serverWithIngestion = {
+        ...mockServer,
+        fileIngestionEnabled: true,
+        logPaths: ['/var/log/jellyfin'],
+      };
+      configureMockDb(mockDb, { select: [serverWithIngestion] });
+
+      const resetError = new Error('Failed to reset state');
+      mockFileIngestionService.stopServerFileIngestion.mockResolvedValue(undefined);
+      mockFileIngestionService.resetServerState.mockRejectedValue(resetError);
+
+      const result = await service.resetFileIngestionState('server-1');
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Failed to reset state');
+    });
+
+    it('should handle non-Error exceptions during reset', async () => {
+      const serverWithIngestion = {
+        ...mockServer,
+        fileIngestionEnabled: true,
+        logPaths: ['/var/log/jellyfin'],
+      };
+      configureMockDb(mockDb, { select: [serverWithIngestion] });
+
+      mockFileIngestionService.stopServerFileIngestion.mockResolvedValue(undefined);
+      mockFileIngestionService.resetServerState.mockRejectedValue('String error');
+
+      const result = await service.resetFileIngestionState('server-1');
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Unknown error occurred');
+    });
+
+    it('should handle database update errors gracefully', async () => {
+      const serverWithIngestion = {
+        ...mockServer,
+        fileIngestionEnabled: true,
+        logPaths: ['/var/log/jellyfin'],
+      };
+      configureMockDb(mockDb, { select: [serverWithIngestion] });
+
+      mockFileIngestionService.stopServerFileIngestion.mockResolvedValue(undefined);
+      mockFileIngestionService.resetServerState.mockResolvedValue(undefined);
+
+      // Mock database update failure
+      mockDb.update.mockReturnValue({
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockRejectedValue(new Error('Database update failed')),
+        }),
+      });
+
+      const result = await service.resetFileIngestionState('server-1');
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Database update failed');
+    });
+
+    it('should handle restart file ingestion errors gracefully', async () => {
+      const serverWithIngestion = {
+        ...mockServer,
+        fileIngestionEnabled: true,
+        logPaths: ['/var/log/jellyfin'],
+      };
+      configureMockDb(mockDb, { select: [serverWithIngestion], update: [serverWithIngestion] });
+
+      mockFileIngestionService.stopServerFileIngestion.mockResolvedValue(undefined);
+      mockFileIngestionService.resetServerState.mockResolvedValue(undefined);
+      mockFileIngestionService.restartServerFileIngestion.mockRejectedValue(
+        new Error('Restart failed')
+      );
+
+      const result = await service.resetFileIngestionState('server-1');
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Restart failed');
     });
   });
 });

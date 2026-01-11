@@ -182,7 +182,7 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
     this.cachedSettings = null;
   }
 
-  async onModuleInit(): void {
+  async onModuleInit(): Promise<void> {
     this.logger.log('File ingestion service initialized');
 
     // Add startup delay to allow container to fully initialize

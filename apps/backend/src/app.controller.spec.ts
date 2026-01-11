@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { AppController } from './app.controller';
 import { DATABASE_CONNECTION } from './database/database.module';
@@ -11,7 +11,7 @@ describe('AppController', () => {
   let controller: AppController;
 
   const mockDb = {
-    execute: async () => [{ '?column?': 1 }],
+    execute: () => Promise.resolve([{ '?column?': 1 }]),
     select: () => ({
       from: () => ({
         where: () => [],
@@ -20,7 +20,7 @@ describe('AppController', () => {
   };
 
   const mockRedis = {
-    ping: async () => 'PONG',
+    ping: () => Promise.resolve('PONG'),
   };
 
   beforeEach(async () => {
@@ -108,9 +108,7 @@ describe('AppController', () => {
   describe('health with failures', () => {
     it('should return degraded status when database fails', async () => {
       const failingDb = {
-        execute: async () => {
-          throw new Error('Database connection failed');
-        },
+        execute: () => Promise.reject(new Error('Database connection failed')),
         select: () => ({
           from: () => ({
             where: () => [],
@@ -136,9 +134,7 @@ describe('AppController', () => {
 
     it('should return degraded status when redis fails', async () => {
       const failingRedis = {
-        ping: async () => {
-          throw new Error('Redis connection failed');
-        },
+        ping: () => Promise.reject(new Error('Redis connection failed')),
       };
 
       const module: TestingModule = await Test.createTestingModule({
@@ -172,6 +168,246 @@ describe('AppController', () => {
       expect(result.status).toBe('error');
       expect(result.services.redis.status).toBe('error');
       expect(result.services.redis.error).toBe('Redis not configured');
+    });
+  });
+
+  describe('file ingestion health check', () => {
+    it('should return ok when no servers have file ingestion enabled', async () => {
+      const mockDbWithNoServers = {
+        execute: () => Promise.resolve([{ '?column?': 1 }]),
+        select: () => ({
+          from: () => ({
+            where: () => [],
+          }),
+        }),
+      };
+
+      const module: TestingModule = await Test.createTestingModule({
+        controllers: [AppController],
+        providers: [
+          { provide: DATABASE_CONNECTION, useValue: mockDbWithNoServers },
+          { provide: REDIS_CLIENT, useValue: mockRedis },
+        ],
+      }).compile();
+
+      const controller = module.get<AppController>(AppController);
+      const result = await controller.health();
+
+      expect(result.services.fileIngestion.status).toBe('ok');
+      expect(result.services.fileIngestion.enabledServers).toBe(0);
+      expect(result.services.fileIngestion.healthyServers).toBe(0);
+    });
+
+    it('should return ok when all servers have accessible paths', async () => {
+      const mockServers = [
+        {
+          id: 'server-1',
+          name: 'Test Server 1',
+          logPaths: ['/tmp/test1.log'],
+        },
+        {
+          id: 'server-2',
+          name: 'Test Server 2',
+          logPaths: ['/tmp/test2.log'],
+        },
+      ];
+
+      const mockDbWithServers1 = {
+        execute: () => Promise.resolve([{ '?column?': 1 }]),
+        select: () => ({
+          from: () => ({
+            where: () => mockServers,
+          }),
+        }),
+      };
+
+      // Mock fs.accessSync to succeed
+      vi.doMock('fs', () => ({
+        accessSync: vi.fn(() => true),
+        constants: { R_OK: 4 },
+      }));
+
+      const module: TestingModule = await Test.createTestingModule({
+        controllers: [AppController],
+        providers: [
+          { provide: DATABASE_CONNECTION, useValue: mockDbWithServers1 },
+          { provide: REDIS_CLIENT, useValue: mockRedis },
+        ],
+      }).compile();
+
+      const controller = module.get<AppController>(AppController);
+      const result = await controller.health();
+
+      expect(result.services.fileIngestion.status).toBe('ok');
+      expect(result.services.fileIngestion.enabledServers).toBe(2);
+      expect(result.services.fileIngestion.healthyServers).toBe(2);
+    });
+
+    it('should return degraded when some servers have inaccessible paths', async () => {
+      const mockServers = [
+        {
+          id: 'server-1',
+          name: 'Test Server 1',
+          logPaths: ['/tmp/accessible.log'],
+        },
+        {
+          id: 'server-2',
+          name: 'Test Server 2',
+          logPaths: ['/tmp/inaccessible.log'],
+        },
+      ];
+
+      const mockDbWithServers2 = {
+        execute: () => Promise.resolve([{ '?column?': 1 }]),
+        select: () => ({
+          from: () => ({
+            where: () => mockServers,
+          }),
+        }),
+      };
+
+      // Mock fs.accessSync to fail for second path
+      vi.doMock('fs', () => ({
+        accessSync: vi.fn((path: string) => {
+          if (path.includes('inaccessible')) {
+            throw new Error('ENOENT: no such file or directory');
+          }
+          return true;
+        }),
+        constants: { R_OK: 4 },
+      }));
+
+      const module: TestingModule = await Test.createTestingModule({
+        controllers: [AppController],
+        providers: [
+          { provide: DATABASE_CONNECTION, useValue: mockDbWithServers2 },
+          { provide: REDIS_CLIENT, useValue: mockRedis },
+        ],
+      }).compile();
+
+      const controller = module.get<AppController>(AppController);
+      const result = await controller.health();
+
+      expect(result.services.fileIngestion.status).toBe('degraded');
+      expect(result.services.fileIngestion.enabledServers).toBe(2);
+      expect(result.services.fileIngestion.healthyServers).toBe(1);
+      expect(result.services.fileIngestion.error).toContain('Path not accessible');
+    });
+
+    it('should return error when no servers are healthy', async () => {
+      const mockServers = [
+        {
+          id: 'server-1',
+          name: 'Test Server 1',
+          logPaths: ['/tmp/missing1.log'],
+        },
+        {
+          id: 'server-2',
+          name: 'Test Server 2',
+          logPaths: ['/tmp/missing2.log'],
+        },
+      ];
+
+      const mockDbWithServers3 = {
+        execute: () => Promise.resolve([{ '?column?': 1 }]),
+        select: () => ({
+          from: () => ({
+            where: () => mockServers,
+          }),
+        }),
+      };
+
+      // Mock fs.accessSync to always fail
+      vi.doMock('fs', () => ({
+        accessSync: vi.fn(() => {
+          throw new Error('ENOENT: no such file or directory');
+        }),
+        constants: { R_OK: 4 },
+      }));
+
+      const module: TestingModule = await Test.createTestingModule({
+        controllers: [AppController],
+        providers: [
+          { provide: DATABASE_CONNECTION, useValue: mockDbWithServers3 },
+          { provide: REDIS_CLIENT, useValue: mockRedis },
+        ],
+      }).compile();
+
+      const controller = module.get<AppController>(AppController);
+      const result = await controller.health();
+
+      expect(result.services.fileIngestion.status).toBe('error');
+      expect(result.services.fileIngestion.enabledServers).toBe(2);
+      expect(result.services.fileIngestion.healthyServers).toBe(0);
+    });
+
+    it('should handle servers with no log paths configured', async () => {
+      const mockServers = [
+        {
+          id: 'server-1',
+          name: 'Test Server 1',
+          logPaths: null,
+        },
+        {
+          id: 'server-2',
+          name: 'Test Server 2',
+          logPaths: [],
+        },
+      ];
+
+      const mockDbWithServers4 = {
+        execute: () => Promise.resolve([{ '?column?': 1 }]),
+        select: () => ({
+          from: () => ({
+            where: () => mockServers,
+          }),
+        }),
+      };
+
+      const module: TestingModule = await Test.createTestingModule({
+        controllers: [AppController],
+        providers: [
+          { provide: DATABASE_CONNECTION, useValue: mockDbWithServers4 },
+          { provide: REDIS_CLIENT, useValue: mockRedis },
+        ],
+      }).compile();
+
+      const controller = module.get<AppController>(AppController);
+      const result = await controller.health();
+
+      expect(result.services.fileIngestion.status).toBe('error');
+      expect(result.services.fileIngestion.enabledServers).toBe(2);
+      expect(result.services.fileIngestion.healthyServers).toBe(0);
+      expect(result.services.fileIngestion.error).toContain('No log paths configured');
+    });
+
+    it('should handle file ingestion health check errors gracefully', async () => {
+      const failingDb = {
+        execute: () => Promise.resolve([{ '?column?': 1 }]),
+        select: () => ({
+          from: () => ({
+            where: () => {
+              throw new Error('Database query failed');
+            },
+          }),
+        }),
+      };
+
+      const module: TestingModule = await Test.createTestingModule({
+        controllers: [AppController],
+        providers: [
+          { provide: DATABASE_CONNECTION, useValue: failingDb },
+          { provide: REDIS_CLIENT, useValue: mockRedis },
+        ],
+      }).compile();
+
+      const controller = module.get<AppController>(AppController);
+      const result = await controller.health();
+
+      expect(result.services.fileIngestion.status).toBe('error');
+      expect(result.services.fileIngestion.enabledServers).toBe(0);
+      expect(result.services.fileIngestion.healthyServers).toBe(0);
+      expect(result.services.fileIngestion.error).toBe('Database query failed');
     });
   });
 });
