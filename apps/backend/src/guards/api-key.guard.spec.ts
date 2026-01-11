@@ -428,6 +428,388 @@ describe('ApiKeyGuard', () => {
     });
   });
 
+  describe('extractIpAddress', () => {
+    it('should extract IP from x-forwarded-for header (string)', () => {
+      const mockRequest = {
+        headers: {
+          'x-forwarded-for': '192.168.1.100, 10.0.0.1',
+        },
+        ip: '127.0.0.1',
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const guardInstance = guard as any;
+      const result = guardInstance.extractIpAddress(mockRequest);
+
+      expect(result).toBe('192.168.1.100');
+    });
+
+    it('should extract IP from x-forwarded-for header (array)', () => {
+      const mockRequest = {
+        headers: {
+          'x-forwarded-for': ['10.0.0.50', '192.168.1.1'],
+        },
+        ip: '127.0.0.1',
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const guardInstance = guard as any;
+      const result = guardInstance.extractIpAddress(mockRequest);
+
+      expect(result).toBe('10.0.0.50');
+    });
+
+    it('should extract IP from x-real-ip header', () => {
+      const mockRequest = {
+        headers: {
+          'x-real-ip': '203.0.113.50',
+        },
+        ip: '127.0.0.1',
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const guardInstance = guard as any;
+      const result = guardInstance.extractIpAddress(mockRequest);
+
+      expect(result).toBe('203.0.113.50');
+    });
+
+    it('should fall back to request.ip when no proxy headers', () => {
+      const mockRequest = {
+        headers: {},
+        ip: '192.168.1.1',
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const guardInstance = guard as any;
+      const result = guardInstance.extractIpAddress(mockRequest);
+
+      expect(result).toBe('192.168.1.1');
+    });
+
+    it('should handle empty x-forwarded-for string', () => {
+      const mockRequest = {
+        headers: {
+          'x-forwarded-for': '',
+        },
+        ip: '127.0.0.1',
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const guardInstance = guard as any;
+      const result = guardInstance.extractIpAddress(mockRequest);
+
+      expect(result).toBe('127.0.0.1');
+    });
+
+    it('should handle empty x-forwarded-for array', () => {
+      const mockRequest = {
+        headers: {
+          'x-forwarded-for': [],
+        },
+        ip: '127.0.0.1',
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const guardInstance = guard as any;
+      const result = guardInstance.extractIpAddress(mockRequest);
+
+      expect(result).toBe('127.0.0.1');
+    });
+
+    it('should handle x-forwarded-for with empty first element', () => {
+      const mockRequest = {
+        headers: {
+          'x-forwarded-for': '   , 10.0.0.1',
+        },
+        ip: '127.0.0.1',
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const guardInstance = guard as any;
+      const result = guardInstance.extractIpAddress(mockRequest);
+
+      // Falls through to x-real-ip or request.ip
+      expect(result).toBe('127.0.0.1');
+    });
+
+    it('should handle empty x-real-ip', () => {
+      const mockRequest = {
+        headers: {
+          'x-real-ip': '',
+        },
+        ip: '10.0.0.1',
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const guardInstance = guard as any;
+      const result = guardInstance.extractIpAddress(mockRequest);
+
+      expect(result).toBe('10.0.0.1');
+    });
+  });
+
+  describe('response finish event logging', () => {
+    it('should register response finish event handler', async () => {
+      const mockApiKey = {
+        id: '123e4567-e89b-12d3-a456-426614174000',
+        name: 'Test Device',
+        keyHash: 'hash',
+        type: 'mobile' as const,
+        deviceInfo: 'iPhone 15 Pro',
+        isEnabled: true,
+        rateLimit: null,
+        rateLimitTtl: null,
+        lastUsedAt: null,
+        lastUsedIp: null,
+        requestCount: 0,
+        scopes: [],
+        expiresAt: null,
+        notes: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const mockRequest: MockRequest = {
+        headers: {
+          'x-api-key': 'lk_abc123de_' + 'f'.repeat(64),
+          'user-agent': 'TestAgent/1.0',
+        },
+        apiKey: undefined,
+        url: '/api/test',
+        method: 'GET',
+        ip: '192.168.1.1',
+      };
+
+      const onMock = vi.fn();
+      const mockResponse = {
+        statusCode: 200,
+        on: onMock,
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.spyOn(guard as any, 'extractApiKeyFromHeader').mockReturnValue(
+        mockRequest.headers['x-api-key'] as string
+      );
+      vi.mocked(mockApiKeysService.validateApiKey).mockResolvedValue(mockApiKey);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockContext.switchToHttp().getRequest as any).mockReturnValue(mockRequest);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockContext.switchToHttp().getResponse as any).mockReturnValue(mockResponse);
+
+      await guard.canActivate(mockContext);
+
+      expect(onMock).toHaveBeenCalledWith('finish', expect.any(Function));
+    });
+
+    it('should call logUsage when response finishes', async () => {
+      const mockApiKey = {
+        id: '123e4567-e89b-12d3-a456-426614174000',
+        name: 'Test Device',
+        keyHash: 'hash',
+        type: 'mobile' as const,
+        deviceInfo: 'iPhone 15 Pro',
+        isEnabled: true,
+        rateLimit: null,
+        rateLimitTtl: null,
+        lastUsedAt: null,
+        lastUsedIp: null,
+        requestCount: 0,
+        scopes: [],
+        expiresAt: null,
+        notes: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const mockRequest: MockRequest = {
+        headers: {
+          'x-api-key': 'lk_abc123de_' + 'f'.repeat(64),
+          'user-agent': 'TestAgent/1.0',
+        },
+        apiKey: undefined,
+        url: '/api/test',
+        method: 'GET',
+        ip: '192.168.1.1',
+      };
+
+      let finishCallback: (() => void) | null = null;
+      const mockResponse = {
+        statusCode: 200,
+        on: vi.fn((event: string, cb: () => void) => {
+          if (event === 'finish') {
+            finishCallback = cb;
+          }
+        }),
+      };
+
+      // Add logUsage mock
+      (mockApiKeysService as any).logUsage = vi.fn().mockResolvedValue(undefined);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.spyOn(guard as any, 'extractApiKeyFromHeader').mockReturnValue(
+        mockRequest.headers['x-api-key'] as string
+      );
+      vi.mocked(mockApiKeysService.validateApiKey).mockResolvedValue(mockApiKey);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockContext.switchToHttp().getRequest as any).mockReturnValue(mockRequest);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockContext.switchToHttp().getResponse as any).mockReturnValue(mockResponse);
+
+      await guard.canActivate(mockContext);
+
+      // Trigger the finish callback
+      expect(finishCallback).not.toBeNull();
+      finishCallback!();
+
+      // Wait for async logUsage call
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect((mockApiKeysService as any).logUsage).toHaveBeenCalledWith(
+        mockApiKey.id,
+        '/api/test',
+        'GET',
+        200,
+        expect.any(Number),
+        true,
+        undefined,
+        '192.168.1.1',
+        'TestAgent/1.0'
+      );
+    });
+
+    it('should log error status codes as failures', async () => {
+      const mockApiKey = {
+        id: '123e4567-e89b-12d3-a456-426614174000',
+        name: 'Test Device',
+        keyHash: 'hash',
+        type: 'mobile' as const,
+        deviceInfo: 'iPhone 15 Pro',
+        isEnabled: true,
+        rateLimit: null,
+        rateLimitTtl: null,
+        lastUsedAt: null,
+        lastUsedIp: null,
+        requestCount: 0,
+        scopes: [],
+        expiresAt: null,
+        notes: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const mockRequest: MockRequest = {
+        headers: {
+          'x-api-key': 'lk_abc123de_' + 'f'.repeat(64),
+        },
+        apiKey: undefined,
+        url: '/api/test',
+        method: 'POST',
+        ip: '10.0.0.1',
+      };
+
+      let finishCallback: (() => void) | null = null;
+      const mockResponse = {
+        statusCode: 500,
+        on: vi.fn((event: string, cb: () => void) => {
+          if (event === 'finish') {
+            finishCallback = cb;
+          }
+        }),
+      };
+
+      (mockApiKeysService as any).logUsage = vi.fn().mockResolvedValue(undefined);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.spyOn(guard as any, 'extractApiKeyFromHeader').mockReturnValue(
+        mockRequest.headers['x-api-key'] as string
+      );
+      vi.mocked(mockApiKeysService.validateApiKey).mockResolvedValue(mockApiKey);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockContext.switchToHttp().getRequest as any).mockReturnValue(mockRequest);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockContext.switchToHttp().getResponse as any).mockReturnValue(mockResponse);
+
+      await guard.canActivate(mockContext);
+
+      finishCallback!();
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect((mockApiKeysService as any).logUsage).toHaveBeenCalledWith(
+        mockApiKey.id,
+        '/api/test',
+        'POST',
+        500,
+        expect.any(Number),
+        false,
+        'HTTP 500',
+        '10.0.0.1',
+        undefined
+      );
+    });
+
+    it('should handle logUsage errors gracefully', async () => {
+      const mockApiKey = {
+        id: '123e4567-e89b-12d3-a456-426614174000',
+        name: 'Test Device',
+        keyHash: 'hash',
+        type: 'mobile' as const,
+        deviceInfo: 'iPhone 15 Pro',
+        isEnabled: true,
+        rateLimit: null,
+        rateLimitTtl: null,
+        lastUsedAt: null,
+        lastUsedIp: null,
+        requestCount: 0,
+        scopes: [],
+        expiresAt: null,
+        notes: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const mockRequest: MockRequest = {
+        headers: {
+          'x-api-key': 'lk_abc123de_' + 'f'.repeat(64),
+        },
+        apiKey: undefined,
+        url: '/api/test',
+        method: 'GET',
+      };
+
+      let finishCallback: (() => void) | null = null;
+      const mockResponse = {
+        statusCode: 200,
+        on: vi.fn((event: string, cb: () => void) => {
+          if (event === 'finish') {
+            finishCallback = cb;
+          }
+        }),
+      };
+
+      (mockApiKeysService as any).logUsage = vi.fn().mockRejectedValue(new Error('DB error'));
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.spyOn(guard as any, 'extractApiKeyFromHeader').mockReturnValue(
+        mockRequest.headers['x-api-key'] as string
+      );
+      vi.mocked(mockApiKeysService.validateApiKey).mockResolvedValue(mockApiKey);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockContext.switchToHttp().getRequest as any).mockReturnValue(mockRequest);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockContext.switchToHttp().getResponse as any).mockReturnValue(mockResponse);
+
+      await guard.canActivate(mockContext);
+
+      // Should not throw when finish callback is called
+      expect(() => finishCallback!()).not.toThrow();
+    });
+  });
+
   describe('request object mutation', () => {
     it('should attach apiKey to request object', async () => {
       const mockApiKey = {

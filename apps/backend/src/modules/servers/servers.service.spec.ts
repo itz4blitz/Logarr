@@ -530,4 +530,487 @@ describe('ServersService', () => {
       }
     });
   });
+
+  describe('testAllConnections', () => {
+    it('should test all server connections in parallel', async () => {
+      const servers = [
+        mockServer,
+        { ...mockServer, id: 'server-2', name: 'Sonarr', providerId: 'sonarr' },
+      ];
+
+      let selectCallCount = 0;
+      mockDb.select = vi.fn().mockImplementation(() => {
+        selectCallCount++;
+        // First call returns all servers, subsequent calls return individual servers
+        const result = selectCallCount === 1 ? servers : [servers[(selectCallCount - 2) % 2]];
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockReturnThis(),
+          orderBy: vi.fn().mockReturnThis(),
+          then: vi.fn().mockImplementation((resolve) => Promise.resolve(result).then(resolve)),
+          [Symbol.toStringTag]: 'Promise',
+        };
+      });
+      configureMockDb(mockDb, { update: [mockServer] });
+
+      const result = await service.testAllConnections();
+
+      expect(result).toHaveProperty('server-1');
+      expect(result).toHaveProperty('server-2');
+    });
+
+    it('should return empty object when no servers exist', async () => {
+      configureMockDb(mockDb, { select: [] });
+
+      const result = await service.testAllConnections();
+
+      expect(result).toEqual({});
+    });
+
+    it('should handle individual connection test failures gracefully', async () => {
+      const servers = [mockServer];
+
+      let selectCallCount = 0;
+      mockDb.select = vi.fn().mockImplementation(() => {
+        selectCallCount++;
+        if (selectCallCount === 1) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockReturnThis(),
+            orderBy: vi.fn().mockReturnThis(),
+            then: vi.fn().mockImplementation((resolve) => Promise.resolve(servers).then(resolve)),
+            [Symbol.toStringTag]: 'Promise',
+          };
+        }
+        // Subsequent calls for individual server lookups
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockReturnThis(),
+          orderBy: vi.fn().mockReturnThis(),
+          then: vi
+            .fn()
+            .mockImplementation((resolve) => Promise.resolve([mockServer]).then(resolve)),
+          [Symbol.toStringTag]: 'Promise',
+        };
+      });
+      configureMockDb(mockDb, { update: [mockServer] });
+
+      const result = await service.testAllConnections();
+
+      expect(result).toHaveProperty('server-1');
+    });
+  });
+
+  describe('create with file ingestion error handling', () => {
+    it('should handle file ingestion start error gracefully', async () => {
+      const serverWithIngestion = {
+        ...mockServer,
+        fileIngestionEnabled: true,
+        logPaths: ['/var/log/jellyfin'],
+      };
+      configureMockDb(mockDb, { insert: [serverWithIngestion], select: [serverWithIngestion] });
+      mockFileIngestionService.restartServerFileIngestion.mockRejectedValue(
+        new Error('Failed to start')
+      );
+
+      const dto = {
+        name: 'My Jellyfin Server',
+        providerId: 'jellyfin',
+        url: 'http://localhost:8096',
+        apiKey: 'test-api-key',
+        fileIngestionEnabled: true,
+        logPaths: ['/var/log/jellyfin'],
+      };
+
+      // Should not throw - file ingestion errors are logged but don't fail creation
+      const result = await service.create(dto);
+
+      expect(result).toBeDefined();
+    });
+
+    it('should log error when file ingestion fails to start for new server', async () => {
+      const serverWithIngestion = {
+        ...mockServer,
+        id: 'new-server-123',
+        fileIngestionEnabled: true,
+        logPaths: ['/var/log/jellyfin'],
+      };
+      configureMockDb(mockDb, { insert: [serverWithIngestion], select: [serverWithIngestion] });
+
+      const testError = new Error('File ingestion startup failed');
+      mockFileIngestionService.restartServerFileIngestion.mockRejectedValue(testError);
+
+      const errorSpy = vi.spyOn(service['logger'], 'error');
+
+      const dto = {
+        name: 'My Jellyfin Server',
+        providerId: 'jellyfin',
+        url: 'http://localhost:8096',
+        apiKey: 'test-api-key',
+        fileIngestionEnabled: true,
+        logPaths: ['/var/log/jellyfin'],
+      };
+
+      await service.create(dto);
+
+      // Wait for async catch handler to execute
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        `Failed to start file ingestion for new server new-server-123:`,
+        testError
+      );
+    });
+  });
+
+  describe('delete with file ingestion error handling', () => {
+    it('should handle file ingestion stop error gracefully', async () => {
+      configureMockDb(mockDb, { delete: [mockServer] });
+      mockFileIngestionService.stopServerFileIngestion.mockRejectedValue(
+        new Error('Failed to stop')
+      );
+
+      // Should not throw - file ingestion errors are logged but don't fail deletion
+      const result = await service.delete('server-1');
+
+      expect(result).toEqual({ success: true });
+    });
+  });
+
+  describe('update with file ingestion status updates', () => {
+    it('should set fileIngestionConnected to false when no log files found', async () => {
+      const serverWithIngestion = {
+        ...mockServer,
+        fileIngestionEnabled: true,
+        logPaths: ['/var/log/jellyfin'],
+      };
+
+      mockDb.select = vi.fn().mockImplementation(() => ({
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        orderBy: vi.fn().mockReturnThis(),
+        then: vi
+          .fn()
+          .mockImplementation((resolve) => Promise.resolve([serverWithIngestion]).then(resolve)),
+        [Symbol.toStringTag]: 'Promise',
+      }));
+      configureMockDb(mockDb, { update: [serverWithIngestion] });
+      // No tailers found after restart
+      mockFileIngestionService.getStatus.mockReturnValue({ tailers: [] });
+
+      await service.update('server-1', { logPaths: ['/new/path'] });
+
+      // Should update with fileIngestionConnected: false
+      expect(mockDb.update).toHaveBeenCalled();
+    });
+
+    it('should set fileIngestionConnected to true when tailers are active', async () => {
+      const serverWithIngestion = {
+        ...mockServer,
+        fileIngestionEnabled: true,
+        logPaths: ['/var/log/jellyfin'],
+      };
+
+      mockDb.select = vi.fn().mockImplementation(() => ({
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        orderBy: vi.fn().mockReturnThis(),
+        then: vi
+          .fn()
+          .mockImplementation((resolve) => Promise.resolve([serverWithIngestion]).then(resolve)),
+        [Symbol.toStringTag]: 'Promise',
+      }));
+      configureMockDb(mockDb, { update: [serverWithIngestion] });
+      // Tailers found after restart
+      mockFileIngestionService.getStatus.mockReturnValue({
+        tailers: ['server-1:/var/log/jellyfin/log.txt'],
+      });
+
+      await service.update('server-1', { logPaths: ['/new/path'] });
+
+      expect(mockDb.update).toHaveBeenCalled();
+    });
+
+    it('should clear fileIngestionError when file ingestion is disabled', async () => {
+      const serverWithIngestion = {
+        ...mockServer,
+        fileIngestionEnabled: false,
+        logPaths: [],
+      };
+
+      mockDb.select = vi.fn().mockImplementation(() => ({
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        orderBy: vi.fn().mockReturnThis(),
+        then: vi
+          .fn()
+          .mockImplementation((resolve) =>
+            Promise.resolve([{ ...mockServer, fileIngestionEnabled: true }]).then(resolve)
+          ),
+        [Symbol.toStringTag]: 'Promise',
+      }));
+      configureMockDb(mockDb, { update: [serverWithIngestion] });
+
+      await service.update('server-1', { fileIngestionEnabled: false });
+
+      expect(mockDb.update).toHaveBeenCalled();
+    });
+
+    it('should detect file ingestion change when logFilePatterns changes', async () => {
+      const serverWithIngestion = {
+        ...mockServer,
+        fileIngestionEnabled: true,
+        logPaths: ['/var/log/jellyfin'],
+        logFilePatterns: ['*.log'],
+      };
+
+      mockDb.select = vi.fn().mockImplementation(() => ({
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        orderBy: vi.fn().mockReturnThis(),
+        then: vi
+          .fn()
+          .mockImplementation((resolve) => Promise.resolve([serverWithIngestion]).then(resolve)),
+        [Symbol.toStringTag]: 'Promise',
+      }));
+      configureMockDb(mockDb, { update: [serverWithIngestion] });
+      mockFileIngestionService.getStatus.mockReturnValue({ tailers: [] });
+
+      await service.update('server-1', { logFilePatterns: ['*.txt'] });
+
+      expect(mockFileIngestionService.restartServerFileIngestion).toHaveBeenCalled();
+    });
+
+    it('should log error and update database when file ingestion restart fails', async () => {
+      const serverWithIngestion = {
+        ...mockServer,
+        fileIngestionEnabled: true,
+        logPaths: ['/var/log/jellyfin'],
+      };
+
+      mockDb.select = vi.fn().mockImplementation(() => ({
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        orderBy: vi.fn().mockReturnThis(),
+        then: vi
+          .fn()
+          .mockImplementation((resolve) => Promise.resolve([serverWithIngestion]).then(resolve)),
+        [Symbol.toStringTag]: 'Promise',
+      }));
+      configureMockDb(mockDb, { update: [serverWithIngestion] });
+
+      const restartError = new Error('Restart failed due to permission denied');
+      mockFileIngestionService.restartServerFileIngestion.mockRejectedValue(restartError);
+
+      const errorSpy = vi.spyOn(service['logger'], 'error');
+
+      await service.update('server-1', { logPaths: ['/new/path'] });
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        'Failed to restart file ingestion for server server-1:',
+        restartError
+      );
+      // Should update database with error status
+      expect(mockDb.update).toHaveBeenCalled();
+    });
+
+    it('should handle non-Error exception during file ingestion restart', async () => {
+      const serverWithIngestion = {
+        ...mockServer,
+        fileIngestionEnabled: true,
+        logPaths: ['/var/log/jellyfin'],
+      };
+
+      mockDb.select = vi.fn().mockImplementation(() => ({
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        orderBy: vi.fn().mockReturnThis(),
+        then: vi
+          .fn()
+          .mockImplementation((resolve) => Promise.resolve([serverWithIngestion]).then(resolve)),
+        [Symbol.toStringTag]: 'Promise',
+      }));
+      configureMockDb(mockDb, { update: [serverWithIngestion] });
+
+      // Throw a non-Error value
+      mockFileIngestionService.restartServerFileIngestion.mockRejectedValue('String error');
+
+      await service.update('server-1', { logPaths: ['/new/path'] });
+
+      // Should still update database with 'Unknown error'
+      expect(mockDb.update).toHaveBeenCalled();
+    });
+  });
+
+  describe('testConnection', () => {
+    it('should return unknown provider error when provider not found', async () => {
+      configureMockDb(mockDb, { select: [{ ...mockServer, providerId: 'unknown-provider' }] });
+
+      const result = await service.testConnection('server-1');
+
+      expect(result.connected).toBe(false);
+      expect(result.error).toContain('Unknown provider');
+    });
+
+    it('should update database when connection test succeeds with server info', async () => {
+      const mockProvider = {
+        id: 'jellyfin',
+        name: 'Jellyfin',
+        connect: vi.fn().mockResolvedValue(undefined),
+        disconnect: vi.fn().mockResolvedValue(undefined),
+        testConnection: vi.fn().mockResolvedValue({
+          connected: true,
+          serverInfo: { name: 'My Server', version: '10.8.0', id: 'server-id' },
+        }),
+      };
+
+      // Register the mock provider
+      service['providers'].set('jellyfin', mockProvider as any);
+
+      configureMockDb(mockDb, { select: [mockServer], update: [mockServer] });
+
+      const result = await service.testConnection('server-1');
+
+      expect(result.connected).toBe(true);
+      expect(result.serverInfo).toEqual({ name: 'My Server', version: '10.8.0', id: 'server-id' });
+      expect(mockDb.update).toHaveBeenCalled();
+    });
+
+    it('should handle connection error and return error message', async () => {
+      const mockProvider = {
+        id: 'jellyfin',
+        name: 'Jellyfin',
+        connect: vi.fn().mockRejectedValue(new Error('Connection refused')),
+        disconnect: vi.fn().mockResolvedValue(undefined),
+        testConnection: vi.fn(),
+      };
+
+      service['providers'].set('jellyfin', mockProvider as any);
+
+      configureMockDb(mockDb, { select: [mockServer] });
+
+      const result = await service.testConnection('server-1');
+
+      expect(result.connected).toBe(false);
+      expect(result.error).toBe('Connection refused');
+    });
+
+    it('should handle non-Error thrown during connection', async () => {
+      const mockProvider = {
+        id: 'jellyfin',
+        name: 'Jellyfin',
+        connect: vi.fn().mockRejectedValue('String error'),
+        disconnect: vi.fn().mockResolvedValue(undefined),
+        testConnection: vi.fn(),
+      };
+
+      service['providers'].set('jellyfin', mockProvider as any);
+
+      configureMockDb(mockDb, { select: [mockServer] });
+
+      const result = await service.testConnection('server-1');
+
+      expect(result.connected).toBe(false);
+      expect(result.error).toBe('Unknown error');
+    });
+
+    it('should always call disconnect in finally block after successful connection', async () => {
+      const mockProvider = {
+        id: 'jellyfin',
+        name: 'Jellyfin',
+        connect: vi.fn().mockResolvedValue(undefined),
+        disconnect: vi.fn().mockResolvedValue(undefined),
+        testConnection: vi.fn().mockResolvedValue({
+          connected: true,
+          serverInfo: { name: 'Server', version: '1.0', id: 'id' },
+        }),
+      };
+
+      service['providers'].set('jellyfin', mockProvider as any);
+      configureMockDb(mockDb, { select: [mockServer], update: [mockServer] });
+
+      await service.testConnection('server-1');
+
+      expect(mockProvider.disconnect).toHaveBeenCalled();
+    });
+
+    it('should always call disconnect in finally block even after connection error', async () => {
+      const mockProvider = {
+        id: 'jellyfin',
+        name: 'Jellyfin',
+        connect: vi.fn().mockRejectedValue(new Error('Connection failed')),
+        disconnect: vi.fn().mockResolvedValue(undefined),
+        testConnection: vi.fn(),
+      };
+
+      service['providers'].set('jellyfin', mockProvider as any);
+      configureMockDb(mockDb, { select: [mockServer], update: [mockServer] });
+
+      await service.testConnection('server-1');
+
+      expect(mockProvider.disconnect).toHaveBeenCalled();
+    });
+
+    it('should always call disconnect in finally block even after testConnection error', async () => {
+      const mockProvider = {
+        id: 'jellyfin',
+        name: 'Jellyfin',
+        connect: vi.fn().mockResolvedValue(undefined),
+        disconnect: vi.fn().mockResolvedValue(undefined),
+        testConnection: vi.fn().mockRejectedValue(new Error('Test failed')),
+      };
+
+      service['providers'].set('jellyfin', mockProvider as any);
+      configureMockDb(mockDb, { select: [mockServer], update: [mockServer] });
+
+      await service.testConnection('server-1');
+
+      expect(mockProvider.disconnect).toHaveBeenCalled();
+    });
+  });
+
+  describe('startFileIngestionForServer', () => {
+    it('should not start file ingestion when disabled', async () => {
+      configureMockDb(mockDb, {
+        select: [{ ...mockServer, fileIngestionEnabled: false, logPaths: [] }],
+      });
+
+      await service['startFileIngestionForServer']('server-1');
+
+      expect(mockFileIngestionService.restartServerFileIngestion).not.toHaveBeenCalled();
+    });
+
+    it('should not start file ingestion when no log paths', async () => {
+      configureMockDb(mockDb, {
+        select: [{ ...mockServer, fileIngestionEnabled: true, logPaths: [] }],
+      });
+
+      await service['startFileIngestionForServer']('server-1');
+
+      expect(mockFileIngestionService.restartServerFileIngestion).not.toHaveBeenCalled();
+    });
+
+    it('should start file ingestion when enabled with log paths', async () => {
+      configureMockDb(mockDb, {
+        select: [{ ...mockServer, fileIngestionEnabled: true, logPaths: ['/var/log'] }],
+      });
+      mockFileIngestionService.restartServerFileIngestion.mockResolvedValue(undefined);
+
+      await service['startFileIngestionForServer']('server-1');
+
+      expect(mockFileIngestionService.restartServerFileIngestion).toHaveBeenCalledWith(
+        'server-1',
+        expect.anything()
+      );
+    });
+  });
 });

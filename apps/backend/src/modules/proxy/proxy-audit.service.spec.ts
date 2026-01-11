@@ -161,5 +161,142 @@ describe('ProxyAuditService', () => {
         `Proxy: ${entry.method} ${entry.serverName}/${entry.endpoint} - ${entry.statusCode} (${entry.responseTime}ms)`
       );
     });
+
+    it('should include ipAddress when provided', async () => {
+      vi.spyOn(service['logger'], 'log').mockImplementation(() => {});
+
+      await service.logRequest({
+        userId: 'user-123',
+        serverId: 'server-456',
+        serverName: 'Test Server',
+        providerId: 'sonarr',
+        method: 'GET',
+        endpoint: 'test',
+        statusCode: 200,
+        responseTime: 100,
+        success: true,
+        ipAddress: '192.168.1.100',
+      });
+
+      expect(mockAuditService.createLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ipAddress: '192.168.1.100',
+        })
+      );
+    });
+
+    it('should include userAgent when provided', async () => {
+      vi.spyOn(service['logger'], 'log').mockImplementation(() => {});
+
+      await service.logRequest({
+        userId: 'user-123',
+        serverId: 'server-456',
+        serverName: 'Test Server',
+        providerId: 'sonarr',
+        method: 'GET',
+        endpoint: 'test',
+        statusCode: 200,
+        responseTime: 100,
+        success: true,
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+      });
+
+      expect(mockAuditService.createLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        })
+      );
+    });
+
+    it('should include errorMessage when provided on failed request', async () => {
+      vi.spyOn(service['logger'], 'error').mockImplementation(() => {});
+
+      await service.logRequest({
+        userId: 'user-123',
+        serverId: 'server-456',
+        serverName: 'Test Server',
+        providerId: 'radarr',
+        method: 'POST',
+        endpoint: 'movie',
+        responseTime: 500,
+        success: false,
+        errorMessage: 'Connection timeout',
+      });
+
+      expect(mockAuditService.createLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          errorMessage: 'Connection timeout',
+        })
+      );
+    });
+
+    it('should include all optional fields when provided together', async () => {
+      vi.spyOn(service['logger'], 'log').mockImplementation(() => {});
+
+      await service.logRequest({
+        userId: 'user-123',
+        serverId: 'server-456',
+        serverName: 'Test Server',
+        providerId: 'sonarr',
+        method: 'GET',
+        endpoint: 'test',
+        statusCode: 200,
+        responseTime: 100,
+        success: true,
+        ipAddress: '10.0.0.1',
+        userAgent: 'TestAgent/1.0',
+      });
+
+      expect(mockAuditService.createLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ipAddress: '10.0.0.1',
+          userAgent: 'TestAgent/1.0',
+        })
+      );
+    });
+
+    it('should not include optional fields when not provided', async () => {
+      vi.spyOn(service['logger'], 'log').mockImplementation(() => {});
+
+      await service.logRequest({
+        userId: 'user-123',
+        serverId: 'server-456',
+        serverName: 'Test Server',
+        providerId: 'sonarr',
+        method: 'GET',
+        endpoint: 'test',
+        statusCode: 200,
+        responseTime: 100,
+        success: true,
+      });
+
+      const callArg = mockAuditService.createLog.mock.calls[0][0];
+      expect(callArg).not.toHaveProperty('ipAddress');
+      expect(callArg).not.toHaveProperty('userAgent');
+      expect(callArg).not.toHaveProperty('errorMessage');
+    });
+
+    it('should handle non-Error exception in catch block', async () => {
+      const consoleSpy = vi.spyOn(service['logger'], 'error').mockImplementation(() => {});
+
+      // Make auditService.createLog throw a non-Error value
+      mockAuditService.createLog.mockRejectedValue('String error');
+
+      await expect(
+        service.logRequest({
+          userId: 'user-123',
+          serverId: 'server-456',
+          serverName: 'Test Server',
+          providerId: 'sonarr',
+          method: 'GET',
+          endpoint: 'test',
+          statusCode: 200,
+          responseTime: 100,
+          success: true,
+        })
+      ).resolves.not.toThrow();
+
+      expect(consoleSpy).toHaveBeenCalledWith('Failed to write audit log: Unknown error');
+    });
   });
 });

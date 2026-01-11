@@ -315,9 +315,7 @@ describe('ApiKeysService', () => {
     it('should throw NotFoundException for non-existent ID', async () => {
       configureMockDb(mockDb, { select: [] });
 
-      await expect(
-        service.getApiKeyById('non-existent-id')
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.getApiKeyById('non-existent-id')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -356,7 +354,11 @@ describe('ApiKeysService', () => {
           where: vi.fn().mockReturnValue({}),
           limit: vi.fn().mockReturnValue({}),
           orderBy: vi.fn().mockReturnValue({}),
-          then: vi.fn().mockImplementation((resolve: (value: unknown) => unknown) => Promise.resolve(result).then(resolve)),
+          then: vi
+            .fn()
+            .mockImplementation((resolve: (value: unknown) => unknown) =>
+              Promise.resolve(result).then(resolve)
+            ),
           [Symbol.toStringTag]: 'Promise' as const,
         };
 
@@ -381,9 +383,9 @@ describe('ApiKeysService', () => {
     it('should throw NotFoundException when updating non-existent key', async () => {
       configureMockDb(mockDb, { select: [] });
 
-      await expect(
-        service.updateApiKey('non-existent-id', { name: 'New Name' })
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.updateApiKey('non-existent-id', { name: 'New Name' })).rejects.toThrow(
+        NotFoundException
+      );
     });
   });
 
@@ -411,9 +413,7 @@ describe('ApiKeysService', () => {
     it('should throw NotFoundException when deleting non-existent key', async () => {
       configureMockDb(mockDb, { select: [] });
 
-      await expect(
-        service.deleteApiKey('non-existent-id')
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.deleteApiKey('non-existent-id')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -425,9 +425,7 @@ describe('ApiKeysService', () => {
         }),
       });
 
-      await expect(
-        service.updateLastUsed('key-id', '192.168.1.1')
-      ).resolves.not.toThrow();
+      await expect(service.updateLastUsed('key-id', '192.168.1.1')).resolves.not.toThrow();
     });
   });
 
@@ -475,14 +473,7 @@ describe('ApiKeysService', () => {
 
       // Should not throw despite database error
       await expect(
-        service.logUsage(
-          'key-id',
-          '/api/proxy/queue',
-          'GET',
-          200,
-          100,
-          true
-        )
+        service.logUsage('key-id', '/api/proxy/queue', 'GET', 200, 100, true)
       ).resolves.not.toThrow();
     });
   });
@@ -541,6 +532,179 @@ describe('ApiKeysService', () => {
       await service.getUsageStats('key-id');
 
       expect(mockDb.select).toHaveBeenCalled();
+    });
+
+    it('should handle null stats result', async () => {
+      configureMockDb(mockDb, {
+        select: [],
+      });
+
+      const stats = await service.getUsageStats('key-id', 30);
+
+      expect(stats.totalRequests).toBe(0);
+      expect(stats.successRate).toBe(0);
+      expect(stats.avgResponseTime).toBe(0);
+      expect(stats.errorCount).toBe(0);
+    });
+  });
+
+  describe('getAuditLogs', () => {
+    it('should return audit logs for an API key', async () => {
+      const mockLogs = [
+        {
+          id: 'log-1',
+          keyId: 'key-id',
+          endpoint: '/api/proxy/queue',
+          method: 'GET',
+          statusCode: 200,
+          responseTime: 150,
+          success: true,
+          timestamp: new Date(),
+        },
+        {
+          id: 'log-2',
+          keyId: 'key-id',
+          endpoint: '/api/proxy/history',
+          method: 'POST',
+          statusCode: 201,
+          responseTime: 200,
+          success: true,
+          timestamp: new Date(),
+        },
+      ];
+
+      configureMockDb(mockDb, { select: mockLogs });
+
+      const result = await service.getAuditLogs('key-id', 100, 0);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]?.endpoint).toBe('/api/proxy/queue');
+    });
+
+    it('should use default limit and offset', async () => {
+      configureMockDb(mockDb, { select: [] });
+
+      const result = await service.getAuditLogs('key-id');
+
+      expect(result).toEqual([]);
+      expect(mockDb.select).toHaveBeenCalled();
+    });
+
+    it('should return empty array when no logs exist', async () => {
+      configureMockDb(mockDb, { select: [] });
+
+      const result = await service.getAuditLogs('key-id', 50, 0);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should support pagination with offset', async () => {
+      const mockLogs = [
+        {
+          id: 'log-3',
+          keyId: 'key-id',
+          endpoint: '/api/proxy/queue',
+          method: 'GET',
+          statusCode: 200,
+          responseTime: 100,
+          success: true,
+          timestamp: new Date(),
+        },
+      ];
+
+      configureMockDb(mockDb, { select: mockLogs });
+
+      const result = await service.getAuditLogs('key-id', 10, 20);
+
+      expect(result).toHaveLength(1);
+    });
+  });
+
+  describe('createApiKey error handling', () => {
+    it('should throw error when insert returns empty result', async () => {
+      configureMockDb(mockDb, { insert: [] });
+
+      await expect(
+        service.createApiKey({
+          name: 'Test',
+          type: 'mobile',
+        })
+      ).rejects.toThrow('Failed to create API key');
+    });
+
+    it('should re-throw non-conflict errors', async () => {
+      const error = new Error('Database connection failed');
+      mockDb.insert = vi.fn().mockImplementation(() => {
+        throw error;
+      });
+
+      await expect(
+        service.createApiKey({
+          name: 'Test',
+          type: 'mobile',
+        })
+      ).rejects.toThrow('Database connection failed');
+    });
+  });
+
+  describe('validateApiKey error handling', () => {
+    it('should return null and log error on database failure', async () => {
+      mockDb.select = vi.fn().mockImplementation(() => {
+        throw new Error('Database error');
+      });
+
+      const testKey = 'lk_abc123de_' + 'f'.repeat(64);
+      const result = await service.validateApiKey(testKey);
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('updateApiKey error handling', () => {
+    it('should throw NotFoundException when update returns empty', async () => {
+      const existingKey = {
+        id: '123e4567-e89b-12d3-a456-426614174000',
+        name: 'Test',
+        keyHash: 'hash',
+        type: 'mobile' as const,
+        isEnabled: true,
+        requestCount: 0,
+        scopes: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // First call returns existing key, update returns empty
+      let selectCallCount = 0;
+      mockDb.select = vi.fn().mockImplementation(() => {
+        selectCallCount++;
+        const result = selectCallCount === 1 ? [existingKey] : [];
+        const chain = {
+          from: vi.fn().mockReturnValue({}),
+          where: vi.fn().mockReturnValue({}),
+          limit: vi.fn().mockReturnValue({}),
+          orderBy: vi.fn().mockReturnValue({}),
+          then: vi
+            .fn()
+            .mockImplementation((resolve: (value: unknown) => unknown) =>
+              Promise.resolve(result).then(resolve)
+            ),
+          [Symbol.toStringTag]: 'Promise' as const,
+        };
+
+        chain.from.mockReturnValue(chain);
+        chain.where.mockReturnValue(chain);
+        chain.limit.mockReturnValue(chain);
+        chain.orderBy.mockReturnValue(chain);
+
+        return chain;
+      });
+
+      configureMockDb(mockDb, { update: [] });
+
+      await expect(
+        service.updateApiKey('123e4567-e89b-12d3-a456-426614174000', { name: 'New Name' })
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });
