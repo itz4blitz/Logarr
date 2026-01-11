@@ -12,6 +12,11 @@ describe('AppController', () => {
 
   const mockDb = {
     execute: async () => [{ '?column?': 1 }],
+    select: () => ({
+      from: () => ({
+        where: () => [],
+      }),
+    }),
   };
 
   const mockRedis = {
@@ -72,6 +77,7 @@ describe('AppController', () => {
       expect(result.services).toHaveProperty('api');
       expect(result.services).toHaveProperty('database');
       expect(result.services).toHaveProperty('redis');
+      expect(result.services).toHaveProperty('fileIngestion');
     });
 
     it('should return ok status when all services are healthy', async () => {
@@ -81,6 +87,7 @@ describe('AppController', () => {
       expect(result.services.api.status).toBe('ok');
       expect(result.services.database.status).toBe('ok');
       expect(result.services.redis.status).toBe('ok');
+      expect(result.services.fileIngestion.status).toBe('ok');
     });
 
     it('should return database latency', async () => {
@@ -104,6 +111,11 @@ describe('AppController', () => {
         execute: async () => {
           throw new Error('Database connection failed');
         },
+        select: () => ({
+          from: () => ({
+            where: () => [],
+          }),
+        }),
       };
 
       const module: TestingModule = await Test.createTestingModule({
@@ -117,7 +129,7 @@ describe('AppController', () => {
       const failingController = module.get<AppController>(AppController);
       const result = await failingController.health();
 
-      expect(result.status).toBe('degraded');
+      expect(result.status).toBe('error');
       expect(result.services.database.status).toBe('error');
       expect(result.services.database.error).toBe('Database connection failed');
     });
@@ -140,7 +152,7 @@ describe('AppController', () => {
       const failingController = module.get<AppController>(AppController);
       const result = await failingController.health();
 
-      expect(result.status).toBe('degraded');
+      expect(result.status).toBe('error');
       expect(result.services.redis.status).toBe('error');
       expect(result.services.redis.error).toBe('Redis connection failed');
     });
@@ -157,7 +169,7 @@ describe('AppController', () => {
       const noRedisController = module.get<AppController>(AppController);
       const result = await noRedisController.health();
 
-      expect(result.status).toBe('degraded');
+      expect(result.status).toBe('error');
       expect(result.services.redis.status).toBe('error');
       expect(result.services.redis.error).toBe('Redis not configured');
     });
