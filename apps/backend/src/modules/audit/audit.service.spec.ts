@@ -260,10 +260,7 @@ describe('AuditService', () => {
     it('should handle null filters', async () => {
       mockDb.offset.mockResolvedValue([]);
 
-      const filters: AuditLogFilters = {
-        userId: undefined,
-        action: undefined,
-      };
+      const filters: AuditLogFilters = {};
       await service.getLogs(filters);
 
       expect(mockDb.select).toHaveBeenCalled();

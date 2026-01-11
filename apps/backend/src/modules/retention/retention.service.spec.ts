@@ -1400,7 +1400,9 @@ describe('RetentionService', () => {
       expect(stats.serverStats.length).toBeGreaterThan(0);
       // Verify server stats are sorted by log count descending
       if (stats.serverStats.length > 1) {
-        expect(stats.serverStats[0].logCount).toBeGreaterThanOrEqual(stats.serverStats[1].logCount);
+        expect(stats.serverStats[0]?.logCount).toBeGreaterThanOrEqual(
+          stats.serverStats[1]?.logCount ?? 0
+        );
       }
     });
 
@@ -1466,8 +1468,8 @@ describe('RetentionService', () => {
 
       expect(stats.serverStats).toBeDefined();
       if (stats.serverStats.length > 0) {
-        expect(stats.serverStats[0].ageDistribution.last24h).toBe(0);
-        expect(stats.serverStats[0].eligibleForCleanup.total).toBe(0);
+        expect(stats.serverStats[0]?.ageDistribution.last24h).toBe(0);
+        expect(stats.serverStats[0]?.eligibleForCleanup.total).toBe(0);
       }
     });
 
@@ -1520,8 +1522,8 @@ describe('RetentionService', () => {
       expect(stats.serverStats).toBeDefined();
       if (stats.serverStats.length > 0) {
         // 1000 logs * 1024 bytes = 1,024,000 bytes
-        expect(stats.serverStats[0].estimatedSizeBytes).toBe(1000 * 1024);
-        expect(stats.serverStats[0].estimatedSizeFormatted).toBe('1000.0 KB');
+        expect(stats.serverStats[0]?.estimatedSizeBytes).toBe(1000 * 1024);
+        expect(stats.serverStats[0]?.estimatedSizeFormatted).toBe('1000.0 KB');
       }
     });
   });

@@ -270,7 +270,8 @@ describe('ProxyAuditService', () => {
         success: true,
       });
 
-      const callArg = mockAuditService.createLog.mock.calls[0][0];
+      const callArg = mockAuditService.createLog.mock.calls[0]?.[0];
+      expect(callArg).toBeDefined();
       expect(callArg).not.toHaveProperty('ipAddress');
       expect(callArg).not.toHaveProperty('userAgent');
       expect(callArg).not.toHaveProperty('errorMessage');
