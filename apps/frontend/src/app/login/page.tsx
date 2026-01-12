@@ -9,7 +9,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -23,8 +22,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import Link from 'next/link';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ShieldCheck } from 'lucide-react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -32,14 +30,14 @@ import { z } from 'zod/v3';
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Username is required'),
-  password: z.string().min(1, 'Password is required'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, isAuthenticated, setupRequired, isLoading } = useAuth();
+  const { login, isAuthenticated, isLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<LoginFormValues>({
@@ -59,11 +57,6 @@ export default function LoginPage() {
     );
   }
 
-  if (setupRequired === true) {
-    router.push('/setup');
-    return null;
-  }
-
   if (isAuthenticated) {
     router.push('/');
     return null;
@@ -73,10 +66,10 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await login(values.username, values.password);
-      toast.success('Login successful');
+      toast.success('Welcome to Logarr!');
       router.push('/');
     } catch (error) {
-      toast.error('Login failed', {
+      toast.error('Authentication failed', {
         description: error instanceof Error ? error.message : 'Invalid username or password',
       });
     } finally {
@@ -88,8 +81,16 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Logarr</CardTitle>
-          <CardDescription>Sign in to access your logging dashboard</CardDescription>
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-6 w-6 text-primary" />
+            <CardTitle className="text-2xl font-bold">Logarr</CardTitle>
+          </div>
+          <CardDescription>
+            Enter your credentials to access the dashboard.{' '}
+            <span className="text-muted-foreground">
+              First login creates your admin account.
+            </span>
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -118,7 +119,7 @@ export default function LoginPage() {
                       <Input
                         {...field}
                         type="password"
-                        placeholder="Enter your password"
+                        placeholder="Enter your password (min 8 characters)"
                         autoComplete="current-password"
                       />
                     </FormControl>
@@ -139,17 +140,14 @@ export default function LoginPage() {
               </Button>
             </form>
           </Form>
-        </CardContent>
-        {setupRequired && (
-          <CardFooter className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
-            <p>
-              Need to set up Logarr?{' '}
-              <Link href="/setup" className="text-primary hover:underline">
-                Go to setup
-              </Link>
+
+          <div className="mt-4 rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
+            <p className="font-medium text-foreground">First time?</p>
+            <p className="mt-1">
+              Simply enter your desired username and password. The first login creates your admin account automatically.
             </p>
-          </CardFooter>
-        )}
+          </div>
+        </CardContent>
       </Card>
     </div>
   );

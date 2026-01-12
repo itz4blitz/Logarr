@@ -251,6 +251,7 @@ describe('AuthService', () => {
         username: mockUsername,
         passwordHash: mockPasswordHash,
       });
+      settingsService.getAdminCreatedAt.mockResolvedValue(mockCreatedAt);
       bcrypt.compare.mockResolvedValue(true);
 
       const result: AuthResponse = await service.login(mockLoginDto);
@@ -258,15 +259,35 @@ describe('AuthService', () => {
       expect(bcrypt.compare).toHaveBeenCalledWith(mockPassword, mockPasswordHash);
       expect(result.accessToken).toBe(mockAccessToken);
       expect(result.user.username).toBe(mockUsername);
+      expect(result.user.createdAt).toBe(mockCreatedAt);
+    });
+
+    it('should create admin account on first login when setup not completed', async () => {
+      settingsService.isSetupCompleted.mockResolvedValue(false);
+      bcrypt.hash.mockResolvedValue(mockPasswordHash);
+
+      const result: AuthResponse = await service.login(mockLoginDto);
+
+      expect(bcrypt.hash).toHaveBeenCalledWith(mockPassword, 12);
+      expect(settingsService.setAdminCredentials).toHaveBeenCalledWith(
+        mockUsername,
+        mockPasswordHash
+      );
+      expect(settingsService.markSetupCompleted).toHaveBeenCalled();
+      expect(result.accessToken).toBe(mockAccessToken);
+      expect(result.user.username).toBe(mockUsername);
       expect(result.user.createdAt).toBeDefined();
     });
 
-    it('should throw BadRequestException when setup is not completed', async () => {
+    it('should throw BadRequestException for short password on first login', async () => {
       settingsService.isSetupCompleted.mockResolvedValue(false);
 
-      await expect(service.login(mockLoginDto)).rejects.toThrow(
-        new BadRequestException('Setup must be completed first')
+      const shortPasswordDto = { username: mockUsername, password: 'short' };
+
+      await expect(service.login(shortPasswordDto)).rejects.toThrow(
+        new BadRequestException('Password must be at least 8 characters')
       );
+      expect(settingsService.setAdminCredentials).not.toHaveBeenCalled();
     });
 
     it('should throw UnauthorizedException with invalid username', async () => {
