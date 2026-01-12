@@ -47,13 +47,18 @@ services:
     ports:
       - '4002:4002'
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - 'host.docker.internal:host-gateway'
     environment:
       NODE_ENV: development
       DATABASE_URL: postgresql://postgres:postgres@db:5432/logarr
       REDIS_URL: redis://redis:6379
       BACKEND_PORT: 4002
       CORS_ORIGIN: http://localhost:3000,http://localhost:3002
+      # Health check startup grace period (seconds)
+      HEALTH_CHECK_STARTUP_GRACE_SECONDS: ${HEALTH_CHECK_STARTUP_GRACE_SECONDS:-60}
+      # File watching for hot reload
+      CHOKIDAR_USEPOLLING: 'true'
+      CHOKIDAR_INTERVAL: '1000'
     volumes:
       # Mount source code for hot reload
       - ./packages/core/src:/app/packages/core/src
@@ -64,29 +69,42 @@ services:
       - ./packages/provider-prowlarr/src:/app/packages/provider-prowlarr/src
       - ./packages/provider-plex/src:/app/packages/provider-plex/src
       - ./packages/provider-emby/src:/app/packages/provider-emby/src
+      - ./packages/provider-whisparr/src:/app/packages/provider-whisparr/src
       - ./apps/backend/src:/app/apps/backend/src
-      # Mount tsconfig files
-      - ./tsconfig.json:/app/tsconfig.json
-      - ./packages/core/tsconfig.json:/app/packages/core/tsconfig.json
-      - ./packages/provider-arr/tsconfig.json:/app/packages/provider-arr/tsconfig.json
-      - ./packages/provider-jellyfin/tsconfig.json:/app/packages/provider-jellyfin/tsconfig.json
-      - ./packages/provider-sonarr/tsconfig.json:/app/packages/provider-sonarr/tsconfig.json
-      - ./packages/provider-radarr/tsconfig.json:/app/packages/provider-radarr/tsconfig.json
-      - ./packages/provider-prowlarr/tsconfig.json:/app/packages/provider-prowlarr/tsconfig.json
-      - ./packages/provider-plex/tsconfig.json:/app/packages/provider-plex/tsconfig.json
-      - ./packages/provider-emby/tsconfig.json:/app/packages/provider-emby/tsconfig.json
+      # Mount config files for changes
+      - ./apps/backend/nest-cli.json:/app/apps/backend/nest-cli.json
       - ./apps/backend/tsconfig.json:/app/apps/backend/tsconfig.json
+      # Named volume for dist to prevent constant rebuilds
+      - backend_dist:/app/apps/backend/dist
       # Mount media server logs (optional - for file-based log ingestion)
-      # Set *_LOGS_PATH vars in .env to LOCAL paths on your host machine
-      # Note: Docker Desktop cannot mount network drives (Z:, mapped shares)
-      # For network shares, run backend natively or use local paths
-      # In Sources UI, use container paths: /plex-logs, /jellyfin-logs, etc.
       - ${PLEX_LOGS_PATH:-./logs/plex}:/plex-logs:ro
       - ${JELLYFIN_LOGS_PATH:-./logs/jellyfin}:/jellyfin-logs:ro
       - ${EMBY_LOGS_PATH:-./logs/emby}:/emby-logs:ro
       - ${SONARR_LOGS_PATH:-./logs/sonarr}:/sonarr-logs:ro
       - ${RADARR_LOGS_PATH:-./logs/radarr}:/radarr-logs:ro
       - ${PROWLARR_LOGS_PATH:-./logs/prowlarr}:/prowlarr-logs:ro
+      - ${WHISPARR_LOGS_PATH:-./logs/whisparr}:/whisparr-logs:ro
+      # Multiple instance mounts for development
+      - ${PLEX_LOGS_PATH_1:-./logs/plex-1}:/plex-logs-1:ro
+      - ${JELLYFIN_LOGS_PATH_1:-./logs/jellyfin-1}:/jellyfin-logs-1:ro
+      - ${EMBY_LOGS_PATH_1:-./logs/emby-1}:/emby-logs-1:ro
+      - ${SONARR_LOGS_PATH_1:-./logs/sonarr-1}:/sonarr-logs-1:ro
+      - ${RADARR_LOGS_PATH_1:-./logs/radarr-1}:/radarr-logs-1:ro
+      - ${PROWLARR_LOGS_PATH_1:-./logs/prowlarr-1}:/prowlarr-logs-1:ro
+      - ${WHISPARR_LOGS_PATH_1:-./logs/whisparr-1}:/whisparr-logs-1:ro
+      - ${PLEX_LOGS_PATH_2:-./logs/plex-2}:/plex-logs-2:ro
+      - ${JELLYFIN_LOGS_PATH_2:-./logs/jellyfin-2}:/jellyfin-logs-2:ro
+      - ${EMBY_LOGS_PATH_2:-./logs/emby-2}:/emby-logs-2:ro
+      - ${SONARR_LOGS_PATH_2:-./logs/sonarr-2}:/sonarr-logs-2:ro
+      - ${RADARR_LOGS_PATH_2:-./logs/radarr-2}:/radarr-logs-2:ro
+      - ${PROWLARR_LOGS_PATH_2:-./logs/prowlarr-2}:/prowlarr-logs-2:ro
+      - ${WHISPARR_LOGS_PATH_2:-./logs/whisparr-2}:/whisparr-logs-2:ro
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:4002/api']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
     depends_on:
       db:
         condition: service_healthy
@@ -105,12 +123,12 @@ services:
       - '3002:3000'
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:4002/api
+      NEXT_PUBLIC_WS_URL: ws://localhost:4002
       # Webpack polling for hot reload in Docker on Windows
       WATCHPACK_POLLING: 'true'
       WATCHPACK_POLL_INTERVAL: '1000'
       CHOKIDAR_USEPOLLING: 'true'
       CHOKIDAR_INTERVAL: '1000'
-    command: pnpm dev:webpack
     volumes:
       # Mount source code for hot reload
       - ./apps/frontend/src:/app/apps/frontend/src
@@ -120,6 +138,9 @@ services:
       - ./apps/frontend/tailwind.config.ts:/app/apps/frontend/tailwind.config.ts
       - ./apps/frontend/postcss.config.mjs:/app/apps/frontend/postcss.config.mjs
       - ./apps/frontend/components.json:/app/apps/frontend/components.json
+      - ./apps/frontend/tsconfig.json:/app/apps/frontend/tsconfig.json
+      # Named volume for .next to prevent constant rebuilds
+      - frontend_next:/app/apps/frontend/.next
     depends_on:
       - backend
     networks:
@@ -128,6 +149,8 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  frontend_next:
+  backend_dist:
 
 networks:
   logarr-network:

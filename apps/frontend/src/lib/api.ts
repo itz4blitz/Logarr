@@ -721,6 +721,159 @@ export interface DashboardData {
   recentEvents: DashboardRecentEvent[];
 }
 
+// API Keys
+export interface ApiKeyInfo {
+  id: string;
+  name: string;
+  isEnabled: boolean;
+  deviceInfo: string | null;
+  rateLimit: number | null;
+  rateLimitTtl: number | null;
+  lastUsedAt: string | null;
+  lastUsedIp: string | null;
+  requestCount: number;
+  scopes: string[];
+  expiresAt: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateApiKeyDto {
+  name: string;
+  notes?: string;
+  rateLimit?: number;
+  rateLimitTtl?: number;
+  expiresAt?: Date;
+}
+
+export interface UpdateApiKeyDto {
+  name?: string;
+  isEnabled?: boolean;
+  notes?: string;
+  rateLimit?: number;
+  rateLimitTtl?: number;
+  expiresAt?: Date;
+}
+
+export interface CreateApiKeyResponse {
+  key: string;
+  apiKey: ApiKeyInfo;
+}
+
+export interface ApiKeyAuditLog {
+  id: string;
+  keyId: string;
+  endpoint: string;
+  method: string;
+  statusCode: number;
+  responseTime: number;
+  success: boolean;
+  errorMessage: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  timestamp: string;
+}
+
+// Global Audit Log types
+export type AuditLogAction =
+  | 'create'
+  | 'update'
+  | 'delete'
+  | 'read'
+  | 'login'
+  | 'logout'
+  | 'error'
+  | 'export'
+  | 'import'
+  | 'sync'
+  | 'test'
+  | 'other';
+export type AuditLogCategory =
+  | 'auth'
+  | 'server'
+  | 'log_entry'
+  | 'session'
+  | 'playback'
+  | 'issue'
+  | 'ai_analysis'
+  | 'api_key'
+  | 'settings'
+  | 'retention'
+  | 'proxy'
+  | 'other';
+
+export interface AuditLogEntry {
+  id: string;
+  userId: string | null;
+  sessionId: string | null;
+  action: AuditLogAction;
+  category: AuditLogCategory;
+  entityType: string;
+  entityId: string | null;
+  description: string;
+  endpoint: string;
+  method: string;
+  statusCode: number;
+  responseTime: number;
+  success: boolean;
+  errorMessage: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  metadata: Record<string, unknown> | null;
+  apiKeyId: string | null;
+  timestamp: string;
+}
+
+export interface AuditStatistics {
+  totalLogs: number;
+  successCount: number;
+  errorCount: number;
+  byCategory: Record<string, number>;
+  byAction: Record<string, number>;
+  byUser: Array<{ userId: string; count: number }>;
+}
+
+// Auth types
+export interface SetupStatus {
+  setupRequired: boolean;
+  setupToken?: string;
+}
+
+export interface SetupDto {
+  username: string;
+  password: string;
+  setupToken: string;
+}
+
+export interface LoginDto {
+  username: string;
+  password: string;
+}
+
+export interface UpdatePasswordDto {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface AuthResponse {
+  accessToken: string;
+  user: {
+    username: string;
+    createdAt: string;
+  };
+}
+
+export interface AuthUser {
+  username: string;
+  createdAt: string | null;
+}
+
+export interface SecuritySettings {
+  jwtExpirationMs: number;
+  sessionTimeoutMs: number;
+}
+
 // API Client
 class ApiClient {
   private baseUrl: string;
@@ -729,13 +882,26 @@ class ApiClient {
     this.baseUrl = baseUrl;
   }
 
+  private getToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('auth_token');
+  }
+
   private async request<T>(path: string, options?: RequestInit): Promise<T> {
+    const token = this.getToken();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(options?.headers as Record<string, string> ?? {}),
+    };
+
+    // Add Authorization header if token exists
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
     const response = await fetch(`${this.baseUrl}${path}`, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
+      headers,
     });
 
     if (!response.ok) {
@@ -1186,6 +1352,152 @@ class ApiClient {
       method: 'PUT',
       body: JSON.stringify(settings),
     });
+  }
+
+  // API Keys
+  async getApiKeys(): Promise<ApiKeyInfo[]> {
+    return this.request<ApiKeyInfo[]>('/settings/api-keys');
+  }
+
+  async createApiKey(data: CreateApiKeyDto): Promise<CreateApiKeyResponse> {
+    return this.request<CreateApiKeyResponse>('/settings/api-keys', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateApiKey(id: string, data: UpdateApiKeyDto): Promise<ApiKeyInfo> {
+    return this.request<ApiKeyInfo>(`/settings/api-keys/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteApiKey(id: string): Promise<void> {
+    return this.request<void>(`/settings/api-keys/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getApiKeyAuditLogs(
+    id: string,
+    limit: number = 100,
+    offset: number = 0
+  ): Promise<ApiKeyAuditLog[]> {
+    return this.request<ApiKeyAuditLog[]>(
+      `/settings/api-keys/${id}/audit?limit=${limit}&offset=${offset}`
+    );
+  }
+
+  // Global Audit Logs
+  async getAuditLogs(params?: {
+    userId?: string;
+    action?: string;
+    category?: string;
+    entityType?: string;
+    entityId?: string;
+    success?: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<AuditLogEntry[]> {
+    const searchParams = new URLSearchParams();
+    if (params?.userId !== undefined) searchParams.set('userId', params.userId);
+    if (params?.action !== undefined) searchParams.set('action', params.action);
+    if (params?.category !== undefined) searchParams.set('category', params.category);
+    if (params?.entityType !== undefined) searchParams.set('entityType', params.entityType);
+    if (params?.entityId !== undefined) searchParams.set('entityId', params.entityId);
+    if (params?.success !== undefined) searchParams.set('success', params.success.toString());
+    if (params?.limit !== undefined) searchParams.set('limit', params.limit.toString());
+    if (params?.offset !== undefined) searchParams.set('offset', params.offset.toString());
+
+    const queryString = searchParams.toString();
+    return this.request<AuditLogEntry[]>(`/settings/audit${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async getAuditStatistics(days: number = 30): Promise<AuditStatistics> {
+    return this.request<AuditStatistics>(`/settings/audit/statistics?days=${days}`);
+  }
+
+  // Token helpers
+  private setToken(token: string): void {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('auth_token', token);
+    }
+  }
+
+  private clearToken(): void {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('auth_token');
+    }
+  }
+
+  private hasToken(): boolean {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('auth_token') !== null;
+  }
+
+  // Auth methods (setup/login don't need auth token)
+  async getSetupStatus(): Promise<SetupStatus> {
+    return this.request<SetupStatus>('/auth/setup');
+  }
+
+  async setup(dto: SetupDto): Promise<AuthResponse> {
+    const response = await this.request<AuthResponse>('/auth/setup', {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    });
+    // Store token on successful setup
+    this.setToken(response.accessToken);
+    return response;
+  }
+
+  async login(dto: LoginDto): Promise<AuthResponse> {
+    const response = await this.request<AuthResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    });
+    // Store token on successful login
+    this.setToken(response.accessToken);
+    return response;
+  }
+
+  // Methods below require auth token (included automatically via request())
+  async me(): Promise<AuthUser> {
+    return this.request<AuthUser>('/auth/me');
+  }
+
+  async updatePassword(dto: UpdatePasswordDto): Promise<void> {
+    return this.request<void>('/auth/password', {
+      method: 'PUT',
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async logout(): Promise<void> {
+    const response = await this.request<void>('/auth/logout', {
+      method: 'POST',
+    });
+    // Clear token on logout
+    this.clearToken();
+    return response;
+  }
+
+  async getSecuritySettings(): Promise<SecuritySettings> {
+    return this.request<SecuritySettings>('/settings/security');
+  }
+
+  async updateSecuritySettings(
+    settings: Partial<SecuritySettings>
+  ): Promise<SecuritySettings> {
+    return this.request<SecuritySettings>('/settings/security', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    });
+  }
+
+  // Check if user is authenticated (has a valid token)
+  isAuthenticated(): boolean {
+    return this.hasToken();
   }
 }
 

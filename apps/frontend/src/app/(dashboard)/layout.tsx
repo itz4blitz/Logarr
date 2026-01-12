@@ -1,9 +1,12 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
+import { useAuth } from '@/components/auth-provider';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SyncStatusHeader } from '@/components/sync-banner';
+import { Loader2 } from 'lucide-react';
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -38,7 +41,34 @@ function getPageName(pathname: string): string {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const pageName = getPageName(pathname);
+  const { isAuthenticated, setupRequired, isLoading } = useAuth();
+
+  // Redirect to login/setup if not authenticated
+  useEffect(() => {
+    if (isLoading) return;
+
+    if (setupRequired) {
+      router.push('/setup');
+    } else if (!isAuthenticated) {
+      router.push('/login');
+    }
+  }, [isAuthenticated, setupRequired, isLoading, router]);
+
+  // Show loading state while checking auth
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // Don't render layout if not authenticated (redirect will happen)
+  if (!isAuthenticated || setupRequired) {
+    return null;
+  }
 
   return (
     <SidebarProvider>

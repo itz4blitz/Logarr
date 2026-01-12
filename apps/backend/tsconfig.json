@@ -12,6 +12,7 @@
     "moduleResolution": "Node10",
     "ignoreDeprecations": "5.0",
     "lib": ["ES2022"],
+    "types": ["vitest/globals"],
     "strictPropertyInitialization": false,
     "verbatimModuleSyntax": false,
     "noUnusedLocals": false,

@@ -398,4 +398,62 @@ export class ServersService {
 
     return resultMap;
   }
+
+  /**
+   * Reset file ingestion state for a server
+   * This clears all file states and restarts file ingestion
+   */
+  async resetFileIngestionState(id: string) {
+    const server = await this.findOne(id);
+
+    if (!server.fileIngestionEnabled) {
+      return {
+        success: false,
+        message: 'File ingestion is not enabled for this server',
+      };
+    }
+
+    try {
+      // Stop current file ingestion
+      await this.fileIngestionService.stopServerFileIngestion(id);
+
+      // Clear all file states for this server
+      await this.fileIngestionService.resetServerState(id);
+
+      // Reset sync status in database
+      await this.db
+        .update(schema.servers)
+        .set({
+          syncStatus: 'pending',
+          syncProgress: 0,
+          syncTotalFiles: 0,
+          syncProcessedFiles: 0,
+          syncStartedAt: null,
+          syncCompletedAt: null,
+          initialSyncCompleted: false,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.servers.id, id));
+
+      // Restart file ingestion
+      await this.fileIngestionService.restartServerFileIngestion(
+        id,
+        this.ingestionService.getProviders()
+      );
+
+      this.logger.log(`File ingestion state reset successfully for server ${server.name}`);
+
+      return {
+        success: true,
+        message: 'File ingestion state reset and restarted successfully',
+      };
+    } catch (error) {
+      this.logger.error(`Failed to reset file ingestion state for server ${id}:`, error);
+
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+      };
+    }
+  }
 }

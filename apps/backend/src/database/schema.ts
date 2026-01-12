@@ -637,3 +637,162 @@ export const retentionHistory = pgTable(
     index('retention_history_status_idx').on(table.status),
   ]
 );
+
+/**
+ * API Keys table - stores API keys for external access
+ * Works for mobile apps, web clients, CLI tools, and third-party integrations
+ */
+export const apiKeys = pgTable(
+  'api_keys',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    // Human-readable name for this key
+    name: text('name').notNull(),
+    // The actual API key (hashed before storage)
+    keyHash: text('key_hash').notNull().unique(),
+    // Device/app identifier (e.g., "iPhone 15 Pro", "ArrCaptain iOS v1.0")
+    deviceInfo: text('device_info'),
+    // Is this key currently active?
+    isEnabled: boolean('is_enabled').notNull().default(true),
+    // Rate limit: requests per minute (null = use system default)
+    rateLimit: integer('rate_limit'),
+    // Rate limit: time window in milliseconds (null = use system default)
+    rateLimitTtl: integer('rate_limit_ttl'),
+    // Last time this key was used
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+    // Last IP address that used this key
+    lastUsedIp: text('last_used_ip'),
+    // Total request count
+    requestCount: integer('request_count').notNull().default(0),
+    // Permissions/scopes (future-proof for RBAC)
+    scopes: text('scopes').array().default([]),
+    // Expiration date (null = never expires)
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    // Notes about this key
+    notes: text('notes'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('api_keys_key_hash_idx').on(table.keyHash),
+    index('api_keys_is_enabled_idx').on(table.isEnabled),
+    index('api_keys_last_used_at_idx').on(table.lastUsedAt),
+  ]
+);
+
+/**
+ * API Key usage log - audit trail for API key usage
+ */
+export const apiKeyUsageLog = pgTable(
+  'api_key_usage_log',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    keyId: uuid('key_id')
+      .notNull()
+      .references(() => apiKeys.id, { onDelete: 'cascade' }),
+    endpoint: text('endpoint').notNull(),
+    method: text('method').notNull(),
+    statusCode: integer('status_code').notNull(),
+    responseTime: integer('response_time').notNull(), // milliseconds
+    success: boolean('success').notNull(),
+    errorMessage: text('error_message'),
+    ipAddress: text('ip_address'),
+    userAgent: text('user_agent'),
+    timestamp: timestamp('timestamp', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('api_key_usage_log_key_id_idx').on(table.keyId),
+    index('api_key_usage_log_timestamp_idx').on(table.timestamp),
+    index('api_key_usage_log_success_idx').on(table.success),
+  ]
+);
+
+/**
+ * Global audit log - tracks all actions in the application
+ * This includes web UI actions, API requests, configuration changes, etc.
+ */
+export const auditLogActionEnum = pgEnum('audit_log_action', [
+  'create',
+  'update',
+  'delete',
+  'read',
+  'login',
+  'logout',
+  'error',
+  'export',
+  'import',
+  'sync',
+  'test',
+  'other',
+]);
+
+export const auditLogCategoryEnum = pgEnum('audit_log_category', [
+  'auth',
+  'server',
+  'log_entry',
+  'session',
+  'playback',
+  'issue',
+  'ai_analysis',
+  'api_key',
+  'settings',
+  'retention',
+  'proxy',
+  'other',
+]);
+
+export const auditLog = pgTable(
+  'audit_log',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    // User who performed the action (null for system actions)
+    userId: text('user_id'),
+    // Session ID if available
+    sessionId: text('session_id'),
+    // Type of action performed
+    action: auditLogActionEnum('action').notNull(),
+    // Category of the action
+    category: auditLogCategoryEnum('category').notNull(),
+    // What entity was affected (e.g., "server", "api-key", "issue")
+    entityType: text('entity_type').notNull(),
+    // ID of the entity that was affected
+    entityId: text('entity_id'),
+    // Human-readable description of what happened
+    description: text('description').notNull(),
+    // The endpoint/URL that was called
+    endpoint: text('endpoint').notNull(),
+    // HTTP method used
+    method: text('method').notNull(),
+    // HTTP status code
+    statusCode: integer('status_code').notNull(),
+    // Response time in milliseconds
+    responseTime: integer('response_time').notNull(),
+    // Was the request successful?
+    success: boolean('success').notNull(),
+    // Error message if failed
+    errorMessage: text('error_message'),
+    // IP address of the requester
+    ipAddress: text('ip_address'),
+    // User agent of the requester
+    userAgent: text('user_agent'),
+    // Additional metadata (JSONB for flexibility)
+    metadata: jsonb('metadata'),
+    // API key used for the request (if any)
+    apiKeyId: uuid('api_key_id').references(() => apiKeys.id, { onDelete: 'set null' }),
+    timestamp: timestamp('timestamp', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('audit_log_user_id_idx').on(table.userId),
+    index('audit_log_session_id_idx').on(table.sessionId),
+    index('audit_log_action_idx').on(table.action),
+    index('audit_log_category_idx').on(table.category),
+    index('audit_log_entity_type_idx').on(table.entityType),
+    index('audit_log_entity_id_idx').on(table.entityId),
+    index('audit_log_timestamp_idx').on(table.timestamp),
+    index('audit_log_success_idx').on(table.success),
+    index('audit_log_api_key_id_idx').on(table.apiKeyId),
+    // Composite indexes for common queries
+    index('idx_audit_log_timestamp_category').on(table.timestamp, table.category),
+    index('idx_audit_log_user_action').on(table.userId, table.action),
+  ]
+);

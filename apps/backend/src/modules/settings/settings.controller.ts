@@ -16,6 +16,7 @@ import {
   SettingsService,
   type RetentionSettings,
   type FileIngestionSettings,
+  type SecuritySettings,
 } from './settings.service';
 
 import type {
@@ -74,6 +75,18 @@ export class SettingsController {
   @Get('system')
   async getSystemInfo() {
     return this.settingsService.getSystemInfo();
+  }
+
+  // ============ Security Settings ============
+
+  @Get('security')
+  async getSecuritySettings() {
+    return this.settingsService.getSecuritySettings();
+  }
+
+  @Put('security')
+  async updateSecuritySettings(@Body() settings: Partial<SecuritySettings>) {
+    return this.settingsService.updateSecuritySettings(settings);
   }
 
   // ============ AI Provider Management ============

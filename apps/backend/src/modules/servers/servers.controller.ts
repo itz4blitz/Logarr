@@ -79,6 +79,14 @@ export class ServersController {
     return this.serversService.testConnection(id);
   }
 
+  @Post(':id/file-ingestion/reset')
+  @ApiOperation({ summary: 'Reset file ingestion state for a server' })
+  @ApiResponse({ status: 200, description: 'File ingestion state reset successfully' })
+  @ApiResponse({ status: 404, description: 'Server not found' })
+  async resetFileIngestion(@Param('id') id: string) {
+    return this.serversService.resetFileIngestionState(id);
+  }
+
   @Post('test-all')
   @ApiOperation({ summary: 'Test all server connections in parallel' })
   @ApiResponse({ status: 200, description: 'Returns map of server ID to connection status' })

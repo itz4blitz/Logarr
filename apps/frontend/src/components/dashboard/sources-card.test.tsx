@@ -79,6 +79,7 @@ const createMockSource = (overrides: Partial<DashboardSource> = {}): DashboardSo
   fileIngestionConnected: false,
   lastSeen: new Date().toISOString(),
   version: '1.0.0',
+  activeStreams: 0,
   ...overrides,
 });
 

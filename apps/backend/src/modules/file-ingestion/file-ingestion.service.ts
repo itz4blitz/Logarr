@@ -182,8 +182,131 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
     this.cachedSettings = null;
   }
 
-  onModuleInit(): void {
+  async onModuleInit(): Promise<void> {
     this.logger.log('File ingestion service initialized');
+
+    // Add startup delay to allow container to fully initialize
+    setTimeout(() => {
+      this.initializeWithRetry();
+    }, 2000);
+  }
+
+  /**
+   * Initialize file ingestion with retry logic for container startup resilience
+   */
+  private async initializeWithRetry(): Promise<void> {
+    let retries = 3;
+    let delay = 5000; // Start with 5 second delay
+
+    while (retries > 0) {
+      try {
+        // Validate and recover any stale states before starting
+        await this.validateAndRecoverStaleStates();
+
+        this.logger.log('File ingestion initialization completed successfully');
+        break;
+      } catch (error) {
+        retries--;
+        this.logger.warn(
+          `File ingestion initialization failed, retrying... (${retries} attempts left): ${
+            error instanceof Error ? error.message : 'Unknown error'
+          }`
+        );
+
+        if (retries > 0) {
+          await this.sleep(delay);
+          delay *= 1.5; // Exponential backoff: 5s, 7.5s, 11.25s
+        } else {
+          this.logger.error('File ingestion initialization failed after all retries');
+        }
+      }
+    }
+  }
+
+  /**
+   * Validate and recover from stale file states that may exist after container restart
+   */
+  private async validateAndRecoverStaleStates(): Promise<void> {
+    try {
+      // Get all servers with file ingestion enabled
+      const servers = await this.db
+        .select()
+        .from(schema.servers)
+        .where(
+          and(eq(schema.servers.isEnabled, true), eq(schema.servers.fileIngestionEnabled, true))
+        );
+
+      for (const server of servers) {
+        if (!server.logPaths || server.logPaths.length === 0) {
+          continue;
+        }
+
+        // Validate paths are accessible
+        const pathValidation = await this.validateLogPaths(server.logPaths);
+        if (!pathValidation.valid) {
+          this.logger.warn(
+            `File paths not accessible for ${server.name}, disabling file ingestion temporarily`
+          );
+
+          // Temporarily disable file ingestion for this server
+          await this.db
+            .update(schema.servers)
+            .set({
+              fileIngestionEnabled: false,
+              syncStatus: 'error',
+              updatedAt: new Date(),
+            })
+            .where(eq(schema.servers.id, server.id));
+
+          continue;
+        }
+
+        // Reset any stale file states
+        await this.resetStaleFileStates(server.id, server.logPaths);
+      }
+    } catch (error) {
+      this.logger.error('Failed to validate and recover stale states:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reset file states that may be stale due to log rotation or container restart
+   */
+  private async resetStaleFileStates(serverId: string, _logPaths: string[]): Promise<void> {
+    try {
+      const { statSync } = await import('fs');
+
+      // Get all file states for this server
+      const fileStates = await this.fileStateService.getServerStates(serverId);
+
+      for (const state of fileStates) {
+        try {
+          const stats = statSync(state.filePath);
+          const currentInode = stats.ino.toString();
+          const currentSize = BigInt(stats.size);
+
+          // Check if file has been rotated (inode changed) or truncated (size smaller than offset)
+          const inodeChanged = state.fileInode && state.fileInode !== currentInode;
+          const fileTruncated = state.byteOffset && currentSize < state.byteOffset;
+
+          if (inodeChanged || fileTruncated) {
+            this.logger.log(
+              `Resetting stale file state for ${state.filePath}: ` +
+                `inode changed: ${inodeChanged}, truncated: ${fileTruncated}`
+            );
+
+            await this.fileStateService.resetState(serverId, state.filePath);
+          }
+        } catch (_error) {
+          // File doesn't exist or not accessible - reset state
+          this.logger.log(`Resetting state for inaccessible file: ${state.filePath}`);
+          await this.fileStateService.resetState(serverId, state.filePath);
+        }
+      }
+    } catch (error) {
+      this.logger.warn(`Failed to reset stale file states for server ${serverId}:`, error);
+    }
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -240,6 +363,25 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
     if (!hasFileIngestionSupport(provider)) {
       this.logger.debug(`Provider ${server.providerId} does not support file-based log ingestion`);
       return;
+    }
+
+    // Validate paths are accessible before starting
+    if (server.logPaths && server.logPaths.length > 0) {
+      const pathValidation = await this.validateLogPaths(server.logPaths);
+      if (!pathValidation.valid) {
+        const errorMsg = `File paths not accessible for ${server.name}: ${pathValidation.results
+          .filter((r) => !r.accessible)
+          .map((r) => `${r.path} (${r.error})`)
+          .join(', ')}`;
+
+        this.logger.error(errorMsg);
+
+        // Update server status to indicate the error
+        await this.updateSyncStatus(server.id, 'error', 0, 0, 0);
+
+        // Don't throw - just log and return to prevent startup failure
+        return;
+      }
     }
 
     // Load settings from database
@@ -1003,6 +1145,29 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
 
     if (server && server.isEnabled && server.fileIngestionEnabled) {
       await this.startServerFileIngestion(server, providers);
+    }
+  }
+
+  /**
+   * Reset all file ingestion state for a server
+   * This clears file states and progress tracking
+   */
+  async resetServerState(serverId: string): Promise<void> {
+    try {
+      // Clear file states
+      await this.fileStateService.deleteServerStates(serverId);
+
+      // Clear progress tracking
+      this.progressMap.delete(serverId);
+      this.filesCompletedMap.delete(serverId);
+      this.fileQueue.delete(serverId);
+      this.providerMap.delete(serverId);
+      this.lastBroadcastTime.delete(serverId);
+
+      this.logger.log(`Reset file ingestion state for server ${serverId}`);
+    } catch (error) {
+      this.logger.error(`Failed to reset server state for ${serverId}:`, error);
+      throw error;
     }
   }
 

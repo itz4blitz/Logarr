@@ -4,15 +4,25 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
-# Copy ALL workspace files
-COPY . .
+# Copy workspace config files
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY turbo.json tsconfig.json ./
+
+# Copy all packages and apps (will be overridden by volume mounts)
+COPY packages/ ./packages/
+COPY apps/backend/ ./apps/backend/
 
 # Install dependencies
 RUN pnpm install
 
-# Build packages first (core -> provider-arr -> provider-jellyfin, provider-sonarr, provider-radarr, provider-prowlarr, provider-plex)
-RUN pnpm build --filter @logarr/core --filter @logarr/provider-arr --filter @logarr/provider-jellyfin --filter @logarr/provider-sonarr --filter @logarr/provider-radarr --filter @logarr/provider-prowlarr --filter @logarr/provider-plex --filter @logarr/provider-emby
+# Build only the packages (not backend itself - that will be done in watch mode)
+RUN pnpm build --filter @logarr/core --filter @logarr/provider-arr --filter @logarr/provider-jellyfin --filter @logarr/provider-sonarr --filter @logarr/provider-radarr --filter @logarr/provider-prowlarr --filter @logarr/provider-plex --filter @logarr/provider-emby --filter @logarr/provider-whisparr
 
 EXPOSE 4002
 
+# Enable file watching with polling for Docker on Windows
+ENV CHOKIDAR_USEPOLLING=true
+ENV CHOKIDAR_INTERVAL=1000
+
+# Run dev directly - NestJS will build on first run
 CMD ["pnpm", "dev", "--filter", "@logarr/backend"]

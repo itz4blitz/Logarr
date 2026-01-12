@@ -9,6 +9,13 @@ import type {
   CreateAiProviderDto,
   UpdateAiProviderDto,
   AiProviderType,
+  CreateApiKeyDto,
+  UpdateApiKeyDto,
+  ApiKeyInfo,
+  SetupDto,
+  LoginDto,
+  UpdatePasswordDto,
+  SecuritySettings,
 } from '@/lib/api';
 
 import { api } from '@/lib/api';
@@ -47,6 +54,12 @@ export const queryKeys = {
   retentionHistory: ['settings', 'retention', 'history'] as const,
   // File Ingestion
   fileIngestionSettings: ['settings', 'file-ingestion'] as const,
+  // API Keys
+  apiKeys: ['settings', 'api-keys'] as const,
+  // Auth
+  setupStatus: ['auth', 'setup'] as const,
+  me: ['auth', 'me'] as const,
+  securitySettings: ['settings', 'security'] as const,
 };
 
 // Health
@@ -687,6 +700,209 @@ export function useDeleteAllLogs() {
       queryClient.invalidateQueries({ queryKey: queryKeys.cleanupPreview });
       queryClient.invalidateQueries({ queryKey: queryKeys.retentionHistory });
       queryClient.invalidateQueries({ queryKey: ['logs'] });
+    },
+  });
+}
+
+// API Keys
+export function useApiKeys() {
+  return useQuery({
+    queryKey: queryKeys.apiKeys,
+    queryFn: () => api.getApiKeys(),
+    staleTime: 0, // Don't cache - always fetch fresh data
+    gcTime: 0, // Don't cache garbage either
+    retry: 1, // Only retry once to avoid long delays
+  });
+}
+
+export function useCreateApiKey() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateApiKeyDto) => api.createApiKey(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.apiKeys });
+    },
+  });
+}
+
+export function useUpdateApiKey() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateApiKeyDto }) => api.updateApiKey(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.apiKeys });
+    },
+  });
+}
+
+export function useDeleteApiKey() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => api.deleteApiKey(id),
+    onMutate: async (id) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: queryKeys.apiKeys });
+
+      // Snapshot previous value
+      const previousApiKeys = queryClient.getQueryData(queryKeys.apiKeys);
+
+      // Optimistically update to the new value
+      queryClient.setQueryData(queryKeys.apiKeys, (old: ApiKeyInfo[] | undefined) =>
+        old?.filter((key) => key.id !== id)
+      );
+
+      // Return context with previous value
+      return { previousApiKeys };
+    },
+    onError: (err, id, context) => {
+      // Rollback to previous value on error
+      if (context?.previousApiKeys) {
+        queryClient.setQueryData(queryKeys.apiKeys, context.previousApiKeys);
+      }
+    },
+    onSettled: () => {
+      // Refetch to ensure server state matches client state
+      queryClient.invalidateQueries({ queryKey: queryKeys.apiKeys });
+    },
+  });
+}
+
+export function useApiKeyAuditLogs(keyId: string | null, limit: number = 100) {
+  return useQuery({
+    queryKey: ['apiKeyAuditLogs', keyId, limit],
+    queryFn: () => (keyId ? api.getApiKeyAuditLogs(keyId, limit) : []),
+    enabled: !!keyId, // Only run query if keyId is provided
+    staleTime: 0, // Don't cache - always fetch fresh data
+    gcTime: 0, // Don't cache garbage either
+  });
+}
+
+// Global Audit Logs
+export function useAuditLogs(params?: {
+  userId?: string;
+  action?: string;
+  category?: string;
+  entityType?: string;
+  entityId?: string;
+  success?: boolean;
+  limit?: number;
+  offset?: number;
+}) {
+  return useQuery({
+    queryKey: ['auditLogs', params],
+    queryFn: () => api.getAuditLogs(params),
+    placeholderData: keepPreviousData,
+    staleTime: 10000, // Consider data fresh for 10 seconds
+  });
+}
+
+export function useAuditStatistics(days: number = 30) {
+  return useQuery({
+    queryKey: ['auditStatistics', days],
+    queryFn: () => api.getAuditStatistics(days),
+    staleTime: 60000, // Stats can be cached for 1 minute
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
+}
+
+// Auth - Setup status (checked before login/setup flow)
+export function useSetupStatus() {
+  return useQuery({
+    queryKey: queryKeys.setupStatus,
+    queryFn: () => api.getSetupStatus(),
+    staleTime: 0, // Don't cache - always need fresh setup status
+    gcTime: 0, // Don't cache garbage either
+    retry: false, // Don't retry setup check - likely a network/auth issue
+  });
+}
+
+// Auth - Setup mutation
+export function useSetup() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (dto: SetupDto) => api.setup(dto),
+    onSuccess: () => {
+      // Invalidate setup status and user info after successful setup
+      queryClient.invalidateQueries({ queryKey: queryKeys.setupStatus });
+      queryClient.invalidateQueries({ queryKey: queryKeys.me });
+    },
+  });
+}
+
+// Auth - Login mutation
+export function useLogin() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (dto: LoginDto) => api.login(dto),
+    onSuccess: () => {
+      // Invalidate user info after successful login
+      queryClient.invalidateQueries({ queryKey: queryKeys.me });
+      // Refetch all queries to get fresh authenticated data
+      queryClient.refetchQueries();
+    },
+  });
+}
+
+// Auth - Get current user
+export function useMe() {
+  return useQuery({
+    queryKey: queryKeys.me,
+    queryFn: () => api.me(),
+    staleTime: 60000, // User info rarely changes - cache for 1 minute
+    retry: false, // Don't retry if auth fails
+  });
+}
+
+// Auth - Update password mutation
+export function useUpdatePassword() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (dto: UpdatePasswordDto) => api.updatePassword(dto),
+    onSuccess: () => {
+      // Invalidate user info after password update
+      queryClient.invalidateQueries({ queryKey: queryKeys.me });
+    },
+  });
+}
+
+// Auth - Logout mutation
+export function useLogout() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => api.logout(),
+    onSuccess: () => {
+      // Clear all queries after logout
+      queryClient.clear();
+      // Refetch setup status to know where to redirect
+      queryClient.invalidateQueries({ queryKey: queryKeys.setupStatus });
+    },
+  });
+}
+
+// Settings - Security (DB-stored)
+export function useSecuritySettings() {
+  return useQuery({
+    queryKey: queryKeys.securitySettings,
+    queryFn: () => api.getSecuritySettings(),
+    staleTime: 60000, // Security settings rarely change - cache for 1 minute
+  });
+}
+
+export function useUpdateSecuritySettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (settings: Partial<SecuritySettings>) =>
+      api.updateSecuritySettings(settings),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.securitySettings });
     },
   });
 }

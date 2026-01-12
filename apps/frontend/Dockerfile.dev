@@ -4,13 +4,25 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
-# Copy ALL workspace files (they'll be overwritten by volume mounts for src)
-COPY . .
+# Copy workspace config files
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY turbo.json ./
+
+# Copy packages and frontend (will be overridden by volume mounts)
+COPY packages/ ./packages/
+COPY apps/frontend/ ./apps/frontend/
 
 # Install dependencies
 RUN pnpm install
 
 EXPOSE 3000
 
+# Enable file watching with polling for Docker on Windows
+ENV CHOKIDAR_USEPOLLING=true
+ENV CHOKIDAR_INTERVAL=1000
+ENV WATCHPACK_POLLING=true
+ENV WATCHPACK_POLL_INTERVAL=1000
+
 WORKDIR /app/apps/frontend
-CMD ["pnpm", "dev"]
+
+CMD ["pnpm", "dev:webpack"]

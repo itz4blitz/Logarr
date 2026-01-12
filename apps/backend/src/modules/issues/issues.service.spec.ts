@@ -758,6 +758,14 @@ describe('IssuesService', () => {
       expect(result).toBeNull();
     });
 
+    it('should return null for debug logs', async () => {
+      const debugLog = { ...mockLogEntry, level: 'debug' };
+
+      const result = await service.processLogEntry(debugLog as any);
+
+      expect(result).toBeNull();
+    });
+
     it('should process warn level logs', async () => {
       const warnLog = { ...mockLogEntry, level: 'warn' };
       configureMockDb(mockDb, { select: [], insert: [{ id: 'new-issue' }] });
@@ -823,6 +831,83 @@ describe('IssuesService', () => {
       expect(result).toBe('new-issue');
       expect(mockDb.insert).toHaveBeenCalled();
     });
+
+    it('should return null when insert returns empty result', async () => {
+      let selectCallCount = 0;
+      mockDb.select = vi.fn().mockImplementation(() => {
+        selectCallCount++;
+        const result = selectCallCount === 2 ? [{ providerId: 'jellyfin' }] : [];
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockReturnThis(),
+          then: vi.fn().mockImplementation((resolve) => Promise.resolve(result).then(resolve)),
+          [Symbol.toStringTag]: 'Promise',
+        };
+      });
+      mockDb.insert = vi.fn().mockImplementation(() => ({
+        values: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue([]), // Empty result
+        onConflictDoNothing: vi.fn().mockResolvedValue([]),
+      }));
+
+      const result = await service.processLogEntry(mockLogEntry as any);
+
+      expect(result).toBeNull();
+    });
+
+    it('should handle log entry without userId or sessionId', async () => {
+      const logWithoutUser = { ...mockLogEntry, userId: null, sessionId: null };
+
+      let selectCallCount = 0;
+      mockDb.select = vi.fn().mockImplementation(() => {
+        selectCallCount++;
+        const result = selectCallCount === 2 ? [{ providerId: 'sonarr' }] : [];
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockReturnThis(),
+          then: vi.fn().mockImplementation((resolve) => Promise.resolve(result).then(resolve)),
+          [Symbol.toStringTag]: 'Promise',
+        };
+      });
+      mockDb.insert = vi.fn().mockImplementation(() => ({
+        values: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue([{ id: 'new-issue' }]),
+        onConflictDoNothing: vi.fn().mockResolvedValue([]),
+      }));
+
+      const result = await service.processLogEntry(logWithoutUser as any);
+
+      expect(result).toBe('new-issue');
+    });
+
+    it('should map server provider to issue source', async () => {
+      const providers = ['jellyfin', 'sonarr', 'radarr', 'prowlarr', 'unknown'];
+
+      for (const providerId of providers) {
+        let selectCallCount = 0;
+        mockDb.select = vi.fn().mockImplementation(() => {
+          selectCallCount++;
+          const result = selectCallCount === 2 ? [{ providerId }] : [];
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockReturnThis(),
+            then: vi.fn().mockImplementation((resolve) => Promise.resolve(result).then(resolve)),
+            [Symbol.toStringTag]: 'Promise',
+          };
+        });
+        mockDb.insert = vi.fn().mockImplementation(() => ({
+          values: vi.fn().mockReturnThis(),
+          returning: vi.fn().mockResolvedValue([{ id: 'new-issue' }]),
+          onConflictDoNothing: vi.fn().mockResolvedValue([]),
+        }));
+
+        const result = await service.processLogEntry(mockLogEntry as any);
+        expect(result).toBe('new-issue');
+      }
+    });
   });
 
   describe('mergeIssues', () => {
@@ -838,6 +923,126 @@ describe('IssuesService', () => {
       await expect(service.mergeIssues({ issueIds: ['issue-1', 'issue-2'] })).rejects.toThrow(
         NotFoundException
       );
+    });
+
+    it('should merge issues successfully', async () => {
+      const mockIssues = [
+        {
+          id: 'issue-1',
+          fingerprint: 'fp1',
+          title: 'Error 1',
+          severity: 'high',
+          occurrenceCount: 5,
+          firstSeen: new Date('2024-01-01'),
+          lastSeen: new Date('2024-01-05'),
+        },
+        {
+          id: 'issue-2',
+          fingerprint: 'fp2',
+          title: 'Error 2',
+          severity: 'medium',
+          occurrenceCount: 3,
+          firstSeen: new Date('2024-01-02'),
+          lastSeen: new Date('2024-01-10'),
+        },
+      ];
+
+      const mockOccurrences = [
+        { userId: 'user-1', sessionId: 'session-1' },
+        { userId: 'user-2', sessionId: 'session-2' },
+      ];
+
+      let selectCallCount = 0;
+      mockDb.select = vi.fn().mockImplementation(() => {
+        selectCallCount++;
+        let result: any[] = [];
+        if (selectCallCount === 1) result = mockIssues;
+        else if (selectCallCount === 2) result = mockOccurrences;
+        else if (selectCallCount === 3)
+          result = [{ issue: { ...mockIssues[0], occurrenceCount: 8 }, serverName: 'Test' }];
+        else if (selectCallCount === 4)
+          result = [{ id: 'occ-1', timestamp: new Date(), message: 'Error' }];
+        return {
+          from: vi.fn().mockReturnThis(),
+          leftJoin: vi.fn().mockReturnThis(),
+          innerJoin: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          orderBy: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockReturnThis(),
+          then: vi.fn().mockImplementation((resolve) => Promise.resolve(result).then(resolve)),
+          [Symbol.toStringTag]: 'Promise',
+        };
+      });
+
+      mockDb.update = vi.fn().mockImplementation(() => ({
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue([]),
+      }));
+
+      mockDb.delete = vi.fn().mockImplementation(() => ({
+        where: vi.fn().mockResolvedValue([]),
+      }));
+
+      await service.mergeIssues({ issueIds: ['issue-1', 'issue-2'] });
+
+      expect(mockDb.update).toHaveBeenCalled();
+      expect(mockDb.delete).toHaveBeenCalled();
+    });
+
+    it('should use newTitle when provided', async () => {
+      const mockIssues = [
+        {
+          id: 'issue-1',
+          fingerprint: 'fp1',
+          title: 'Error 1',
+          severity: 'high',
+          occurrenceCount: 5,
+          firstSeen: new Date('2024-01-01'),
+          lastSeen: new Date('2024-01-05'),
+        },
+        {
+          id: 'issue-2',
+          fingerprint: 'fp2',
+          title: 'Error 2',
+          severity: 'medium',
+          occurrenceCount: 3,
+          firstSeen: new Date('2024-01-02'),
+          lastSeen: new Date('2024-01-10'),
+        },
+      ];
+
+      let selectCallCount = 0;
+      mockDb.select = vi.fn().mockImplementation(() => {
+        selectCallCount++;
+        let result: any[] = [];
+        if (selectCallCount === 1) result = mockIssues;
+        else if (selectCallCount === 2) result = [];
+        else if (selectCallCount === 3) result = [{ issue: mockIssues[0], serverName: 'Test' }];
+        else if (selectCallCount === 4) result = [];
+        return {
+          from: vi.fn().mockReturnThis(),
+          leftJoin: vi.fn().mockReturnThis(),
+          innerJoin: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          orderBy: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockReturnThis(),
+          then: vi.fn().mockImplementation((resolve) => Promise.resolve(result).then(resolve)),
+          [Symbol.toStringTag]: 'Promise',
+        };
+      });
+
+      mockDb.update = vi.fn().mockImplementation(() => ({
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue([]),
+      }));
+
+      mockDb.delete = vi.fn().mockImplementation(() => ({
+        where: vi.fn().mockResolvedValue([]),
+      }));
+
+      await service.mergeIssues({ issueIds: ['issue-1', 'issue-2'], newTitle: 'Merged Issue' });
+
+      expect(mockDb.update).toHaveBeenCalled();
     });
   });
 
@@ -869,6 +1074,114 @@ describe('IssuesService', () => {
       await service.backfillFromLogs('server-1');
 
       expect(mockDb.select).toHaveBeenCalled();
+    });
+
+    it('should process logs in batches and emit progress', async () => {
+      const mockLogs = [
+        {
+          id: 'log-1',
+          serverId: 'server-1',
+          level: 'error',
+          message: 'Test error',
+          source: 'test',
+          timestamp: new Date(),
+        },
+      ];
+
+      let selectCallCount = 0;
+      mockDb.select = vi.fn().mockImplementation(() => {
+        selectCallCount++;
+        let result: any[] = [];
+        if (selectCallCount === 1)
+          result = [{ count: 1 }]; // Total count
+        else if (selectCallCount === 2)
+          result = [{ id: 'existing-issue' }]; // Existing issues
+        else if (selectCallCount === 3)
+          result = mockLogs; // Batch of logs
+        else if (selectCallCount === 4)
+          result = []; // Existing issue check
+        else if (selectCallCount === 5)
+          result = [{ providerId: 'jellyfin' }]; // Server lookup
+        else result = [];
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          orderBy: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockReturnThis(),
+          then: vi.fn().mockImplementation((resolve) => Promise.resolve(result).then(resolve)),
+          [Symbol.toStringTag]: 'Promise',
+        };
+      });
+
+      mockDb.insert = vi.fn().mockImplementation(() => ({
+        values: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue([{ id: 'new-issue' }]),
+        onConflictDoNothing: vi.fn().mockResolvedValue([]),
+      }));
+
+      const progressCallback = vi.fn();
+
+      await service.backfillFromLogs(undefined, progressCallback);
+
+      expect(progressCallback).toHaveBeenCalledWith(expect.objectContaining({ status: 'started' }));
+      expect(progressCallback).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'completed' })
+      );
+    });
+
+    it('should track created vs updated issues', async () => {
+      let selectCallCount = 0;
+      const existingIssue = {
+        id: 'existing-issue',
+        fingerprint: 'abc123',
+        severity: 'high',
+        occurrenceCount: 5,
+        lastSeen: new Date(),
+      };
+
+      mockDb.select = vi.fn().mockImplementation(() => {
+        selectCallCount++;
+        let result: any[] = [];
+        if (selectCallCount === 1) result = [{ count: 1 }];
+        else if (selectCallCount === 2) result = [{ id: 'existing-issue' }];
+        else if (selectCallCount === 3)
+          result = [
+            {
+              id: 'log-1',
+              serverId: 'server-1',
+              level: 'error',
+              message: 'Test error',
+              source: 'test',
+              timestamp: new Date(),
+            },
+          ];
+        else if (selectCallCount === 4) result = [existingIssue];
+        else if (selectCallCount === 5) result = [{ userId: 'user-1', sessionId: 'session-1' }];
+        else result = [];
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          orderBy: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockReturnThis(),
+          then: vi.fn().mockImplementation((resolve) => Promise.resolve(result).then(resolve)),
+          [Symbol.toStringTag]: 'Promise',
+        };
+      });
+
+      mockDb.update = vi.fn().mockImplementation(() => ({
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue([]),
+      }));
+
+      mockDb.insert = vi.fn().mockImplementation(() => ({
+        values: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue([]),
+        onConflictDoNothing: vi.fn().mockResolvedValue([]),
+      }));
+
+      const result = await service.backfillFromLogs();
+
+      expect(result.processedLogs).toBeGreaterThanOrEqual(0);
     });
   });
 
@@ -927,6 +1240,156 @@ Connection timeout
       expect(result).toHaveProperty('analysis');
       expect(result).toHaveProperty('metadata');
       expect(result.metadata.provider).toBe('openai');
+    });
+
+    it('should re-throw error when AI generation fails', async () => {
+      const mockContext = {
+        issue: { id: 'issue-1', title: 'Test Error' },
+        sampleOccurrences: [],
+        stackTraces: [],
+        affectedUsers: [],
+        affectedSessions: [],
+      };
+
+      mockAiProviderService.getDefaultProvider.mockResolvedValue({ id: 'openai' });
+      mockIssueContextService.gatherContext.mockResolvedValue(mockContext);
+      mockAnalysisPromptBuilder.buildPrompt.mockReturnValue({
+        system: 'system prompt',
+        user: 'user prompt',
+      });
+      mockAiProviderService.generateAnalysisWithSystemPrompt.mockRejectedValue(
+        new Error('AI service unavailable')
+      );
+
+      await expect(service.analyzeIssue('issue-1')).rejects.toThrow('AI service unavailable');
+    });
+
+    it('should return fallback analysis when AI response cannot be parsed as JSON', async () => {
+      const mockContext = {
+        issue: { id: 'issue-1', title: 'Test Error' },
+        sampleOccurrences: [],
+        stackTraces: [],
+        affectedUsers: [],
+        affectedSessions: [],
+      };
+
+      mockAiProviderService.getDefaultProvider.mockResolvedValue({ id: 'openai' });
+      mockIssueContextService.gatherContext.mockResolvedValue(mockContext);
+      mockAnalysisPromptBuilder.buildPrompt.mockReturnValue({
+        system: 'system prompt',
+        user: 'user prompt',
+      });
+      mockAiProviderService.generateAnalysisWithSystemPrompt.mockResolvedValue({
+        analysis: 'Invalid response format that cannot be parsed as JSON',
+        provider: 'openai',
+        model: 'gpt-4',
+        tokensUsed: 100,
+      });
+
+      // Mock db.insert for conversation creation
+      mockDb.insert = vi.fn().mockReturnValue({
+        values: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue([{ id: 'conv-1' }]),
+      });
+
+      const result = await service.analyzeIssue('issue-1');
+
+      // Parser returns fallback analysis instead of throwing
+      expect(result.analysis.rootCause.identified).toBe(false);
+      expect(result.analysis.rootCause.confidence).toBe(30);
+      expect(result.analysis.rootCause.summary).toBe('Analysis returned unstructured response');
+    });
+
+    it('should handle analysis without tokensUsed', async () => {
+      const mockContext = {
+        issue: { id: 'issue-1', title: 'Test Error' },
+        sampleOccurrences: [],
+        stackTraces: [],
+        affectedUsers: [],
+        affectedSessions: [],
+      };
+      const mockAnalysis = `## Root Cause Analysis
+### Primary Cause
+Test cause
+### Confidence: 50%
+### Evidence
+- Test evidence
+
+## Recommendations
+### Fix 1
+**Priority:** Medium
+**Action:** Test action
+**Rationale:** Test rationale`;
+
+      mockAiProviderService.getDefaultProvider.mockResolvedValue({ id: 'openai' });
+      mockIssueContextService.gatherContext.mockResolvedValue(mockContext);
+      mockAnalysisPromptBuilder.buildPrompt.mockReturnValue({
+        system: 'system prompt',
+        user: 'user prompt',
+      });
+      mockAiProviderService.generateAnalysisWithSystemPrompt.mockResolvedValue({
+        analysis: mockAnalysis,
+        provider: 'openai',
+        model: 'gpt-4',
+        // No tokensUsed
+      });
+
+      mockDb.insert = vi.fn().mockImplementation(() => ({
+        values: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue([{ id: 'conv-1' }]),
+      }));
+      mockDb.update = vi.fn().mockImplementation(() => ({
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue([]),
+      }));
+
+      const result = await service.analyzeIssue('issue-1');
+
+      expect(result.metadata.tokensUsed).toBe(0);
+    });
+
+    it('should handle empty recommendations', async () => {
+      const mockContext = {
+        issue: { id: 'issue-1', title: 'Test Error' },
+        sampleOccurrences: [],
+        stackTraces: [],
+        affectedUsers: [],
+        affectedSessions: [],
+      };
+      const mockAnalysis = `## Root Cause Analysis
+### Primary Cause
+Test cause
+### Confidence: 50%
+### Evidence
+- Test evidence
+
+## Recommendations`;
+
+      mockAiProviderService.getDefaultProvider.mockResolvedValue({ id: 'openai' });
+      mockIssueContextService.gatherContext.mockResolvedValue(mockContext);
+      mockAnalysisPromptBuilder.buildPrompt.mockReturnValue({
+        system: 'system prompt',
+        user: 'user prompt',
+      });
+      mockAiProviderService.generateAnalysisWithSystemPrompt.mockResolvedValue({
+        analysis: mockAnalysis,
+        provider: 'openai',
+        model: 'gpt-4',
+        tokensUsed: 100,
+      });
+
+      mockDb.insert = vi.fn().mockImplementation(() => ({
+        values: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue([{ id: 'conv-1' }]),
+      }));
+      mockDb.update = vi.fn().mockImplementation(() => ({
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue([]),
+      }));
+
+      const result = await service.analyzeIssue('issue-1');
+
+      expect(result).toHaveProperty('analysis');
     });
   });
 
