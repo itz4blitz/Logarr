@@ -30,14 +30,14 @@ import { z } from 'zod/v3';
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Username is required'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: z.string().min(1, 'Password is required'),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, isAuthenticated, isLoading } = useAuth();
+  const { login, isAuthenticated, setupRequired, isLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<LoginFormValues>({
@@ -57,6 +57,11 @@ export default function LoginPage() {
     );
   }
 
+  if (setupRequired === true) {
+    router.push('/setup');
+    return null;
+  }
+
   if (isAuthenticated) {
     router.push('/');
     return null;
@@ -66,10 +71,10 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await login(values.username, values.password);
-      toast.success('Welcome to Logarr!');
+      toast.success('Login successful');
       router.push('/');
     } catch (error) {
-      toast.error('Authentication failed', {
+      toast.error('Login failed', {
         description: error instanceof Error ? error.message : 'Invalid username or password',
       });
     } finally {
@@ -85,12 +90,7 @@ export default function LoginPage() {
             <ShieldCheck className="h-6 w-6 text-primary" />
             <CardTitle className="text-2xl font-bold">Logarr</CardTitle>
           </div>
-          <CardDescription>
-            Enter your credentials to access the dashboard.{' '}
-            <span className="text-muted-foreground">
-              First login creates your admin account.
-            </span>
-          </CardDescription>
+          <CardDescription>Sign in to access your dashboard</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -119,7 +119,7 @@ export default function LoginPage() {
                       <Input
                         {...field}
                         type="password"
-                        placeholder="Enter your password (min 8 characters)"
+                        placeholder="Enter your password"
                         autoComplete="current-password"
                       />
                     </FormControl>
@@ -140,13 +140,6 @@ export default function LoginPage() {
               </Button>
             </form>
           </Form>
-
-          <div className="mt-4 rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
-            <p className="font-medium text-foreground">First time?</p>
-            <p className="mt-1">
-              Simply enter your desired username and password. The first login creates your admin account automatically.
-            </p>
-          </div>
         </CardContent>
       </Card>
     </div>

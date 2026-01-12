@@ -1,4 +1,4 @@
-import { IsString, MinLength, MaxLength, Matches } from 'class-validator';
+import { IsString, MinLength, MaxLength, Matches, IsOptional } from 'class-validator';
 
 export class SetupDto {
   @IsString()
@@ -9,15 +9,13 @@ export class SetupDto {
   username!: string;
 
   @IsString()
-  @MinLength(12)
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, {
-    message:
-      'Password must contain at least 12 characters, including uppercase, lowercase, and a number',
+  @MinLength(8, {
+    message: 'Password must be at least 8 characters',
   })
+  @MaxLength(128)
   password!: string;
 
+  @IsOptional()
   @IsString()
-  @MinLength(64)
-  @MaxLength(64)
-  setupToken!: string;
+  setupToken?: string;
 }

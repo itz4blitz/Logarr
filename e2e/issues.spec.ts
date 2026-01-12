@@ -1,11 +1,24 @@
 import { test, expect } from '@playwright/test';
-import { IssuesPage } from './pages';
+import { IssuesPage, LoginPage } from './pages';
+
+// Use test credentials for E2E testing
+const E2E_USERNAME = 'admin';
+const E2E_PASSWORD = 'testpassword123';
 
 test.describe('Issues Page', () => {
   let issuesPage: IssuesPage;
+  let loginPage: LoginPage;
 
   test.beforeEach(async ({ page }) => {
+    loginPage = new LoginPage(page);
     issuesPage = new IssuesPage(page);
+
+    // Login before each test
+    await loginPage.goto();
+    await loginPage.login(E2E_USERNAME, E2E_PASSWORD);
+    await loginPage.expectLoggedIn();
+
+    // Navigate to issues page
     await issuesPage.goto();
   });
 

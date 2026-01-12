@@ -58,22 +58,19 @@ export class AuthController {
   }
 
   /**
-   * Complete initial setup - local only
-   * Creates the admin account using the setup token
+   * Complete initial setup
+   * Creates the admin account (first-time setup only)
    */
   @Post('setup')
   @Public()
-  @UseGuards(LocalOnlyGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Complete initial setup',
     description:
-      'Create the admin account using the setup token. This endpoint is only accessible from local networks.',
+      'Create the admin account. This is only available when no admin account exists yet.',
   })
   @ApiResponse({ status: 200, description: 'Setup completed successfully', type: Object })
   @ApiResponse({ status: 400, description: 'Setup already completed or invalid request' })
-  @ApiResponse({ status: 401, description: 'Invalid setup token' })
-  @ApiResponse({ status: 403, description: 'Not accessible from local network' })
   async setup(@Body() dto: SetupDto): Promise<AuthResponse> {
     this.logger.log('Setup request received');
     return this.authService.setup(dto);

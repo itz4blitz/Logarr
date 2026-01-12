@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { UserPlus } from 'lucide-react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -30,7 +31,6 @@ import { z } from 'zod/v3';
 
 const setupSchema = z
   .object({
-    setupToken: z.string().min(1, 'Setup token is required'),
     username: z
       .string()
       .min(3, 'Username must be at least 3 characters')
@@ -38,7 +38,7 @@ const setupSchema = z
       .regex(/^[a-zA-Z0-9_-]+$/, 'Username can only contain letters, numbers, hyphens, and underscores'),
     password: z
       .string()
-      .min(12, 'Password must be at least 12 characters')
+      .min(8, 'Password must be at least 8 characters')
       .max(128, 'Password must be at most 128 characters'),
     confirmPassword: z.string(),
   })
@@ -51,13 +51,12 @@ type SetupFormValues = z.infer<typeof setupSchema>;
 
 export default function SetupPage() {
   const router = useRouter();
-  const { setup, setupRequired, isLoading } = useAuth();
+  const { setupRequired, isLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<SetupFormValues>({
     resolver: zodResolver(setupSchema),
     defaultValues: {
-      setupToken: '',
       username: 'admin',
       password: '',
       confirmPassword: '',
@@ -74,15 +73,34 @@ export default function SetupPage() {
   }
 
   if (setupRequired === false) {
-    router.push('/');
+    router.push('/login');
     return null;
   }
 
   const onSubmit = async (values: SetupFormValues) => {
     setIsSubmitting(true);
     try {
-      await setup(values.setupToken, values.username, values.password);
-      toast.success('Setup completed successfully!', {
+      // Call login with empty token to trigger first-time setup
+      const response = await fetch('/api/auth/setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: values.username,
+          password: values.password,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Setup failed');
+      }
+
+      const data = await response.json();
+
+      // Store token
+      localStorage.setItem('auth_token', data.accessToken);
+
+      toast.success('Welcome to Logarr!', {
         description: 'Your admin account has been created.',
       });
       router.push('/');
@@ -99,36 +117,17 @@ export default function SetupPage() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Initial Setup</CardTitle>
+          <div className="flex items-center gap-2">
+            <UserPlus className="h-6 w-6 text-primary" />
+            <CardTitle className="text-2xl font-bold">Create Admin Account</CardTitle>
+          </div>
           <CardDescription>
-            Enter the setup token from your server logs and create your admin account.
+            Set up your Logarr administrator account to get started.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="setupToken"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Setup Token</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        placeholder="Enter the 64-character setup token"
-                        autoComplete="one-time-code"
-                        className="font-mono text-sm"
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      The setup token was displayed in your server logs when you started Logarr.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
               <FormField
                 control={form.control}
                 name="username"
@@ -161,7 +160,7 @@ export default function SetupPage() {
                       />
                     </FormControl>
                     <FormDescription>
-                      Must be at least 12 characters long. Use a strong, unique password.
+                      Must be at least 8 characters long.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -188,19 +187,10 @@ export default function SetupPage() {
               />
 
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? 'Creating account...' : 'Complete Setup'}
+                {isSubmitting ? 'Creating account...' : 'Create Account'}
               </Button>
             </form>
           </Form>
-
-          <div className="mt-6 rounded-md bg-muted p-4">
-            <p className="text-sm font-medium">Where do I find the setup token?</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Check your server logs where you run Logarr. Look for a message that says
-              &quot;INITIAL SETUP REQUIRED&quot; with a 64-character token. You can also find it in
-              Docker container logs.
-            </p>
-          </div>
         </CardContent>
       </Card>
     </div>

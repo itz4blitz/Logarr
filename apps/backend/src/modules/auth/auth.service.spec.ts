@@ -184,14 +184,12 @@ describe('AuthService', () => {
 
   describe('setup', () => {
     const mockSetupDto: SetupDto = {
-      setupToken: mockSetupToken,
       username: mockUsername,
       password: mockPassword,
     };
 
-    it('should complete setup successfully with valid token', async () => {
+    it('should complete setup successfully', async () => {
       settingsService.isSetupCompleted.mockResolvedValue(false);
-      settingsService.getSetupToken.mockResolvedValue(mockSetupToken);
       bcrypt.hash.mockResolvedValue(mockPasswordHash);
 
       const result: AuthResponse = await service.setup(mockSetupDto);
@@ -201,7 +199,6 @@ describe('AuthService', () => {
         mockUsername,
         mockPasswordHash
       );
-      expect(settingsService.consumeSetupToken).toHaveBeenCalled();
       expect(settingsService.markSetupCompleted).toHaveBeenCalled();
       expect(result.accessToken).toBe(mockAccessToken);
       expect(result.user.username).toBe(mockUsername);
@@ -214,28 +211,7 @@ describe('AuthService', () => {
       await expect(service.setup(mockSetupDto)).rejects.toThrow(
         new BadRequestException('Setup has already been completed')
       );
-      expect(settingsService.getSetupToken).not.toHaveBeenCalled();
-    });
-
-    it('should throw UnauthorizedException with invalid setup token', async () => {
-      settingsService.isSetupCompleted.mockResolvedValue(false);
-      settingsService.getSetupToken.mockResolvedValue(mockSetupToken);
-
-      const invalidDto = { ...mockSetupDto, setupToken: 'invalid-token' };
-
-      await expect(service.setup(invalidDto)).rejects.toThrow(
-        new UnauthorizedException('Invalid setup token')
-      );
       expect(settingsService.setAdminCredentials).not.toHaveBeenCalled();
-    });
-
-    it('should throw UnauthorizedException when no setup token exists', async () => {
-      settingsService.isSetupCompleted.mockResolvedValue(false);
-      settingsService.getSetupToken.mockResolvedValue(null);
-
-      await expect(service.setup(mockSetupDto)).rejects.toThrow(
-        new UnauthorizedException('Invalid setup token')
-      );
     });
   });
 
@@ -262,32 +238,12 @@ describe('AuthService', () => {
       expect(result.user.createdAt).toBe(mockCreatedAt);
     });
 
-    it('should create admin account on first login when setup not completed', async () => {
-      settingsService.isSetupCompleted.mockResolvedValue(false);
-      bcrypt.hash.mockResolvedValue(mockPasswordHash);
-
-      const result: AuthResponse = await service.login(mockLoginDto);
-
-      expect(bcrypt.hash).toHaveBeenCalledWith(mockPassword, 12);
-      expect(settingsService.setAdminCredentials).toHaveBeenCalledWith(
-        mockUsername,
-        mockPasswordHash
-      );
-      expect(settingsService.markSetupCompleted).toHaveBeenCalled();
-      expect(result.accessToken).toBe(mockAccessToken);
-      expect(result.user.username).toBe(mockUsername);
-      expect(result.user.createdAt).toBeDefined();
-    });
-
-    it('should throw BadRequestException for short password on first login', async () => {
+    it('should throw BadRequestException when setup not completed', async () => {
       settingsService.isSetupCompleted.mockResolvedValue(false);
 
-      const shortPasswordDto = { username: mockUsername, password: 'short' };
-
-      await expect(service.login(shortPasswordDto)).rejects.toThrow(
-        new BadRequestException('Password must be at least 8 characters')
+      await expect(service.login(mockLoginDto)).rejects.toThrow(
+        new BadRequestException('Setup must be completed first')
       );
-      expect(settingsService.setAdminCredentials).not.toHaveBeenCalled();
     });
 
     it('should throw UnauthorizedException with invalid username', async () => {

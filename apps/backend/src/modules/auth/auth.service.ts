@@ -81,7 +81,7 @@ export class AuthService {
 
   /**
    * Complete setup by creating the admin account
-   * Validates the setup token and stores admin credentials
+   * No token required - this is for first-time setup only
    */
   async setup(dto: SetupDto): Promise<AuthResponse> {
     // Check if setup is already completed
@@ -90,21 +90,11 @@ export class AuthService {
       throw new BadRequestException('Setup has already been completed');
     }
 
-    // Validate the setup token
-    const storedToken = await this.settingsService.getSetupToken();
-    if (!storedToken || storedToken !== dto.setupToken) {
-      this.logger.warn('Invalid setup token provided');
-      throw new UnauthorizedException('Invalid setup token');
-    }
-
     // Hash the password
     const passwordHash = await bcrypt.hash(dto.password, this.BCRYPT_ROUNDS);
 
     // Store admin credentials
     await this.settingsService.setAdminCredentials(dto.username, passwordHash);
-
-    // Consume the setup token (remove it)
-    await this.settingsService.consumeSetupToken();
 
     // Mark setup as completed
     await this.settingsService.markSetupCompleted();
@@ -125,45 +115,15 @@ export class AuthService {
 
   /**
    * Validate credentials and return a JWT token
-   * First successful login automatically creates the admin account
    */
   async login(dto: LoginDto): Promise<AuthResponse> {
     // Check if setup has been completed
     const isSetupCompleted = await this.settingsService.isSetupCompleted();
-
     if (!isSetupCompleted) {
-      // First user - create admin account automatically
-      this.logger.log(`Creating first admin account for user: ${dto.username}`);
-
-      // Validate password strength
-      if (dto.password.length < 8) {
-        throw new BadRequestException('Password must be at least 8 characters');
-      }
-
-      // Hash the password
-      const passwordHash = await bcrypt.hash(dto.password, this.BCRYPT_ROUNDS);
-
-      // Store admin credentials
-      await this.settingsService.setAdminCredentials(dto.username, passwordHash);
-
-      // Mark setup as completed (no token needed for first user)
-      await this.settingsService.markSetupCompleted();
-
-      this.logger.log(`Initial setup completed - admin account created for user: ${dto.username}`);
-
-      // Generate JWT token
-      const accessToken = await this.generateToken(dto.username);
-
-      return {
-        accessToken,
-        user: {
-          username: dto.username,
-          createdAt: new Date().toISOString(),
-        },
-      };
+      throw new BadRequestException('Setup must be completed first');
     }
 
-    // Setup completed - validate credentials normally
+    // Get stored credentials
     const { username, passwordHash } = await this.settingsService.getAdminCredentials();
 
     if (!username || !passwordHash) {

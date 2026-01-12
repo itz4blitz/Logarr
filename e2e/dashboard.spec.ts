@@ -1,12 +1,22 @@
 import { test, expect } from '@playwright/test';
-import { DashboardPage } from './pages';
+import { DashboardPage, LoginPage } from './pages';
+
+// Use test credentials for E2E testing
+const E2E_USERNAME = 'admin';
+const E2E_PASSWORD = 'testpassword123';
 
 test.describe('Dashboard', () => {
   let dashboardPage: DashboardPage;
+  let loginPage: LoginPage;
 
   test.beforeEach(async ({ page }) => {
+    loginPage = new LoginPage(page);
     dashboardPage = new DashboardPage(page);
-    await dashboardPage.goto();
+
+    // Login before each test
+    await loginPage.goto();
+    await loginPage.login(E2E_USERNAME, E2E_PASSWORD);
+    await loginPage.expectLoggedIn();
   });
 
   test('should load with correct title', async () => {
