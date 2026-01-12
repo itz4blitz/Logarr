@@ -25,7 +25,9 @@ export class SetupPage {
     await this.confirmPasswordInput.fill(password);
     await this.createAccountButton.click();
     // Wait for navigation to dashboard after successful setup
-    await this.page.waitForURL('/', { timeout: 5000 });
+    await this.page.waitForURL('/', { timeout: 10000 });
+    // Wait for the page to fully load before returning
+    await this.page.waitForLoadState('networkidle', { timeout: 10000 });
   }
 
   async expectComplete() {

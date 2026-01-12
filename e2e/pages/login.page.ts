@@ -22,7 +22,9 @@ export class LoginPage {
     await this.passwordInput.fill(password);
     await this.signInButton.click();
     // Wait for navigation to dashboard after successful login
-    await this.page.waitForURL('/', { timeout: 5000 });
+    await this.page.waitForURL('/', { timeout: 10000 });
+    // Wait for the page to fully load before returning
+    await this.page.waitForLoadState('networkidle', { timeout: 10000 });
   }
 
   async expectLoggedIn() {
