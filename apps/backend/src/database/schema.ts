@@ -639,11 +639,6 @@ export const retentionHistory = pgTable(
 );
 
 /**
- * API Key types enum
- */
-export const apiKeyTypeEnum = pgEnum('api_key_type', ['mobile', 'web', 'cli', 'integration']);
-
-/**
  * API Keys table - stores API keys for external access
  * Works for mobile apps, web clients, CLI tools, and third-party integrations
  */
@@ -655,8 +650,6 @@ export const apiKeys = pgTable(
     name: text('name').notNull(),
     // The actual API key (hashed before storage)
     keyHash: text('key_hash').notNull().unique(),
-    // Type of client using this key
-    type: apiKeyTypeEnum('type').notNull().default('mobile'),
     // Device/app identifier (e.g., "iPhone 15 Pro", "ArrCaptain iOS v1.0")
     deviceInfo: text('device_info'),
     // Is this key currently active?
@@ -682,7 +675,6 @@ export const apiKeys = pgTable(
   },
   (table) => [
     index('api_keys_key_hash_idx').on(table.keyHash),
-    index('api_keys_type_idx').on(table.type),
     index('api_keys_is_enabled_idx').on(table.isEnabled),
     index('api_keys_last_used_at_idx').on(table.lastUsedAt),
   ]

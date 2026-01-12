@@ -36,7 +36,6 @@ describe('ApiKeysService', () => {
         id: '123e4567-e89b-12d3-a456-426614174000',
         name: 'Test Device',
         keyHash: 'abc123',
-        type: 'mobile' as const,
         deviceInfo: 'iPhone 15 Pro',
         isEnabled: true,
         rateLimit: null,
@@ -55,7 +54,6 @@ describe('ApiKeysService', () => {
 
       const result = await service.createApiKey({
         name: 'Test Device',
-        type: 'mobile',
         deviceInfo: 'iPhone 15 Pro',
       });
 
@@ -69,7 +67,6 @@ describe('ApiKeysService', () => {
         id: '123e4567-e89b-12d3-a456-426614174000',
         name: 'Test Key',
         keyHash: 'abc123',
-        type: 'integration' as const,
         deviceInfo: 'CI/CD Pipeline',
         isEnabled: true,
         rateLimit: 1000,
@@ -88,7 +85,6 @@ describe('ApiKeysService', () => {
 
       const result = await service.createApiKey({
         name: 'Test Key',
-        type: 'integration',
         deviceInfo: 'CI/CD Pipeline',
         rateLimit: 1000,
         rateLimitTtl: 60000,
@@ -110,7 +106,6 @@ describe('ApiKeysService', () => {
       await expect(
         service.createApiKey({
           name: 'Test',
-          type: 'mobile',
         })
       ).rejects.toThrow(ConflictException);
     });
@@ -120,7 +115,6 @@ describe('ApiKeysService', () => {
         id: '123e4567-e89b-12d3-a456-426614174000',
         name: 'Test',
         keyHash: 'hash',
-        type: 'mobile' as const,
         deviceInfo: null,
         isEnabled: true,
         rateLimit: null,
@@ -137,8 +131,8 @@ describe('ApiKeysService', () => {
 
       configureMockDb(mockDb, { insert: [mockApiKey] });
 
-      const key1 = await service.createApiKey({ name: 'Test1', type: 'mobile' });
-      const key2 = await service.createApiKey({ name: 'Test2', type: 'mobile' });
+      const key1 = await service.createApiKey({ name: 'Test1' });
+      const key2 = await service.createApiKey({ name: 'Test2' });
 
       expect(key1.key).not.toBe(key2.key);
     });
@@ -150,7 +144,6 @@ describe('ApiKeysService', () => {
         id: '123e4567-e89b-12d3-a456-426614174000',
         name: 'Test',
         keyHash: 'abc123',
-        type: 'mobile' as const,
         isEnabled: true,
         requestCount: 0,
         scopes: [],
@@ -183,7 +176,6 @@ describe('ApiKeysService', () => {
         id: '123e4567-e89b-12d3-a456-426614174000',
         name: 'Test',
         keyHash: 'abc123',
-        type: 'mobile' as const,
         isEnabled: false,
         requestCount: 0,
         scopes: [],
@@ -204,7 +196,6 @@ describe('ApiKeysService', () => {
         id: '123e4567-e89b-12d3-a456-426614174000',
         name: 'Test',
         keyHash: 'abc123',
-        type: 'mobile' as const,
         isEnabled: true,
         requestCount: 0,
         scopes: [],
@@ -251,7 +242,6 @@ describe('ApiKeysService', () => {
           id: '123e4567-e89b-12d3-a456-426614174000',
           name: 'Key 1',
           keyHash: 'hash1',
-          type: 'mobile' as const,
           isEnabled: true,
           requestCount: 10,
           scopes: [],
@@ -262,7 +252,6 @@ describe('ApiKeysService', () => {
           id: '987fcfed-cba9-8765-4321-155574277555',
           name: 'Key 2',
           keyHash: 'hash2',
-          type: 'web' as const,
           isEnabled: true,
           requestCount: 5,
           scopes: [],
@@ -295,7 +284,6 @@ describe('ApiKeysService', () => {
         id: '123e4567-e89b-12d3-a456-426614174000',
         name: 'Test Key',
         keyHash: 'hash',
-        type: 'mobile' as const,
         isEnabled: true,
         requestCount: 100,
         scopes: [],
@@ -325,7 +313,6 @@ describe('ApiKeysService', () => {
         id: '123e4567-e89b-12d3-a456-426614174000',
         name: 'Old Name',
         keyHash: 'hash',
-        type: 'mobile' as const,
         deviceInfo: null,
         isEnabled: true,
         rateLimit: null,
@@ -395,7 +382,6 @@ describe('ApiKeysService', () => {
         id: '123e4567-e89b-12d3-a456-426614174000',
         name: 'Test',
         keyHash: 'hash',
-        type: 'mobile' as const,
         isEnabled: true,
         requestCount: 0,
         scopes: [],
@@ -627,7 +613,6 @@ describe('ApiKeysService', () => {
       await expect(
         service.createApiKey({
           name: 'Test',
-          type: 'mobile',
         })
       ).rejects.toThrow('Failed to create API key');
     });
@@ -641,7 +626,6 @@ describe('ApiKeysService', () => {
       await expect(
         service.createApiKey({
           name: 'Test',
-          type: 'mobile',
         })
       ).rejects.toThrow('Database connection failed');
     });
@@ -666,7 +650,6 @@ describe('ApiKeysService', () => {
         id: '123e4567-e89b-12d3-a456-426614174000',
         name: 'Test',
         keyHash: 'hash',
-        type: 'mobile' as const,
         isEnabled: true,
         requestCount: 0,
         scopes: [],

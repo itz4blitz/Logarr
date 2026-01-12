@@ -14,7 +14,6 @@ interface RequestWithApiKey {
   apiKey?: {
     id: string;
     name: string;
-    type: string;
     rateLimit?: number;
     rateLimitTtl?: number;
   };
@@ -53,7 +52,6 @@ export class ApiKeyGuard implements CanActivate {
     request.apiKey = {
       id: keyRecord.id,
       name: keyRecord.name,
-      type: keyRecord.type,
       ...(keyRecord.rateLimit !== null && { rateLimit: keyRecord.rateLimit }),
       ...(keyRecord.rateLimitTtl !== null && { rateLimitTtl: keyRecord.rateLimitTtl }),
     };

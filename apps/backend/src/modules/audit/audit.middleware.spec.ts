@@ -7,6 +7,22 @@ import { AuditService } from './audit.service';
 import type { TestingModule } from '@nestjs/testing';
 import type { Request, Response } from 'express';
 
+// Local interface for tests matching the middleware's expectation
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    email?: string;
+  };
+  session?: {
+    id: string;
+  };
+  apiKey?: {
+    id: string;
+    name: string;
+    type: string;
+  };
+}
+
 describe('AuditMiddleware', () => {
   let middleware: AuditMiddleware;
   let auditService: any;
@@ -40,7 +56,7 @@ describe('AuditMiddleware', () => {
     vi.clearAllMocks();
   });
 
-  const createMockRequest = (overrides: Partial<Request> = {}): Request => {
+  const createMockRequest = (overrides: Partial<Request> = {}): AuthenticatedRequest => {
     return {
       path: '/api/servers',
       method: 'GET',
@@ -49,7 +65,7 @@ describe('AuditMiddleware', () => {
       },
       ip: '127.0.0.1',
       ...overrides,
-    } as unknown as Request;
+    } as unknown as AuthenticatedRequest;
   };
 
   const createMockResponse = (): Response & { finishCallback?: () => void } => {

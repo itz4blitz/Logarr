@@ -722,12 +722,9 @@ export interface DashboardData {
 }
 
 // API Keys
-export type ApiKeyType = 'mobile' | 'web' | 'cli' | 'integration';
-
 export interface ApiKeyInfo {
   id: string;
   name: string;
-  type: ApiKeyType;
   isEnabled: boolean;
   deviceInfo: string | null;
   rateLimit: number | null;
@@ -744,7 +741,6 @@ export interface ApiKeyInfo {
 
 export interface CreateApiKeyDto {
   name: string;
-  type: ApiKeyType;
   notes?: string;
   rateLimit?: number;
   rateLimitTtl?: number;
@@ -838,6 +834,46 @@ export interface AuditStatistics {
   byUser: Array<{ userId: string; count: number }>;
 }
 
+// Auth types
+export interface SetupStatus {
+  setupRequired: boolean;
+  setupToken?: string;
+}
+
+export interface SetupDto {
+  username: string;
+  password: string;
+  setupToken: string;
+}
+
+export interface LoginDto {
+  username: string;
+  password: string;
+}
+
+export interface UpdatePasswordDto {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface AuthResponse {
+  accessToken: string;
+  user: {
+    username: string;
+    createdAt: string;
+  };
+}
+
+export interface AuthUser {
+  username: string;
+  createdAt: string | null;
+}
+
+export interface SecuritySettings {
+  jwtExpirationMs: number;
+  sessionTimeoutMs: number;
+}
+
 // API Client
 class ApiClient {
   private baseUrl: string;
@@ -846,13 +882,26 @@ class ApiClient {
     this.baseUrl = baseUrl;
   }
 
+  private getToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('auth_token');
+  }
+
   private async request<T>(path: string, options?: RequestInit): Promise<T> {
+    const token = this.getToken();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(options?.headers as Record<string, string> ?? {}),
+    };
+
+    // Add Authorization header if token exists
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
     const response = await fetch(`${this.baseUrl}${path}`, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
+      headers,
     });
 
     if (!response.ok) {
@@ -1367,6 +1416,88 @@ class ApiClient {
 
   async getAuditStatistics(days: number = 30): Promise<AuditStatistics> {
     return this.request<AuditStatistics>(`/settings/audit/statistics?days=${days}`);
+  }
+
+  // Token helpers
+  private setToken(token: string): void {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('auth_token', token);
+    }
+  }
+
+  private clearToken(): void {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('auth_token');
+    }
+  }
+
+  private hasToken(): boolean {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('auth_token') !== null;
+  }
+
+  // Auth methods (setup/login don't need auth token)
+  async getSetupStatus(): Promise<SetupStatus> {
+    return this.request<SetupStatus>('/auth/setup');
+  }
+
+  async setup(dto: SetupDto): Promise<AuthResponse> {
+    const response = await this.request<AuthResponse>('/auth/setup', {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    });
+    // Store token on successful setup
+    this.setToken(response.accessToken);
+    return response;
+  }
+
+  async login(dto: LoginDto): Promise<AuthResponse> {
+    const response = await this.request<AuthResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    });
+    // Store token on successful login
+    this.setToken(response.accessToken);
+    return response;
+  }
+
+  // Methods below require auth token (included automatically via request())
+  async me(): Promise<AuthUser> {
+    return this.request<AuthUser>('/auth/me');
+  }
+
+  async updatePassword(dto: UpdatePasswordDto): Promise<void> {
+    return this.request<void>('/auth/password', {
+      method: 'PUT',
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async logout(): Promise<void> {
+    const response = await this.request<void>('/auth/logout', {
+      method: 'POST',
+    });
+    // Clear token on logout
+    this.clearToken();
+    return response;
+  }
+
+  async getSecuritySettings(): Promise<SecuritySettings> {
+    return this.request<SecuritySettings>('/settings/security');
+  }
+
+  async updateSecuritySettings(
+    settings: Partial<SecuritySettings>
+  ): Promise<SecuritySettings> {
+    return this.request<SecuritySettings>('/settings/security', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    });
+  }
+
+  // Check if user is authenticated (has a valid token)
+  isAuthenticated(): boolean {
+    return this.hasToken();
   }
 }
 

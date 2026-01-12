@@ -70,7 +70,6 @@ describe('ApiKeysController', () => {
       expect(result).toEqual(mockResult);
       expect(mockApiKeysService.createApiKey).toHaveBeenCalledWith({
         name: 'Test Device',
-        type: 'mobile',
       });
     });
 
@@ -115,7 +114,6 @@ describe('ApiKeysController', () => {
       expect(result).toEqual(mockResult);
       expect(mockApiKeysService.createApiKey).toHaveBeenCalledWith({
         name: 'Integration Key',
-        type: 'integration',
         deviceInfo: 'CI/CD Pipeline',
         rateLimit: 1000,
         rateLimitTtl: 60000,
@@ -161,7 +159,6 @@ describe('ApiKeysController', () => {
 
       expect(mockApiKeysService.createApiKey).toHaveBeenCalledWith({
         name: 'Test',
-        type: 'web',
         notes: '  ',
       });
     });
@@ -200,7 +197,6 @@ describe('ApiKeysController', () => {
 
       expect(mockApiKeysService.createApiKey).toHaveBeenCalledWith({
         name: 'Test',
-        type: 'cli',
       });
     });
   });
@@ -254,7 +250,6 @@ describe('ApiKeysController', () => {
       expect(result[0]).toEqual({
         id: '123e4567-e89b-12d3-a456-426614174000',
         name: 'Mobile Key',
-        type: 'mobile',
         deviceInfo: 'iPhone 15 Pro',
         isEnabled: true,
         rateLimit: null,
@@ -308,7 +303,6 @@ describe('ApiKeysController', () => {
       expect(result).toEqual({
         id: '123e4567-e89b-12d3-a456-426614174000',
         name: 'Test Key',
-        type: 'integration',
         deviceInfo: 'CI/CD',
         isEnabled: true,
         rateLimit: 500,
@@ -436,7 +430,6 @@ describe('ApiKeysController', () => {
       expect(result).toEqual({
         id: '123e4567-e89b-12d3-a456-426614174000',
         name: 'Updated Name',
-        type: 'mobile',
         deviceInfo: 'New Device',
         isEnabled: false,
         rateLimit: 2000,

@@ -52,11 +52,10 @@ export class ApiKeysController {
     key: string;
     apiKey: unknown;
   }> {
-    this.logger.log(`Creating API key: ${dto.name} (${dto.type})`);
+    this.logger.log(`Creating API key: ${dto.name}`);
 
     const serviceDto: {
       name: string;
-      type: 'mobile' | 'web' | 'cli' | 'integration';
       deviceInfo?: string;
       rateLimit?: number;
       rateLimitTtl?: number;
@@ -65,7 +64,6 @@ export class ApiKeysController {
       notes?: string;
     } = {
       name: dto.name,
-      type: dto.type,
     };
 
     if (dto.deviceInfo !== undefined && dto.deviceInfo !== null && dto.deviceInfo !== '') {
@@ -109,7 +107,6 @@ export class ApiKeysController {
     return keys.map((key) => ({
       id: key.id,
       name: key.name,
-      type: key.type,
       deviceInfo: key.deviceInfo,
       isEnabled: key.isEnabled,
       rateLimit: key.rateLimit,
@@ -146,7 +143,6 @@ export class ApiKeysController {
     return {
       id: key.id,
       name: key.name,
-      type: key.type,
       deviceInfo: key.deviceInfo,
       isEnabled: key.isEnabled,
       rateLimit: key.rateLimit,
@@ -243,7 +239,6 @@ export class ApiKeysController {
     return {
       id: key.id,
       name: key.name,
-      type: key.type,
       deviceInfo: key.deviceInfo,
       isEnabled: key.isEnabled,
       rateLimit: key.rateLimit,

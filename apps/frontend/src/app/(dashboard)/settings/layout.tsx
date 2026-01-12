@@ -1,6 +1,6 @@
 'use client';
 
-import { Zap, BarChart3, Database, Key, FileSearch } from 'lucide-react';
+import { Zap, BarChart3, Database, Key, FileSearch, Shield } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -16,6 +16,11 @@ const tabs = [
     label: 'API Keys',
     href: '/settings/api-keys',
     icon: Key,
+  },
+  {
+    label: 'Security',
+    href: '/settings/security',
+    icon: Shield,
   },
   {
     label: 'Audit Logs',

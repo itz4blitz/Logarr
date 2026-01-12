@@ -71,7 +71,6 @@ describe('ApiKeyGuard', () => {
         id: '123e4567-e89b-12d3-a456-426614174000',
         name: 'Test Device',
         keyHash: 'hash',
-        type: 'mobile' as const,
         deviceInfo: 'iPhone 15 Pro',
         isEnabled: true,
         rateLimit: null,
@@ -106,7 +105,6 @@ describe('ApiKeyGuard', () => {
       expect(mockRequest.apiKey).toEqual({
         id: mockApiKey.id,
         name: mockApiKey.name,
-        type: mockApiKey.type,
       });
     });
 
@@ -184,7 +182,6 @@ describe('ApiKeyGuard', () => {
         id: '123e4567-e89b-12d3-a456-426614174000',
         name: 'Test Device',
         keyHash: 'hash',
-        type: 'mobile' as const,
         deviceInfo: 'iPhone 15 Pro',
         isEnabled: true,
         rateLimit: 1000,
@@ -218,7 +215,6 @@ describe('ApiKeyGuard', () => {
       expect(mockRequest.apiKey).toEqual({
         id: mockApiKey.id,
         name: mockApiKey.name,
-        type: mockApiKey.type,
         rateLimit: 1000,
         rateLimitTtl: 60000,
       });
@@ -229,7 +225,6 @@ describe('ApiKeyGuard', () => {
         id: '123e4567-e89b-12d3-a456-426614174000',
         name: 'Test Device',
         keyHash: 'hash',
-        type: 'mobile' as const,
         deviceInfo: 'iPhone 15 Pro',
         isEnabled: true,
         rateLimit: null,
@@ -263,7 +258,6 @@ describe('ApiKeyGuard', () => {
       expect(mockRequest.apiKey).toEqual({
         id: mockApiKey.id,
         name: mockApiKey.name,
-        type: mockApiKey.type,
       });
       expect(mockRequest.apiKey).not.toHaveProperty('rateLimit');
       expect(mockRequest.apiKey).not.toHaveProperty('rateLimitTtl');
@@ -277,7 +271,6 @@ describe('ApiKeyGuard', () => {
           id: '123e4567-e89b-12d3-a456-426614174000',
           name: `${type} Key`,
           keyHash: 'hash',
-          type,
           deviceInfo: 'Test Device',
           isEnabled: true,
           rateLimit: null,
@@ -309,7 +302,7 @@ describe('ApiKeyGuard', () => {
         const result = await guard.canActivate(mockContext);
 
         expect(result).toBe(true);
-        expect(mockRequest.apiKey?.type).toBe(type);
+        expect(mockRequest.apiKey?.name).toBe(`${type} Key`);
       }
     });
   });
@@ -526,7 +519,6 @@ describe('ApiKeyGuard', () => {
         id: '123e4567-e89b-12d3-a456-426614174000',
         name: 'Test Device',
         keyHash: 'hash',
-        type: 'mobile' as const,
         deviceInfo: 'iPhone 15 Pro',
         isEnabled: true,
         rateLimit: null,
@@ -577,7 +569,6 @@ describe('ApiKeyGuard', () => {
         id: '123e4567-e89b-12d3-a456-426614174000',
         name: 'Test Device',
         keyHash: 'hash',
-        type: 'mobile' as const,
         deviceInfo: 'iPhone 15 Pro',
         isEnabled: true,
         rateLimit: null,
@@ -652,7 +643,6 @@ describe('ApiKeyGuard', () => {
         id: '123e4567-e89b-12d3-a456-426614174000',
         name: 'Test Device',
         keyHash: 'hash',
-        type: 'mobile' as const,
         deviceInfo: 'iPhone 15 Pro',
         isEnabled: true,
         rateLimit: null,
@@ -721,7 +711,6 @@ describe('ApiKeyGuard', () => {
         id: '123e4567-e89b-12d3-a456-426614174000',
         name: 'Test Device',
         keyHash: 'hash',
-        type: 'mobile' as const,
         deviceInfo: 'iPhone 15 Pro',
         isEnabled: true,
         rateLimit: null,
@@ -779,7 +768,6 @@ describe('ApiKeyGuard', () => {
         id: 'key-id-123',
         name: 'Test Device',
         keyHash: 'hash',
-        type: 'mobile' as const,
         deviceInfo: 'Test Device',
         isEnabled: true,
         rateLimit: null,
@@ -820,7 +808,6 @@ describe('ApiKeyGuard', () => {
         id: 'key-id-123',
         name: 'Test Device',
         keyHash: 'hash',
-        type: 'mobile' as const,
         deviceInfo: 'Test Device',
         isEnabled: true,
         rateLimit: null,

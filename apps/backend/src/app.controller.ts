@@ -7,6 +7,7 @@ import { sql, eq, and } from 'drizzle-orm';
 
 import { DATABASE_CONNECTION } from './database/database.module';
 import * as schema from './database/schema';
+import { Public } from './modules/auth/guards/unified-auth.guard';
 import { REDIS_CLIENT } from './redis/redis.module';
 
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
@@ -91,6 +92,7 @@ export class AppController {
 
   @Get('version')
   @ApiOperation({ summary: 'Get application version' })
+  @Public()
   getVersion(): VersionResponse {
     return {
       version: this.version,
@@ -100,6 +102,7 @@ export class AppController {
 
   @Get()
   @ApiOperation({ summary: 'Health check' })
+  @Public()
   async health(): Promise<HealthResponse> {
     const services: HealthResponse['services'] = {
       api: { status: 'ok' },

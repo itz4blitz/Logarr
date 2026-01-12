@@ -9,7 +9,6 @@ import * as schema from '../../database/schema';
 
 interface CreateApiKeyDto {
   name: string;
-  type: 'mobile' | 'web' | 'cli' | 'integration';
   deviceInfo?: string;
   rateLimit?: number;
   rateLimitTtl?: number;
@@ -44,7 +43,7 @@ export class ApiKeysService {
   async createApiKey(
     dto: CreateApiKeyDto
   ): Promise<{ key: string; apiKey: typeof schema.apiKeys.$inferSelect }> {
-    this.logger.log(`Creating API key: ${dto.name} (${dto.type})`);
+    this.logger.log(`Creating API key: ${dto.name}`);
 
     // Generate a random 32-byte key and encode as hex
     const key = randomBytes(32).toString('hex');
@@ -59,7 +58,6 @@ export class ApiKeysService {
         .values({
           name: dto.name,
           keyHash,
-          type: dto.type,
           deviceInfo: dto.deviceInfo,
           isEnabled: true,
           rateLimit: dto.rateLimit,

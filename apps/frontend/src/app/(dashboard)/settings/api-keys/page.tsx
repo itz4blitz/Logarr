@@ -6,10 +6,6 @@ import {
   Key,
   Check,
   Loader2,
-  Smartphone,
-  Globe,
-  Terminal,
-  Link as LinkIcon,
   Copy,
   AlertCircle,
   Trash2,
@@ -60,13 +56,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -76,20 +65,6 @@ import {
   useDeleteApiKey,
   useApiKeyAuditLogs,
 } from '@/hooks/use-api';
-
-const apiKeyTypeIcons = {
-  mobile: Smartphone,
-  web: Globe,
-  cli: Terminal,
-  integration: LinkIcon,
-};
-
-const apiKeyTypeLabels = {
-  mobile: 'Mobile',
-  web: 'Web',
-  cli: 'CLI',
-  integration: 'Integration',
-};
 
 function ApiKeysGrid({
   apiKeys,
@@ -165,35 +140,31 @@ function ApiKeysGrid({
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {apiKeys.map((apiKey) => {
-        const Icon = apiKeyTypeIcons[apiKey.type];
-        return (
-          <Card key={apiKey.id}>
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex min-w-0 flex-1 items-center gap-2">
-                  <Icon className="text-muted-foreground h-4 w-4 shrink-0" />
-                  <CardTitle className="truncate text-base">{apiKey.name}</CardTitle>
-                </div>
-                <Badge
-                  variant={apiKey.isEnabled ? 'default' : 'secondary'}
-                  className="shrink-0 text-xs"
-                >
-                  {apiKey.isEnabled ? 'Enabled' : 'Disabled'}
-                </Badge>
+      {apiKeys.map((apiKey) => (
+        <Card key={apiKey.id}>
+          <CardHeader className="pb-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <Key className="text-muted-foreground h-4 w-4 shrink-0" />
+                <CardTitle className="truncate text-base">{apiKey.name}</CardTitle>
               </div>
-              <CardDescription className="mt-1 flex items-center gap-2 text-xs">
-                <span>{apiKeyTypeLabels[apiKey.type]}</span>
-                <span>•</span>
-                <span className="font-mono text-xs">{apiKey.id}</span>
-                {apiKey.lastUsedIp && (
-                  <>
-                    <span>•</span>
-                    <span className="truncate">{apiKey.lastUsedIp}</span>
-                  </>
-                )}
-              </CardDescription>
-            </CardHeader>
+              <Badge
+                variant={apiKey.isEnabled ? 'default' : 'secondary'}
+                className="shrink-0 text-xs"
+              >
+                {apiKey.isEnabled ? 'Enabled' : 'Disabled'}
+              </Badge>
+            </div>
+            <CardDescription className="mt-1 flex items-center gap-2 text-xs">
+              <span className="font-mono text-xs">{apiKey.id}</span>
+              {apiKey.lastUsedIp && (
+                <>
+                  <span>•</span>
+                  <span className="truncate">{apiKey.lastUsedIp}</span>
+                </>
+              )}
+            </CardDescription>
+          </CardHeader>
             <CardContent className="space-y-2 pb-3">
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="flex flex-col">
@@ -231,35 +202,34 @@ function ApiKeysGrid({
                 </p>
               )}
             </CardContent>
-            <CardFooter className="flex gap-2 pt-0">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 flex-1 text-xs"
-                onClick={() => onEdit(apiKey)}
-              >
-                Edit
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 flex-1 text-xs"
-                onClick={() => onViewAudit(apiKey.id)}
-              >
-                Audit Log
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 text-xs"
-                onClick={() => onDelete(apiKey)}
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            </CardFooter>
-          </Card>
-        );
-      })}
+          <CardFooter className="flex gap-2 pt-0">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 flex-1 text-xs"
+              onClick={() => onEdit(apiKey)}
+            >
+              Edit
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 flex-1 text-xs"
+              onClick={() => onViewAudit(apiKey.id)}
+            >
+              Audit Log
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 text-xs"
+              onClick={() => onDelete(apiKey)}
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </CardFooter>
+        </Card>
+      ))}
     </div>
   );
 }
@@ -279,7 +249,6 @@ function CreateEditDialog({
 }) {
   const [formData, setFormData] = useState({
     name: apiKey?.name || '',
-    type: apiKey?.type || 'mobile',
     notes: apiKey?.notes || '',
     rateLimit: apiKey?.rateLimit?.toString() || '0',
     rateLimitTtl: apiKey?.rateLimitTtl?.toString() || '60000',
@@ -290,7 +259,6 @@ function CreateEditDialog({
   useEffect(() => {
     setFormData({
       name: apiKey?.name || '',
-      type: apiKey?.type || 'mobile',
       notes: apiKey?.notes || '',
       rateLimit: apiKey?.rateLimit?.toString() || '0',
       rateLimitTtl: apiKey?.rateLimitTtl?.toString() || '60000',
@@ -315,10 +283,8 @@ function CreateEditDialog({
       };
       onSubmit(data);
     } else {
-      // CreateApiKeyDto - type is required
       const data: CreateApiKeyDto = {
         name: formData.name,
-        type: formData.type as 'mobile' | 'web' | 'cli' | 'integration',
         notes: formData.notes || undefined,
         rateLimit: isNaN(rateLimitNum) || rateLimitNum === 0 ? undefined : rateLimitNum,
         rateLimitTtl: isNaN(rateLimitTtlNum) || rateLimitTtlNum === 0 ? undefined : rateLimitTtlNum,
@@ -344,49 +310,6 @@ function CreateEditDialog({
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="type">Type</Label>
-            <Select
-              value={formData.type}
-              onValueChange={(value) =>
-                setFormData({
-                  ...formData,
-                  type: value as 'mobile' | 'web' | 'cli' | 'integration',
-                })
-              }
-              disabled={!!apiKey}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="mobile">
-                  <div className="flex items-center gap-2">
-                    <Smartphone className="h-4 w-4" />
-                    Mobile App
-                  </div>
-                </SelectItem>
-                <SelectItem value="web">
-                  <div className="flex items-center gap-2">
-                    <Globe className="h-4 w-4" />
-                    Web App
-                  </div>
-                </SelectItem>
-                <SelectItem value="cli">
-                  <div className="flex items-center gap-2">
-                    <Terminal className="h-4 w-4" />
-                    CLI Tool
-                  </div>
-                </SelectItem>
-                <SelectItem value="integration">
-                  <div className="flex items-center gap-2">
-                    <LinkIcon className="h-4 w-4" />
-                    Integration
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -507,7 +430,6 @@ function NewKeyDialog({
           </div>
           <div className="bg-muted rounded-lg p-4">
             <p className="text-sm font-medium">{apiKey.apiKey.name}</p>
-            <p className="text-muted-foreground text-xs">{apiKeyTypeLabels[apiKey.apiKey.type]}</p>
           </div>
         </div>
         <DialogFooter>

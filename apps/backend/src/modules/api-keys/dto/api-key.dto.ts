@@ -1,6 +1,5 @@
 import {
   IsString,
-  IsEnum,
   IsOptional,
   IsArray,
   IsBoolean,
@@ -11,9 +10,6 @@ import {
 export class CreateApiKeyDto {
   @IsString()
   name: string;
-
-  @IsEnum(['mobile', 'web', 'cli', 'integration'])
-  type: 'mobile' | 'web' | 'cli' | 'integration';
 
   @IsOptional()
   @IsString()

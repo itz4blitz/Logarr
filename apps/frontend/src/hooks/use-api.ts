@@ -12,6 +12,10 @@ import type {
   CreateApiKeyDto,
   UpdateApiKeyDto,
   ApiKeyInfo,
+  SetupDto,
+  LoginDto,
+  UpdatePasswordDto,
+  SecuritySettings,
 } from '@/lib/api';
 
 import { api } from '@/lib/api';
@@ -52,6 +56,10 @@ export const queryKeys = {
   fileIngestionSettings: ['settings', 'file-ingestion'] as const,
   // API Keys
   apiKeys: ['settings', 'api-keys'] as const,
+  // Auth
+  setupStatus: ['auth', 'setup'] as const,
+  me: ['auth', 'me'] as const,
+  securitySettings: ['settings', 'security'] as const,
 };
 
 // Health
@@ -797,5 +805,104 @@ export function useAuditStatistics(days: number = 30) {
     queryFn: () => api.getAuditStatistics(days),
     staleTime: 60000, // Stats can be cached for 1 minute
     refetchInterval: 30000, // Refetch every 30 seconds
+  });
+}
+
+// Auth - Setup status (checked before login/setup flow)
+export function useSetupStatus() {
+  return useQuery({
+    queryKey: queryKeys.setupStatus,
+    queryFn: () => api.getSetupStatus(),
+    staleTime: 0, // Don't cache - always need fresh setup status
+    gcTime: 0, // Don't cache garbage either
+    retry: false, // Don't retry setup check - likely a network/auth issue
+  });
+}
+
+// Auth - Setup mutation
+export function useSetup() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (dto: SetupDto) => api.setup(dto),
+    onSuccess: () => {
+      // Invalidate setup status and user info after successful setup
+      queryClient.invalidateQueries({ queryKey: queryKeys.setupStatus });
+      queryClient.invalidateQueries({ queryKey: queryKeys.me });
+    },
+  });
+}
+
+// Auth - Login mutation
+export function useLogin() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (dto: LoginDto) => api.login(dto),
+    onSuccess: () => {
+      // Invalidate user info after successful login
+      queryClient.invalidateQueries({ queryKey: queryKeys.me });
+      // Refetch all queries to get fresh authenticated data
+      queryClient.refetchQueries();
+    },
+  });
+}
+
+// Auth - Get current user
+export function useMe() {
+  return useQuery({
+    queryKey: queryKeys.me,
+    queryFn: () => api.me(),
+    staleTime: 60000, // User info rarely changes - cache for 1 minute
+    retry: false, // Don't retry if auth fails
+  });
+}
+
+// Auth - Update password mutation
+export function useUpdatePassword() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (dto: UpdatePasswordDto) => api.updatePassword(dto),
+    onSuccess: () => {
+      // Invalidate user info after password update
+      queryClient.invalidateQueries({ queryKey: queryKeys.me });
+    },
+  });
+}
+
+// Auth - Logout mutation
+export function useLogout() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => api.logout(),
+    onSuccess: () => {
+      // Clear all queries after logout
+      queryClient.clear();
+      // Refetch setup status to know where to redirect
+      queryClient.invalidateQueries({ queryKey: queryKeys.setupStatus });
+    },
+  });
+}
+
+// Settings - Security (DB-stored)
+export function useSecuritySettings() {
+  return useQuery({
+    queryKey: queryKeys.securitySettings,
+    queryFn: () => api.getSecuritySettings(),
+    staleTime: 60000, // Security settings rarely change - cache for 1 minute
+  });
+}
+
+export function useUpdateSecuritySettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (settings: Partial<SecuritySettings>) =>
+      api.updateSecuritySettings(settings),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.securitySettings });
+    },
   });
 }

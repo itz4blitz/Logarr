@@ -38,3 +38,4 @@ docker-compose.override.yml
 
 # Kiro (local development only)
 .kiro/
+.claude/
