@@ -13,7 +13,7 @@ async function ensureAuthenticated(page: any, username: string, password: string
   await page.goto('/');
 
   const url = page.url();
-  const currentUrl = new URL(url, page.context().baseUrl());
+  const currentUrl = new URL(url);
 
   if (currentUrl.pathname === '/setup') {
     // First time - create admin account
