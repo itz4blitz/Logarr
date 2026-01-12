@@ -1,7 +1,9 @@
-import { LocalOnlyGuard } from './local-only.guard';
-import { ForbiddenException } from '@nestjs/common';
-import { ExecutionContext } from '@nestjs/common';
+import { ForbiddenException  } from '@nestjs/common';
 import { describe, it, expect, beforeEach } from 'vitest';
+
+import { LocalOnlyGuard } from './local-only.guard';
+
+import type { ExecutionContext } from '@nestjs/common';
 
 describe('LocalOnlyGuard', () => {
   let guard: LocalOnlyGuard;

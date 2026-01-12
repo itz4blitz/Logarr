@@ -1,6 +1,7 @@
-import { JwtAuthGuard } from './jwt-auth.guard';
 import { UnauthorizedException } from '@nestjs/common';
 import { describe, it, expect, beforeEach } from 'vitest';
+
+import { JwtAuthGuard } from './jwt-auth.guard';
 
 describe('JwtAuthGuard', () => {
   let guard: JwtAuthGuard;

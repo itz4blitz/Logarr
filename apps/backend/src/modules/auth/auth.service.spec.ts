@@ -1,8 +1,8 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { JwtService } from '@nestjs/jwt';
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { JwtService } from '@nestjs/jwt';
+import { Test } from '@nestjs/testing';
 import * as bcryptModule from 'bcrypt';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock bcrypt module
 vi.mock('bcrypt', () => ({
@@ -14,9 +14,14 @@ vi.mock('bcrypt', () => ({
   compare: vi.fn(),
 }));
 
-import { AuthService, JwtPayload, AuthResponse, SetupStatus } from './auth.service';
+
 import { SettingsService } from '../settings/settings.service';
+
+import { AuthService } from './auth.service';
+
+import type { JwtPayload, AuthResponse, SetupStatus } from './auth.service';
 import type { SetupDto, LoginDto, UpdatePasswordDto } from './dto';
+import type { TestingModule } from '@nestjs/testing';
 
 const bcrypt = bcryptModule as unknown as {
   hash: ReturnType<typeof vi.fn>;

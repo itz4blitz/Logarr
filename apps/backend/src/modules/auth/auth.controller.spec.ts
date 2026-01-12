@@ -6,7 +6,6 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LocalOnlyGuard } from './guards/local-only.guard';
-import { Public } from './guards/unified-auth.guard';
 
 import type { AuthResponse, SetupStatus } from './auth.service';
 import type { TestingModule } from '@nestjs/testing';

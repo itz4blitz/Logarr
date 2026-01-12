@@ -1,8 +1,9 @@
-import { JwtStrategy } from './jwt.strategy';
 import { UnauthorizedException } from '@nestjs/common';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { SettingsService } from '../../settings/settings.service';
 
+import { JwtStrategy } from './jwt.strategy';
+
+import type { SettingsService } from '../../settings/settings.service';
 import type { JwtPayload } from '../auth.service';
 
 describe('JwtStrategy', () => {

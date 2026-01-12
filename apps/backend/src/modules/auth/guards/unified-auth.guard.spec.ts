@@ -1,14 +1,14 @@
-import { UnifiedAuthGuard, Public, JwtAuthRequest } from './unified-auth.guard';
-import { UnauthorizedException } from '@nestjs/common';
+import { UnauthorizedException , ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ExecutionContext } from '@nestjs/common';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { AuthService } from '../auth.service';
 import { ApiKeysService } from '../../api-keys/api-keys.service';
+import { AuthService } from '../auth.service';
 
-import type { JwtPayload } from '../auth.service';
+import { UnifiedAuthGuard, Public, JwtAuthRequest } from './unified-auth.guard';
+
 import type { apiKeys } from '../../../database/schema';
+import type { JwtPayload } from '../auth.service';
 
 describe('UnifiedAuthGuard', () => {
   let guard: UnifiedAuthGuard;
@@ -448,9 +448,6 @@ describe('Public decorator', () => {
         return 'public';
       }
     }
-
-    const descriptor = Object.getOwnPropertyDescriptor(TestClass.prototype, 'testMethod');
-    const method = descriptor?.value;
 
     // Method should still be callable
     const instance = new TestClass();
