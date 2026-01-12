@@ -5,29 +5,34 @@ import { DashboardPage, SetupPage } from './pages';
 const E2E_USERNAME = 'admin';
 const E2E_PASSWORD = 'testpassword123';
 
+// Helper to ensure we're logged in (or setup first-time)
+async function ensureAuthenticated(page: any, username: string, password: string) {
+  const setupPage = new SetupPage(page);
+
+  // Go to root URL and see where we end up
+  await page.goto('/');
+
+  const url = page.url();
+  const currentUrl = new URL(url, page.context().baseUrl());
+
+  if (currentUrl.pathname === '/setup') {
+    // First time - create admin account
+    await setupPage.setup(username, password);
+  } else if (currentUrl.pathname === '/login') {
+    // Already setup, need to login
+    const { LoginPage } = await import('./pages');
+    const loginPage = new LoginPage(page);
+    await loginPage.login(username, password);
+  }
+  // Otherwise we're already at the dashboard
+}
+
 test.describe('Dashboard', () => {
   let dashboardPage: DashboardPage;
-  let setupPage: SetupPage;
 
   test.beforeEach(async ({ page }) => {
-    setupPage = new SetupPage(page);
     dashboardPage = new DashboardPage(page);
-
-    // Check if we need to setup first (redirects from /login to /setup)
-    await page.goto('/login');
-    const url = page.url();
-
-    if (url.includes('/setup') || url.includes('/login')) {
-      // First time - create admin account
-      if (url.includes('/setup')) {
-        await setupPage.setup(E2E_USERNAME, E2E_PASSWORD);
-      } else {
-        // Already setup, try login
-        const { LoginPage } = await import('./pages');
-        const loginPage = new LoginPage(page);
-        await loginPage.login(E2E_USERNAME, E2E_PASSWORD);
-      }
-    }
+    await ensureAuthenticated(page, E2E_USERNAME, E2E_PASSWORD);
   });
 
   test('should load with correct title', async () => {
