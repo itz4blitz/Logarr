@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { IssuesPage, LoginPage } from './pages';
+import { IssuesPage, SetupPage } from './pages';
 
 // Use test credentials for E2E testing
 const E2E_USERNAME = 'admin';
@@ -7,16 +7,25 @@ const E2E_PASSWORD = 'testpassword123';
 
 test.describe('Issues Page', () => {
   let issuesPage: IssuesPage;
-  let loginPage: LoginPage;
+  let setupPage: SetupPage;
 
   test.beforeEach(async ({ page }) => {
-    loginPage = new LoginPage(page);
+    setupPage = new SetupPage(page);
     issuesPage = new IssuesPage(page);
 
-    // Login before each test
-    await loginPage.goto();
-    await loginPage.login(E2E_USERNAME, E2E_PASSWORD);
-    await loginPage.expectLoggedIn();
+    // Check if we need to setup first (redirects from /login to /setup)
+    await page.goto('/login');
+    const url = page.url();
+
+    if (url.includes('/setup')) {
+      // First time - create admin account
+      await setupPage.setup(E2E_USERNAME, E2E_PASSWORD);
+    } else if (url.includes('/login')) {
+      // Already setup, try login
+      const { LoginPage } = await import('./pages');
+      const loginPage = new LoginPage(page);
+      await loginPage.login(E2E_USERNAME, E2E_PASSWORD);
+    }
 
     // Navigate to issues page
     await issuesPage.goto();
