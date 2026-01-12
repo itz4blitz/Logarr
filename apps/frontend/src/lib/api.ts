@@ -843,7 +843,7 @@ export interface SetupStatus {
 export interface SetupDto {
   username: string;
   password: string;
-  setupToken: string;
+  setupToken?: string;
 }
 
 export interface LoginDto {

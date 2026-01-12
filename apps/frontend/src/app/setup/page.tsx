@@ -1,7 +1,12 @@
 'use client';
 
+import { zodResolver } from '@hookform/resolvers/zod';
+import { UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
+import { z } from 'zod/v3';
 
 import { useAuth } from '@/components/auth-provider';
 import { Button } from '@/components/ui/button';
@@ -22,12 +27,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { toast } from 'sonner';
-import { UserPlus } from 'lucide-react';
-
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod/v3';
+import { api } from '@/lib/api';
 
 const setupSchema = z
   .object({
@@ -51,8 +51,8 @@ type SetupFormValues = z.infer<typeof setupSchema>;
 
 export default function SetupPage() {
   const router = useRouter();
-  const { setupRequired, isLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { setupRequired, isLoading } = useAuth();
 
   const form = useForm<SetupFormValues>({
     resolver: zodResolver(setupSchema),
@@ -77,28 +77,13 @@ export default function SetupPage() {
     return null;
   }
 
-  const onSubmit = async (values: SetupFormValues) => {
+  const onSubmit = async (values: SetupFormValues): Promise<void> => {
     setIsSubmitting(true);
     try {
-      // Call login with empty token to trigger first-time setup
-      const response = await fetch('/api/auth/setup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: values.username,
-          password: values.password,
-        }),
+      await api.setup({
+        username: values.username,
+        password: values.password,
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Setup failed');
-      }
-
-      const data = await response.json();
-
-      // Store token
-      localStorage.setItem('auth_token', data.accessToken);
 
       toast.success('Welcome to Logarr!', {
         description: 'Your admin account has been created.',
@@ -127,7 +112,7 @@ export default function SetupPage() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit((values) => { void onSubmit(values); })} className="space-y-4">
               <FormField
                 control={form.control}
                 name="username"
