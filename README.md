@@ -377,6 +377,76 @@ logarr/
 
 ---
 
+## Upgrading
+
+Logarr uses pre-built Docker images by default, making upgrades simple:
+
+### Automatic Upgrade Script
+
+**Linux/Mac:**
+
+```bash
+chmod +x update.sh
+./update.sh
+```
+
+**Windows (PowerShell):**
+
+```powershell
+.\update.ps1
+```
+
+### Manual Upgrade
+
+```bash
+docker compose down
+docker compose pull
+docker compose up -d
+```
+
+### Pinning to a Specific Version
+
+By default, Logarr uses the `:latest` tag. To pin to a specific version (recommended for production):
+
+```bash
+# In your .env file or docker-compose.yml
+LOGARR_VERSION=0.5.4
+```
+
+Or set it per-run:
+
+```bash
+LOGARR_VERSION=0.5.4 docker compose up -d
+```
+
+### Building from Source
+
+If you prefer to build from source instead of using pre-built images:
+
+```bash
+# Set environment variable to enable local builds
+LOGARR_BUILD_LOCALLY=1
+
+# Or build manually
+docker compose build --no-cache
+docker compose up -d
+```
+
+### Image Registries
+
+Logarr images are published to:
+
+- **GitHub Container Registry:** `ghcr.io/itz4blitz/logarr-backend` and `ghcr.io/itz4blitz/logarr-frontend`
+- **Docker Hub:** `itz4blitz/logarr-backend` and `itz4blitz/logarr-frontend`
+
+To use Docker Hub instead of GHCR:
+
+```bash
+LOGARR_IMAGE_REGISTRY=docker.io/itz4blitz
+```
+
+---
+
 ## Contributing
 
 ```bash

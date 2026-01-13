@@ -36,6 +36,8 @@ services:
       - logarr-network
 
   backend:
+    # Use pre-built images by default. Set LOGARR_BUILD_LOCALLY=true to build from source instead.
+    image: ${LOGARR_IMAGE_REGISTRY:-ghcr.io/itz4blitz}/logarr-backend:${LOGARR_VERSION:-latest}
     build:
       context: .
       dockerfile: apps/backend/Dockerfile
@@ -154,6 +156,8 @@ services:
       - logarr-network
 
   frontend:
+    # Use pre-built images by default. Set LOGARR_BUILD_LOCALLY=true to build from source instead.
+    image: ${LOGARR_IMAGE_REGISTRY:-ghcr.io/itz4blitz}/logarr-frontend:${LOGARR_VERSION:-latest}
     build:
       context: .
       dockerfile: apps/frontend/Dockerfile
