@@ -226,7 +226,10 @@ export class LogFileTailer {
       });
 
       this.readLineInterface.on('close', async () => {
-        this.currentOffset += BigInt(bytesRead);
+        // Update offset, but clamp to file size to prevent off-by-one errors
+        // The last line may not have a trailing newline, so bytesRead can exceed file size
+        const newOffset = this.currentOffset + BigInt(bytesRead);
+        this.currentOffset = newOffset > this.lastSize ? this.lastSize : newOffset;
 
         // Wait for buffer to drain before completing
         await this.drainBuffer();
