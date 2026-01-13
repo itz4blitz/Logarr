@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 import { useAuth } from '@/components/auth-provider';
 import { Button } from '@/components/ui/button';
@@ -48,7 +48,16 @@ export default function LoginPage() {
     },
   });
 
-  // Redirect if already authenticated
+  // Redirect using useEffect to avoid updating during render
+  useEffect(() => {
+    if (setupRequired === true) {
+      router.push('/setup');
+    } else if (isAuthenticated) {
+      router.push('/');
+    }
+  }, [setupRequired, isAuthenticated, router]);
+
+  // Show loading while checking auth status
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -57,13 +66,8 @@ export default function LoginPage() {
     );
   }
 
-  if (setupRequired === true) {
-    router.push('/setup');
-    return null;
-  }
-
-  if (isAuthenticated) {
-    router.push('/');
+  // Don't render form if redirecting
+  if (setupRequired === true || isAuthenticated) {
     return null;
   }
 

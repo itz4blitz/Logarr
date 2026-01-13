@@ -48,6 +48,8 @@ services:
       - '4002:4002'
     extra_hosts:
       - 'host.docker.internal:host-gateway'
+    env_file:
+      - .env
     environment:
       NODE_ENV: development
       DATABASE_URL: postgresql://postgres:postgres@db:5432/logarr
@@ -76,6 +78,10 @@ services:
       - ./apps/backend/tsconfig.json:/app/apps/backend/tsconfig.json
       # Named volume for dist to prevent constant rebuilds
       - backend_dist:/app/apps/backend/dist
+      # Mount .env file for dotenv CLI
+      - ./.env:/app/.env:ro
+      # Mount turbo.json for config changes
+      - ./turbo.json:/app/turbo.json:ro
       # Mount media server logs (optional - for file-based log ingestion)
       - ${PLEX_LOGS_PATH:-./logs/plex}:/plex-logs:ro
       - ${JELLYFIN_LOGS_PATH:-./logs/jellyfin}:/jellyfin-logs:ro

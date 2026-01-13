@@ -3,12 +3,14 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod/v3';
 
 import { useAuth } from '@/components/auth-provider';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/hooks/use-api';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -51,6 +53,7 @@ type SetupFormValues = z.infer<typeof setupSchema>;
 
 export default function SetupPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { setupRequired, isLoading } = useAuth();
 
@@ -63,7 +66,14 @@ export default function SetupPage() {
     },
   });
 
-  // Redirect if setup is not required
+  // Redirect using useEffect to avoid updating during render
+  useEffect(() => {
+    if (setupRequired === false) {
+      router.push('/login');
+    }
+  }, [setupRequired, router]);
+
+  // Show loading while checking auth status
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -72,8 +82,8 @@ export default function SetupPage() {
     );
   }
 
+  // Don't render form if redirecting
   if (setupRequired === false) {
-    router.push('/login');
     return null;
   }
 
@@ -88,6 +98,11 @@ export default function SetupPage() {
       toast.success('Welcome to Logarr!', {
         description: 'Your admin account has been created.',
       });
+
+      // Refetch auth queries to get updated state before navigation
+      await queryClient.refetchQueries({ queryKey: queryKeys.setupStatus });
+      await queryClient.refetchQueries({ queryKey: queryKeys.me });
+
       router.push('/');
     } catch (error) {
       toast.error('Setup failed', {
