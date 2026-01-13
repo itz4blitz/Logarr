@@ -108,6 +108,23 @@ _Configure multiple AI providers for issue analysis (Anthropic, OpenAI, Google, 
 
 ## Quick Start
 
+### Using Pre-built Images (Quickest)
+
+Logarr publishes pre-built Docker images to both **GitHub Container Registry** and **Docker Hub**:
+
+```bash
+# Create docker-compose.yml with:
+services:
+  backend:
+    image: itz4blitz/logarr-backend:latest
+    # ... rest of configuration
+  frontend:
+    image: itz4blitz/logarr-frontend:latest
+    # ... rest of configuration
+```
+
+See the full [`docker-compose.yml`](docker-compose.yml) for complete configuration.
+
 ### Docker Compose (Recommended)
 
 ```bash
@@ -260,15 +277,47 @@ WHISPARR_LOGS_PATH=/path/to/whisparr/config/logs
 
 3. **Configure in UI** — Go to **Sources** → Edit your server → Enable file ingestion with the container path:
 
-| Server   | Container Path    |
-| -------- | ----------------- |
-| Plex     | `/plex-logs`      |
-| Jellyfin | `/jellyfin-logs`  |
-| Emby     | `/emby-logs`      |
-| Sonarr   | `/sonarr-logs`    |
-| Radarr   | `/radarr-logs`    |
-| Prowlarr | `/prowlarr-logs`  |
-| Whisparr | `/whisparr-logs`  |
+| Server   | Container Path   |
+| -------- | ---------------- |
+| Plex     | `/plex-logs`     |
+| Jellyfin | `/jellyfin-logs` |
+| Emby     | `/emby-logs`     |
+| Sonarr   | `/sonarr-logs`   |
+| Radarr   | `/radarr-logs`   |
+| Prowlarr | `/prowlarr-logs` |
+| Whisparr | `/whisp-logs`    |
+
+#### Multiple Instances (e.g., Movies vs Shorts, 1080p vs 4K)
+
+To run multiple instances of the same server type, use numbered environment variables:
+
+```bash
+# Primary Radarr instance (for Movies)
+RADARR_URL=http://radarr-movies:7878
+RADARR_API_KEY=your_api_key
+RADARR_LOGS_PATH=/path/to/radarr-movies/logs
+
+# Secondary Radarr instance (for Shorts)
+RADARR_LOGS_PATH_1=/path/to/radarr-shorts/logs
+RADARR_LOGS_PATH_2=/path/to/radarr-4k/logs
+```
+
+The numbered instances are mounted as:
+
+- `/radarr-logs-1`
+- `/radarr-logs-2`
+- `/radarr-logs-3`
+
+Simply add multiple servers in the UI using the same server type but different URLs and log paths.
+
+| Instance   | Container Path   |
+| ---------- | ---------------- |
+| Primary    | `/radarr-logs`   |
+| Instance 1 | `/radarr-logs-1` |
+| Instance 2 | `/radarr-logs-2` |
+| Instance 3 | `/radarr-logs-3` |
+
+> **Note**: You can have up to 3 additional instances per server type beyond the primary. Add each instance as a separate server in the Sources UI.
 
 #### Common Log Locations
 
@@ -361,7 +410,7 @@ pnpm test:e2e          # Run Playwright E2E tests
 | `@logarr/backend`           | Backend services and controllers       |
 | `frontend`                  | React components, hooks, and utilities |
 | `@logarr/core`              | Core HTTP utilities                    |
-| `@logarr/provider-arr`      | *arr application log parser            |
+| `@logarr/provider-arr`      | \*arr application log parser           |
 | `@logarr/provider-emby`     | Emby log parser                        |
 | `@logarr/provider-whisparr` | Whisparr provider                      |
 

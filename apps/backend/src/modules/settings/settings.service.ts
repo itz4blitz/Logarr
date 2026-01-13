@@ -17,6 +17,15 @@ export const SETTINGS_KEYS = {
   FILE_INGESTION_MAX_CONCURRENT_TAILERS: 'file_ingestion.max_concurrent_tailers',
   FILE_INGESTION_MAX_FILE_AGE_DAYS: 'file_ingestion.max_file_age_days',
   FILE_INGESTION_TAILER_START_DELAY_MS: 'file_ingestion.tailer_start_delay_ms',
+  // Security settings
+  SECURITY_ADMIN_USERNAME: 'security.admin.username',
+  SECURITY_ADMIN_PASSWORD_HASH: 'security.admin.password_hash',
+  SECURITY_ADMIN_CREATED_AT: 'security.admin.created_at',
+  SECURITY_SETUP_TOKEN: 'security.setup_token',
+  SECURITY_SETUP_COMPLETED: 'security.setup_completed',
+  SECURITY_JWT_SECRET: 'security.jwt_secret',
+  SECURITY_JWT_EXPIRATION_MS: 'security.jwt_expiration_ms',
+  SECURITY_SESSION_TIMEOUT_MS: 'security.session_timeout_ms',
 } as const;
 
 // Retention configuration interface
@@ -42,6 +51,18 @@ export const FILE_INGESTION_DEFAULTS: FileIngestionSettings = {
   maxConcurrentTailers: 5,
   maxFileAgeDays: 7,
   tailerStartDelayMs: 500,
+};
+
+// Security configuration interface
+export interface SecuritySettings {
+  jwtExpirationMs: number;
+  sessionTimeoutMs: number;
+}
+
+// Default security settings
+export const SECURITY_DEFAULTS: SecuritySettings = {
+  jwtExpirationMs: 7 * 24 * 60 * 60 * 1000, // 7 days
+  sessionTimeoutMs: 30 * 60 * 1000, // 30 minutes
 };
 
 // General app settings interface
@@ -359,5 +380,139 @@ export class SettingsService {
         issueCount: 0,
       };
     }
+  }
+
+  /**
+   * Get security settings - database values with defaults
+   */
+  async getSecuritySettings(): Promise<SecuritySettings> {
+    const [jwtExpirationMs, sessionTimeoutMs] = await Promise.all([
+      this.getSetting(
+        SETTINGS_KEYS.SECURITY_JWT_EXPIRATION_MS,
+        SECURITY_DEFAULTS.jwtExpirationMs
+      ),
+      this.getSetting(
+        SETTINGS_KEYS.SECURITY_SESSION_TIMEOUT_MS,
+        SECURITY_DEFAULTS.sessionTimeoutMs
+      ),
+    ]);
+
+    return {
+      jwtExpirationMs,
+      sessionTimeoutMs,
+    };
+  }
+
+  /**
+   * Update security settings in the database
+   */
+  async updateSecuritySettings(settings: Partial<SecuritySettings>): Promise<SecuritySettings> {
+    const updates: Promise<void>[] = [];
+
+    if (settings.jwtExpirationMs !== undefined) {
+      // Validate range: 5 minutes to 30 days
+      const value = Math.max(5 * 60 * 1000, Math.min(30 * 24 * 60 * 60 * 1000, settings.jwtExpirationMs));
+      updates.push(this.setSetting(SETTINGS_KEYS.SECURITY_JWT_EXPIRATION_MS, value));
+    }
+    if (settings.sessionTimeoutMs !== undefined) {
+      // Validate range: 1 minute to 24 hours
+      const value = Math.max(60 * 1000, Math.min(24 * 60 * 60 * 1000, settings.sessionTimeoutMs));
+      updates.push(this.setSetting(SETTINGS_KEYS.SECURITY_SESSION_TIMEOUT_MS, value));
+    }
+
+    await Promise.all(updates);
+
+    // Return updated settings
+    return this.getSecuritySettings();
+  }
+
+  /**
+   * Get the JWT secret from database or generate a new one
+   */
+  async getOrCreateJwtSecret(): Promise<string> {
+    const existingSecret = await this.getSetting<string | null>(SETTINGS_KEYS.SECURITY_JWT_SECRET, null);
+    if (existingSecret) {
+      return existingSecret;
+    }
+
+    // Generate a new secret
+    const crypto = await import('node:crypto');
+    const newSecret = crypto.randomBytes(64).toString('hex');
+    await this.setSetting(SETTINGS_KEYS.SECURITY_JWT_SECRET, newSecret);
+    this.logger.warn('Generated new JWT secret - keep this secure!');
+    return newSecret;
+  }
+
+  /**
+   * Check if setup has been completed
+   */
+  async isSetupCompleted(): Promise<boolean> {
+    return this.getSetting(SETTINGS_KEYS.SECURITY_SETUP_COMPLETED, false);
+  }
+
+  /**
+   * Get the stored setup token (for validation)
+   */
+  async getSetupToken(): Promise<string | null> {
+    return this.getSetting<string | null>(SETTINGS_KEYS.SECURITY_SETUP_TOKEN, null);
+  }
+
+  /**
+   * Store the setup token
+   */
+  async setSetupToken(token: string): Promise<void> {
+    await this.setSetting(SETTINGS_KEYS.SECURITY_SETUP_TOKEN, token);
+  }
+
+  /**
+   * Consume the setup token (remove it after use)
+   */
+  async consumeSetupToken(): Promise<void> {
+    await this.db
+      .delete(schema.appSettings)
+      .where(eq(schema.appSettings.key, SETTINGS_KEYS.SECURITY_SETUP_TOKEN));
+  }
+
+  /**
+   * Mark setup as completed
+   */
+  async markSetupCompleted(): Promise<void> {
+    await this.setSetting(SETTINGS_KEYS.SECURITY_SETUP_COMPLETED, true);
+  }
+
+  /**
+   * Get admin credentials (username and password hash)
+   */
+  async getAdminCredentials(): Promise<{ username: string | null; passwordHash: string | null }> {
+    const [username, passwordHash] = await Promise.all([
+      this.getSetting<string | null>(SETTINGS_KEYS.SECURITY_ADMIN_USERNAME, null),
+      this.getSetting<string | null>(SETTINGS_KEYS.SECURITY_ADMIN_PASSWORD_HASH, null),
+    ]);
+    return { username, passwordHash };
+  }
+
+  /**
+   * Set admin credentials
+   */
+  async setAdminCredentials(username: string, passwordHash: string): Promise<void> {
+    await Promise.all([
+      this.setSetting(SETTINGS_KEYS.SECURITY_ADMIN_USERNAME, username),
+      this.setSetting(SETTINGS_KEYS.SECURITY_ADMIN_PASSWORD_HASH, passwordHash),
+      this.setSetting(SETTINGS_KEYS.SECURITY_ADMIN_CREATED_AT, new Date().toISOString()),
+    ]);
+  }
+
+  /**
+   * Update admin password hash
+   */
+  async updateAdminPassword(passwordHash: string): Promise<void> {
+    await this.setSetting(SETTINGS_KEYS.SECURITY_ADMIN_PASSWORD_HASH, passwordHash);
+  }
+
+  /**
+   * Get admin account creation date
+   */
+  async getAdminCreatedAt(): Promise<string | null> {
+    return this.getSetting<string | null>(SETTINGS_KEYS.SECURITY_ADMIN_CREATED_AT, null);
   }
 }

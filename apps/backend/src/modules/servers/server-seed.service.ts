@@ -82,7 +82,13 @@ export class ServerSeedService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    await this.seedServersFromEnv();
+    this.logger.log('ServerSeedService initializing - checking for servers to seed from environment...');
+    try {
+      await this.seedServersFromEnv();
+    } catch (error) {
+      this.logger.error(`ServerSeedService failed: ${error}`);
+      throw error;
+    }
   }
 
   /**
@@ -90,14 +96,18 @@ export class ServerSeedService implements OnModuleInit {
    * URL + API key set but don't exist in the database yet.
    */
   private async seedServersFromEnv(): Promise<void> {
+    this.logger.log(`Checking ${ENV_SERVER_CONFIGS.length} server configs for seeding...`);
     let seededCount = 0;
 
     for (const config of ENV_SERVER_CONFIGS) {
       const url = process.env[config.urlEnvKey];
       const apiKey = process.env[config.apiKeyEnvKey];
 
+      this.logger.log(`Checking ${config.providerId}: URL=${!!url}, API key=${!!apiKey}`);
+
       // Skip if URL or API key not set
       if (!url || url.trim() === '' || !apiKey || apiKey.trim() === '') {
+        this.logger.log(`Skipping ${config.providerId}: missing URL or API key`);
         continue;
       }
 
@@ -109,7 +119,7 @@ export class ServerSeedService implements OnModuleInit {
         .limit(1);
 
       if (existing.length > 0) {
-        this.logger.debug(`Server ${config.providerId} already exists, skipping seed`);
+        this.logger.log(`Server ${config.providerId} already exists, skipping seed`);
         continue;
       }
 
@@ -118,15 +128,9 @@ export class ServerSeedService implements OnModuleInit {
       const hostLogPath = process.env[logPathEnvKey];
       const hasLogPath = !!(hostLogPath && hostLogPath.trim() !== '');
 
-      // Determine which log path to use:
-      // - In production (Docker): use container path like /jellyfin-logs
-      // - In development (native): use the actual host path from env var
-      const isProduction = process.env['NODE_ENV'] === 'production';
-      const effectiveLogPath = hasLogPath
-        ? isProduction
-          ? config.containerLogPath
-          : hostLogPath!.trim()
-        : null;
+      // Use the container-mounted path for file ingestion
+      // The docker-compose files mount host paths to container paths like /jellyfin-logs
+      const effectiveLogPath = hasLogPath ? config.containerLogPath : null;
 
       // Create the server
       try {

@@ -236,6 +236,18 @@ export class FileStateService {
   }
 
   /**
+   * Get all file states for a server (active and inactive)
+   */
+  async getServerStates(serverId: string): Promise<LogFileState[]> {
+    const states = await this.db
+      .select()
+      .from(schema.logFileState)
+      .where(eq(schema.logFileState.serverId, serverId));
+
+    return states.map(this.mapToLogFileState);
+  }
+
+  /**
    * Delete all file states for a server
    */
   async deleteServerStates(serverId: string): Promise<void> {

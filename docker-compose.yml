@@ -49,6 +49,9 @@ services:
       REDIS_URL: redis://redis:6379
       BACKEND_PORT: 4000
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3001}
+      # Health check startup grace period (seconds) - allows file ingestion to initialize
+      # Volume mounts may not be immediately available after docker compose restart
+      HEALTH_CHECK_STARTUP_GRACE_SECONDS: ${HEALTH_CHECK_STARTUP_GRACE_SECONDS:-60}
       # AI Providers (auto-configured on startup if set)
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
@@ -79,6 +82,29 @@ services:
       RADARR_LOGS_PATH: ${RADARR_LOGS_PATH:-}
       PROWLARR_LOGS_PATH: ${PROWLARR_LOGS_PATH:-}
       WHISPARR_LOGS_PATH: ${WHISPARR_LOGS_PATH:-}
+      # Multiple instance support - add numbered suffixes for additional instances
+      # Example: RADARR_LOGS_PATH_1=/path/to/movies, RADARR_LOGS_PATH_2=/path/to/shorts
+      JELLYFIN_LOGS_PATH_1: ${JELLYFIN_LOGS_PATH_1:-}
+      JELLYFIN_LOGS_PATH_2: ${JELLYFIN_LOGS_PATH_2:-}
+      JELLYFIN_LOGS_PATH_3: ${JELLYFIN_LOGS_PATH_3:-}
+      PLEX_LOGS_PATH_1: ${PLEX_LOGS_PATH_1:-}
+      PLEX_LOGS_PATH_2: ${PLEX_LOGS_PATH_2:-}
+      PLEX_LOGS_PATH_3: ${PLEX_LOGS_PATH_3:-}
+      EMBY_LOGS_PATH_1: ${EMBY_LOGS_PATH_1:-}
+      EMBY_LOGS_PATH_2: ${EMBY_LOGS_PATH_2:-}
+      EMBY_LOGS_PATH_3: ${EMBY_LOGS_PATH_3:-}
+      SONARR_LOGS_PATH_1: ${SONARR_LOGS_PATH_1:-}
+      SONARR_LOGS_PATH_2: ${SONARR_LOGS_PATH_2:-}
+      SONARR_LOGS_PATH_3: ${SONARR_LOGS_PATH_3:-}
+      RADARR_LOGS_PATH_1: ${RADARR_LOGS_PATH_1:-}
+      RADARR_LOGS_PATH_2: ${RADARR_LOGS_PATH_2:-}
+      RADARR_LOGS_PATH_3: ${RADARR_LOGS_PATH_3:-}
+      PROWLARR_LOGS_PATH_1: ${PROWLARR_LOGS_PATH_1:-}
+      PROWLARR_LOGS_PATH_2: ${PROWLARR_LOGS_PATH_2:-}
+      PROWLARR_LOGS_PATH_3: ${PROWLARR_LOGS_PATH_3:-}
+      WHISPARR_LOGS_PATH_1: ${WHISPARR_LOGS_PATH_1:-}
+      WHISPARR_LOGS_PATH_2: ${WHISPARR_LOGS_PATH_2:-}
+      WHISPARR_LOGS_PATH_3: ${WHISPARR_LOGS_PATH_3:-}
     volumes:
       # Media server log mounts (optional - set paths in .env for file-based log ingestion)
       # In the Sources UI, configure paths as: /plex-logs, /jellyfin-logs, /emby-logs, etc.
@@ -88,13 +114,37 @@ services:
       - ${SONARR_LOGS_PATH:-/dev/null}:/sonarr-logs:ro
       - ${RADARR_LOGS_PATH:-/dev/null}:/radarr-logs:ro
       - ${PROWLARR_LOGS_PATH:-/dev/null}:/prowlarr-logs:ro
-      - ${WHISPARR_LOGS_PATH:-/dev/null}:/whisparr-logs:ro
+      - ${WHISPARR_LOGS_PATH:-/dev/null}:/whisp-logs:ro
+      # Multiple instance mounts - numbered instances map to /<server>-logs-<n>
+      - ${JELLYFIN_LOGS_PATH_1:-/dev/null}:/jellyfin-logs-1:ro
+      - ${JELLYFIN_LOGS_PATH_2:-/dev/null}:/jellyfin-logs-2:ro
+      - ${JELLYFIN_LOGS_PATH_3:-/dev/null}:/jellyfin-logs-3:ro
+      - ${PLEX_LOGS_PATH_1:-/dev/null}:/plex-logs-1:ro
+      - ${PLEX_LOGS_PATH_2:-/dev/null}:/plex-logs-2:ro
+      - ${PLEX_LOGS_PATH_3:-/dev/null}:/plex-logs-3:ro
+      - ${EMBY_LOGS_PATH_1:-/dev/null}:/emby-logs-1:ro
+      - ${EMBY_LOGS_PATH_2:-/dev/null}:/emby-logs-2:ro
+      - ${EMBY_LOGS_PATH_3:-/dev/null}:/emby-logs-3:ro
+      - ${SONARR_LOGS_PATH_1:-/dev/null}:/sonarr-logs-1:ro
+      - ${SONARR_LOGS_PATH_2:-/dev/null}:/sonarr-logs-2:ro
+      - ${SONARR_LOGS_PATH_3:-/dev/null}:/sonarr-logs-3:ro
+      - ${RADARR_LOGS_PATH_1:-/dev/null}:/radarr-logs-1:ro
+      - ${RADARR_LOGS_PATH_2:-/dev/null}:/radarr-logs-2:ro
+      - ${RADARR_LOGS_PATH_3:-/dev/null}:/radarr-logs-3:ro
+      - ${PROWLARR_LOGS_PATH_1:-/dev/null}:/prowlarr-logs-1:ro
+      - ${PROWLARR_LOGS_PATH_2:-/dev/null}:/prowlarr-logs-2:ro
+      - ${PROWLARR_LOGS_PATH_3:-/dev/null}:/prowlarr-logs-3:ro
+      - ${WHISPARR_LOGS_PATH_1:-/dev/null}:/whisp-logs-1:ro
+      - ${WHISPARR_LOGS_PATH_2:-/dev/null}:/whisp-logs-2:ro
+      - ${WHISPARR_LOGS_PATH_3:-/dev/null}:/whisp-logs-3:ro
     healthcheck:
       test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:4000/api']
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      # Increased start_period to accommodate file ingestion initialization
+      # Combined with HEALTH_CHECK_STARTUP_GRACE_SECONDS, this prevents false failures during restart
+      start_period: 90s
     depends_on:
       db:
         condition: service_healthy
