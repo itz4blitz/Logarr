@@ -72,6 +72,11 @@ export class LogFileTailer {
   /** Whether the initial read has completed */
   private initialReadComplete: boolean = false;
 
+  /** Timestamp of last rotation detection to prevent false-positive loops */
+  private lastRotationTime: number = 0;
+  /** Cooldown period (ms) during which we won't trigger another rotation for the same file */
+  private readonly ROTATION_COOLDOWN_MS = 2000;
+
   constructor(options: TailOptions, processor: LogFileProcessor, provider: MediaServerProvider) {
     this.serverId = options.serverId;
     this.filePath = options.filePath;
@@ -115,7 +120,7 @@ export class LogFileTailer {
       const currentSize = BigInt(stats.size);
 
       // Check for rotation
-      if (this.detectRotation(currentInode, currentSize)) {
+      if (this.detectRotationWithCooldown(currentInode, currentSize)) {
         // File was rotated, start from beginning
         this.currentOffset = 0n;
         this.lineNumber = 0;
@@ -361,7 +366,7 @@ export class LogFileTailer {
         const currentSize = BigInt(stats.size);
 
         // Check for rotation
-        if (this.detectRotation(currentInode, currentSize)) {
+        if (this.detectRotationWithCooldown(currentInode, currentSize)) {
           this.currentOffset = 0n;
           this.lineNumber = 0;
           this.lastInode = currentInode;
@@ -403,6 +408,38 @@ export class LogFileTailer {
   }
 
   /**
+   * Detect rotation with cooldown to prevent false-positive loops
+   *
+   * After a rotation is detected, we enter a cooldown period where we won't
+   * trigger another rotation for the same file unless the inode genuinely changes.
+   * This prevents issues where:
+   * - After rotation handling, currentOffset=0 and file appears "smaller" than before
+   * - Windows inode (birthtimeMs) may fluctuate slightly
+   */
+  private detectRotationWithCooldown(currentInode: string | null, currentSize: bigint): boolean {
+    const now = Date.now();
+    const timeSinceLastRotation = now - this.lastRotationTime;
+
+    // During cooldown period, only allow genuine inode changes
+    if (timeSinceLastRotation < this.ROTATION_COOLDOWN_MS) {
+      // If inode genuinely changed, allow rotation (file was replaced again)
+      if (this.lastInode && currentInode && this.lastInode !== currentInode) {
+        this.lastRotationTime = now;
+        return true;
+      }
+      // Otherwise, suppress rotation detection during cooldown
+      return false;
+    }
+
+    // Cooldown expired, check for rotation normally
+    const rotationDetected = this.detectRotation(currentInode, currentSize);
+    if (rotationDetected) {
+      this.lastRotationTime = now;
+    }
+    return rotationDetected;
+  }
+
+  /**
    * Get file inode as string (platform-specific)
    */
   private getInode(stats: Stats): string | null {
@@ -412,7 +449,8 @@ export class LogFileTailer {
       return stats.ino.toString();
     }
 
-    // Windows fallback: use birth time + dev as pseudo-inode
-    return `${stats.birthtimeMs}-${stats.dev}`;
+    // Windows fallback: use birth time + size + dev as pseudo-inode
+    // Including size ensures uniqueness for files created at the same time
+    return `${stats.birthtimeMs}-${stats.size}-${stats.dev}`;
   }
 }
