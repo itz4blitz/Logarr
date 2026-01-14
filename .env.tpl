@@ -85,6 +85,16 @@ WHISPARR_URL={{ op://Development/Logarr-Dev/WHISPARR_URL }}
 WHISPARR_API_KEY={{ op://Development/Logarr-Dev/WHISPARR_API_KEY }}
 
 # =============================================================================
+# SECURITY & AUTHENTICATION
+# =============================================================================
+# Admin Password Reset (emergency reset if you forget your password)
+# Set to "true" and restart the container to reset the admin account.
+# This allows you to re-run the setup flow at /setup.
+# All other data (logs, issues, settings) is preserved.
+# IMPORTANT: Remove this env var after resetting to prevent repeated resets!
+# ADMIN_PASSWORD_RESET=true
+
+# =============================================================================
 # LOG FILE PATHS (optional - for file-based log ingestion)
 # These are HOST paths used in development (native) mode.
 # In Docker, these get mounted to container paths like /jellyfin-logs

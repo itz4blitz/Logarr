@@ -5,6 +5,7 @@ import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { validateEnv, type Env } from './config/env';
 import { AuthService } from './modules/auth/auth.service';
+import { SettingsService } from './modules/settings/settings.service';
 
 // Cache validated env for use in bootstrap
 let cachedEnv: Env;
@@ -54,6 +55,25 @@ async function bootstrap() {
 
   const logger = app.get(Logger);
   const authService = app.get(AuthService);
+  const settingsService = app.get(SettingsService);
+
+  // Check if admin password reset is requested via env var
+  if (env.ADMIN_PASSWORD_RESET === 'true') {
+    await settingsService.resetAdminAccount();
+    console.log('');
+    console.log('╔════════════════════════════════════════════════════════════╗');
+    console.log('║           ADMIN ACCOUNT RESET                               ║');
+    console.log('╠════════════════════════════════════════════════════════════╣');
+    console.log('║  Admin account has been reset.                             ║');
+    console.log('║  All other data (logs, issues, settings) is preserved.     ║');
+    console.log('║                                                            ║');
+    console.log('║  Navigate to /setup to create a new admin account.         ║');
+    console.log('║                                                            ║');
+    console.log('║  Remove ADMIN_PASSWORD_RESET=true from your env file       ║');
+    console.log('║  to prevent this message on next restart.                  ║');
+    console.log('╚════════════════════════════════════════════════════════════╝');
+    console.log('');
+  }
 
   // Check if setup is required and log the setup token
   const setupStatus = await authService.getSetupStatus();

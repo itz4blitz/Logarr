@@ -11,6 +11,9 @@ const envSchema = z.object({
   REDIS_URL: z.string(),
   CORS_ORIGIN: z.string().min(1),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).optional(),
+  // Optional: If set to "true", resets admin account on startup (allows re-running /setup)
+  // After reset, this env var is ignored until removed and re-added
+  ADMIN_PASSWORD_RESET: z.enum(['true', 'false']).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

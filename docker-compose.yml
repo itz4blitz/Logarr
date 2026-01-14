@@ -107,6 +107,8 @@ services:
       WHISPARR_LOGS_PATH_1: ${WHISPARR_LOGS_PATH_1:-}
       WHISPARR_LOGS_PATH_2: ${WHISPARR_LOGS_PATH_2:-}
       WHISPARR_LOGS_PATH_3: ${WHISPARR_LOGS_PATH_3:-}
+      # Admin password reset - set to 'true' to reset admin account on startup
+      ADMIN_PASSWORD_RESET: ${ADMIN_PASSWORD_RESET:-}
     volumes:
       # Media server log mounts (optional - set paths in .env for file-based log ingestion)
       # In the Sources UI, configure paths as: /plex-logs, /jellyfin-logs, /emby-logs, etc.
