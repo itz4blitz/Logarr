@@ -27,7 +27,14 @@ let validatedEnv: Env | null = null;
 export function validateEnv(): Env {
   if (validatedEnv) return validatedEnv;
 
-  const result = envSchema.safeParse(process.env);
+  // Convert empty strings to undefined for optional fields
+  // This allows commented-out env vars to work properly
+  const sanitizedEnv: Record<string, string | undefined> = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    sanitizedEnv[key] = value === '' ? undefined : value;
+  }
+
+  const result = envSchema.safeParse(sanitizedEnv);
 
   if (!result.success) {
     console.error('\n❌ Invalid environment configuration:\n');
