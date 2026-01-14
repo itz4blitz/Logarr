@@ -410,13 +410,13 @@ By default, Logarr uses the `:latest` tag. To pin to a specific version (recomme
 
 ```bash
 # In your .env file or docker-compose.yml
-LOGARR_VERSION=0.5.4
+LOGARR_VERSION=0.5.5
 ```
 
 Or set it per-run:
 
 ```bash
-LOGARR_VERSION=0.5.4 docker compose up -d
+LOGARR_VERSION=0.5.5 docker compose up -d
 ```
 
 ### Building from Source

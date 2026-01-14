@@ -48,11 +48,15 @@ export class IssuesService {
 
   /**
    * Generate a fingerprint for an error message by normalizing it
-   * This removes variable parts like IDs, timestamps, paths, etc.
+   * This removes variable parts like IDs, timestamps, paths, URL query params, etc.
    */
   generateFingerprint(message: string, source: string, exceptionType?: string): string {
     // Normalize the message by removing variable parts
     const normalized = message
+      // Remove URL query parameters (before other replacements to avoid double-normalization)
+      // Matches: ?key=value&key2=value2 or &key=value
+      // Preserves the base URL while normalizing all query parameters
+      .replace(/\?[^?\s]+/g, '<QUERY>')
       // Remove UUIDs
       .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '<UUID>')
       // Remove numeric IDs
