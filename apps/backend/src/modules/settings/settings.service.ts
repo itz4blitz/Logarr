@@ -515,4 +515,31 @@ export class SettingsService {
   async getAdminCreatedAt(): Promise<string | null> {
     return this.getSetting<string | null>(SETTINGS_KEYS.SECURITY_ADMIN_CREATED_AT, null);
   }
+
+  /**
+   * Reset admin account to allow re-setup via /setup endpoint.
+   * Clears the setup_completed flag and admin credentials while preserving all other data.
+   */
+  async resetAdminAccount(): Promise<void> {
+    await this.db
+      .delete(schema.appSettings)
+      .where(
+        eq(
+          schema.appSettings.key,
+          SETTINGS_KEYS.SECURITY_SETUP_COMPLETED
+        )
+      );
+    // Also clear admin credentials so setup can create a fresh account
+    await this.db
+      .delete(schema.appSettings)
+      .where(
+        eq(schema.appSettings.key, SETTINGS_KEYS.SECURITY_ADMIN_USERNAME)
+      );
+    await this.db
+      .delete(schema.appSettings)
+      .where(
+        eq(schema.appSettings.key, SETTINGS_KEYS.SECURITY_ADMIN_PASSWORD_HASH)
+      );
+    this.logger.warn('Admin account reset - user must complete setup again');
+  }
 }
