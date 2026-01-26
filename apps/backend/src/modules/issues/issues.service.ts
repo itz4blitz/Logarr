@@ -54,9 +54,10 @@ export class IssuesService {
     // Normalize the message by removing variable parts
     const normalized = message
       // Remove URL query parameters (before other replacements to avoid double-normalization)
-      // Matches: ?key=value&key2=value2 or &key=value
-      // Preserves the base URL while normalizing all query parameters
-      .replace(/\?[^?\s]+/g, '<QUERY>')
+      // Matches: ? followed by any characters until whitespace, quotes, or end of string
+      // This handles URLs with spaces in query values (e.g., "query=Saturday Night Live")
+      // by greedily matching everything after ? until we hit a delimiter
+      .replace(/\?[^\s"']+(?:\s+[^\s"']+)*/g, '<QUERY>')
       // Remove UUIDs
       .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '<UUID>')
       // Remove numeric IDs
