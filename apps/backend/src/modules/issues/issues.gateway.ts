@@ -20,7 +20,7 @@ interface IssueUpdatePayload {
 
 interface IssueBroadcast {
   id: string;
-  serverId?: string;
+  serverId?: string | null;
   [key: string]: unknown;
 }
 
@@ -83,6 +83,7 @@ export class IssuesGateway {
    * Broadcast a new issue to subscribers
    */
   broadcastNewIssue(issue: IssueBroadcast): void {
+    const serverId = issue.serverId;
     const payload: IssueUpdatePayload = {
       type: 'new',
       issueId: issue.id,
@@ -91,8 +92,8 @@ export class IssuesGateway {
 
     // Broadcast to both server-specific room and 'all' room
     this.server.to('issues:all').emit('issue:new', payload);
-    if (issue.serverId !== undefined && issue.serverId.length > 0) {
-      this.server.to(`issues:${issue.serverId}`).emit('issue:new', payload);
+    if (serverId !== undefined && serverId !== null && serverId.length > 0) {
+      this.server.to(`issues:${serverId}`).emit('issue:new', payload);
     }
   }
 
@@ -100,6 +101,7 @@ export class IssuesGateway {
    * Broadcast an issue update to subscribers
    */
   broadcastIssueUpdate(issue: IssueBroadcast): void {
+    const serverId = issue.serverId;
     const payload: IssueUpdatePayload = {
       type: 'updated',
       issueId: issue.id,
@@ -107,8 +109,8 @@ export class IssuesGateway {
     };
 
     this.server.to('issues:all').emit('issue:updated', payload);
-    if (issue.serverId !== undefined && issue.serverId.length > 0) {
-      this.server.to(`issues:${issue.serverId}`).emit('issue:updated', payload);
+    if (serverId !== undefined && serverId !== null && serverId.length > 0) {
+      this.server.to(`issues:${serverId}`).emit('issue:updated', payload);
     }
   }
 
@@ -116,6 +118,7 @@ export class IssuesGateway {
    * Broadcast when an issue is resolved
    */
   broadcastIssueResolved(issue: IssueBroadcast): void {
+    const serverId = issue.serverId;
     const payload: IssueUpdatePayload = {
       type: 'resolved',
       issueId: issue.id,
@@ -123,8 +126,8 @@ export class IssuesGateway {
     };
 
     this.server.to('issues:all').emit('issue:resolved', payload);
-    if (issue.serverId !== undefined && issue.serverId.length > 0) {
-      this.server.to(`issues:${issue.serverId}`).emit('issue:resolved', payload);
+    if (serverId !== undefined && serverId !== null && serverId.length > 0) {
+      this.server.to(`issues:${serverId}`).emit('issue:resolved', payload);
     }
   }
 
