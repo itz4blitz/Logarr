@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Set the version environment variable before any imports
 const TEST_VERSION = '0.4.3';
@@ -131,7 +131,7 @@ describe('AppSidebar', () => {
       });
     });
 
-    it('should display version without v prefix in collapsed state', async () => {
+    it('should display version without v prefix in collapsed state', () => {
       // This test validates the conditional rendering logic
       // In collapsed state, version should show as "0.4.3" without the "v" prefix
       // The actual behavior depends on useSidebar().state
@@ -195,6 +195,14 @@ describe('AppSidebar', () => {
     it('should render Settings link', () => {
       render(<AppSidebar />);
       expect(screen.getByText('Settings')).toBeInTheDocument();
+    });
+
+    it('should link Settings directly to AI providers', () => {
+      render(<AppSidebar />);
+      expect(screen.getByRole('link', { name: /settings/i })).toHaveAttribute(
+        'href',
+        '/settings/ai-providers'
+      );
     });
   });
 });

@@ -58,7 +58,7 @@ function ServiceStatusIndicator({
   icon: Icon,
   status,
   isCollapsed,
-}: ServiceStatusIndicatorProps) {
+}: ServiceStatusIndicatorProps): React.JSX.Element {
   const isOk = status?.status === 'ok';
   const latency = status?.latency;
   const error = status?.error;
@@ -101,7 +101,7 @@ function ServiceStatusIndicator({
                 </span>
               </div>
             )}
-            {error && (
+            {error !== undefined && error.length > 0 && (
               <div className="mt-1 max-w-[200px] text-xs wrap-break-word text-red-400">{error}</div>
             )}
           </div>
@@ -111,7 +111,7 @@ function ServiceStatusIndicator({
   );
 }
 
-export function AppSidebar() {
+export function AppSidebar(): React.JSX.Element {
   const pathname = usePathname();
   const { state } = useSidebar();
   const isCollapsed = state === 'collapsed';
@@ -190,7 +190,8 @@ export function AppSidebar() {
   const settingsNavItems = [
     {
       title: 'Settings',
-      href: '/settings',
+      href: '/settings/ai-providers',
+      activePrefix: '/settings',
       icon: Settings,
       iconColor: 'text-zinc-400',
       badge: null as string | number | null,
@@ -223,13 +224,13 @@ export function AppSidebar() {
                     isActive={pathname === item.href}
                     size="lg"
                     className="gap-3"
-                    tooltip={item.badge ? `${item.title} (${item.badge})` : item.title}
+                    tooltip={item.badge !== null ? `${item.title} (${item.badge})` : item.title}
                   >
                     <Link href={item.href} className="relative">
                       <item.icon className={cn('h-5 w-5 shrink-0', item.iconColor)} />
                       <span className="font-medium">{item.title}</span>
                       {/* Badge indicator dot for collapsed state */}
-                      {isCollapsed && item.badge && (
+                      {isCollapsed && item.badge !== null && (
                         <span
                           className={cn(
                             'absolute -top-1 -right-1 h-2 w-2 rounded-full',
@@ -247,7 +248,7 @@ export function AppSidebar() {
                       )}
                     </Link>
                   </SidebarMenuButton>
-                  {!isCollapsed && item.badge && (
+                  {!isCollapsed && item.badge !== null && (
                     <SidebarMenuBadge
                       className={cn('rounded px-1.5 text-xs font-medium', item.badgeColor)}
                     >
@@ -274,11 +275,13 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     asChild
-                    isActive={pathname === item.href || pathname.startsWith(item.href + '/')}
+                    isActive={
+                      pathname === item.href || pathname.startsWith(item.activePrefix + '/')
+                    }
                     size="lg"
                     className="gap-3"
                     tooltip={
-                      !hasAiConfigured && item.href === '/settings'
+                      !hasAiConfigured && item.activePrefix === '/settings'
                         ? 'Settings (Setup AI)'
                         : item.title
                     }
@@ -287,12 +290,12 @@ export function AppSidebar() {
                       <item.icon className={cn('h-5 w-5 shrink-0', item.iconColor)} />
                       <span className="font-medium">{item.title}</span>
                       {/* AI setup indicator for collapsed state */}
-                      {isCollapsed && !hasAiConfigured && item.href === '/settings' && (
+                      {isCollapsed && !hasAiConfigured && item.activePrefix === '/settings' && (
                         <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-yellow-500" />
                       )}
                     </Link>
                   </SidebarMenuButton>
-                  {!isCollapsed && !hasAiConfigured && item.href === '/settings' && (
+                  {!isCollapsed && !hasAiConfigured && item.activePrefix === '/settings' && (
                     <SidebarMenuBadge className="rounded bg-yellow-500/10 px-1.5 text-xs font-medium text-yellow-500">
                       <Sparkles className="h-3 w-3" />
                     </SidebarMenuBadge>

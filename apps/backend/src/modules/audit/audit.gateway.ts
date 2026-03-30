@@ -8,14 +8,15 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 
+import { createCorsOriginValidator } from '../../config/cors';
+
 /**
  * WebSocket Gateway for real-time audit log updates
  * Clients can connect to receive live audit logs as they're created
  */
 @WebSocketGateway({
   cors: {
-    origin:
-      (process.env as { CORS_ORIGIN?: string }).CORS_ORIGIN?.split(',') || 'http://localhost:3000',
+    origin: createCorsOriginValidator(process.env['CORS_ORIGIN'] || 'http://localhost:3000'),
     credentials: true,
   },
   namespace: '/audit',

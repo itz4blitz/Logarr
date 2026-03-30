@@ -8,12 +8,20 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 
+import { createCorsOriginValidator } from '../../config/cors';
+
 import { IssuesService } from './issues.service';
 
 interface IssueUpdatePayload {
   type: 'new' | 'updated' | 'resolved' | 'merged';
   issueId: string;
-  data?: any;
+  data?: unknown;
+}
+
+interface IssueBroadcast {
+  id: string;
+  serverId?: string;
+  [key: string]: unknown;
 }
 
 interface BackfillProgressPayload {
@@ -32,7 +40,7 @@ interface BackfillProgressPayload {
 @WebSocketGateway({
   namespace: 'issues',
   cors: {
-    origin: process.env['CORS_ORIGIN']!,
+    origin: createCorsOriginValidator(process.env['CORS_ORIGIN'] ?? 'http://localhost:3000'),
     credentials: true,
   },
 })
@@ -51,9 +59,9 @@ export class IssuesGateway {
   async handleSubscribe(
     @MessageBody() data: { serverId?: string },
     @ConnectedSocket() client: Socket
-  ) {
+  ): Promise<{ subscribed: true; room: string }> {
     // Join a room for the specific server or 'all' for all issues
-    const room = data.serverId || 'all';
+    const room = data.serverId ?? 'all';
     await client.join(`issues:${room}`);
     return { subscribed: true, room };
   }
@@ -65,8 +73,8 @@ export class IssuesGateway {
   async handleUnsubscribe(
     @MessageBody() data: { serverId?: string },
     @ConnectedSocket() client: Socket
-  ) {
-    const room = data.serverId || 'all';
+  ): Promise<{ unsubscribed: true; room: string }> {
+    const room = data.serverId ?? 'all';
     await client.leave(`issues:${room}`);
     return { unsubscribed: true, room };
   }
@@ -74,7 +82,7 @@ export class IssuesGateway {
   /**
    * Broadcast a new issue to subscribers
    */
-  broadcastNewIssue(issue: any) {
+  broadcastNewIssue(issue: IssueBroadcast): void {
     const payload: IssueUpdatePayload = {
       type: 'new',
       issueId: issue.id,
@@ -83,7 +91,7 @@ export class IssuesGateway {
 
     // Broadcast to both server-specific room and 'all' room
     this.server.to('issues:all').emit('issue:new', payload);
-    if (issue.serverId) {
+    if (issue.serverId !== undefined && issue.serverId.length > 0) {
       this.server.to(`issues:${issue.serverId}`).emit('issue:new', payload);
     }
   }
@@ -91,7 +99,7 @@ export class IssuesGateway {
   /**
    * Broadcast an issue update to subscribers
    */
-  broadcastIssueUpdate(issue: any) {
+  broadcastIssueUpdate(issue: IssueBroadcast): void {
     const payload: IssueUpdatePayload = {
       type: 'updated',
       issueId: issue.id,
@@ -99,7 +107,7 @@ export class IssuesGateway {
     };
 
     this.server.to('issues:all').emit('issue:updated', payload);
-    if (issue.serverId) {
+    if (issue.serverId !== undefined && issue.serverId.length > 0) {
       this.server.to(`issues:${issue.serverId}`).emit('issue:updated', payload);
     }
   }
@@ -107,7 +115,7 @@ export class IssuesGateway {
   /**
    * Broadcast when an issue is resolved
    */
-  broadcastIssueResolved(issue: any) {
+  broadcastIssueResolved(issue: IssueBroadcast): void {
     const payload: IssueUpdatePayload = {
       type: 'resolved',
       issueId: issue.id,
@@ -115,7 +123,7 @@ export class IssuesGateway {
     };
 
     this.server.to('issues:all').emit('issue:resolved', payload);
-    if (issue.serverId) {
+    if (issue.serverId !== undefined && issue.serverId.length > 0) {
       this.server.to(`issues:${issue.serverId}`).emit('issue:resolved', payload);
     }
   }
@@ -123,9 +131,9 @@ export class IssuesGateway {
   /**
    * Broadcast stats update
    */
-  broadcastStatsUpdate(stats: any, serverId?: string) {
+  broadcastStatsUpdate(stats: unknown, serverId?: string): void {
     this.server.to('issues:all').emit('stats:updated', stats);
-    if (serverId) {
+    if (serverId !== undefined && serverId.length > 0) {
       this.server.to(`issues:${serverId}`).emit('stats:updated', stats);
     }
   }
@@ -133,12 +141,12 @@ export class IssuesGateway {
   /**
    * Broadcast backfill progress
    */
-  broadcastBackfillProgress(progress: BackfillProgressPayload, serverId?: string) {
+  broadcastBackfillProgress(progress: BackfillProgressPayload, serverId?: string): void {
     this.logger.log(
       `Broadcasting backfill progress: ${progress.status} - ${progress.processedLogs}/${progress.totalLogs}`
     );
     this.server.to('issues:all').emit('backfill:progress', progress);
-    if (serverId) {
+    if (serverId !== undefined && serverId.length > 0) {
       this.server.to(`issues:${serverId}`).emit('backfill:progress', progress);
     }
   }

@@ -3,6 +3,7 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
 
 import { AppModule } from './app.module';
+import { createCorsOriginValidator } from './config/cors';
 import { validateEnv, type Env } from './config/env';
 import { AuthService } from './modules/auth/auth.service';
 import { SettingsService } from './modules/settings/settings.service';
@@ -23,13 +24,8 @@ async function bootstrap() {
   // Use Pino logger for all NestJS logging
   app.useLogger(app.get(Logger));
 
-  // Enable CORS - support multiple origins via comma-separated string
-  const origins = env.CORS_ORIGIN.includes(',')
-    ? env.CORS_ORIGIN.split(',').map((o) => o.trim())
-    : env.CORS_ORIGIN;
-
   app.enableCors({
-    origin: origins,
+    origin: createCorsOriginValidator(env.CORS_ORIGIN),
     credentials: true,
   });
 
@@ -79,9 +75,9 @@ async function bootstrap() {
   const setupStatus = await authService.getSetupStatus();
   if (setupStatus.setupRequired && setupStatus.setupToken) {
     // Log the setup token prominently for first-time setup
-    const frontendUrl = env.CORS_ORIGIN.includes(',')
-      ? (env.CORS_ORIGIN.split(',')[0] ?? env.CORS_ORIGIN).trim()
-      : env.CORS_ORIGIN;
+    const frontendUrl = env.CORS_ORIGIN.includes('*')
+      ? 'your Logarr frontend'
+      : (env.CORS_ORIGIN.split(',')[0] ?? env.CORS_ORIGIN).trim() || 'your Logarr frontend';
     const token = setupStatus.setupToken;
 
     console.log('');

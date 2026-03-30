@@ -50,7 +50,7 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/logarr
       REDIS_URL: redis://redis:6379
       BACKEND_PORT: 4000
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3001}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
       # Health check startup grace period (seconds) - allows file ingestion to initialize
       # Volume mounts may not be immediately available after docker compose restart
       HEALTH_CHECK_STARTUP_GRACE_SECONDS: ${HEALTH_CHECK_STARTUP_GRACE_SECONDS:-60}
