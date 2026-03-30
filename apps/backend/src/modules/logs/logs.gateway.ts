@@ -7,6 +7,8 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 
+import { createCorsOriginValidator } from '../../config/cors';
+
 interface LogSubscription {
   serverId?: string;
   levels?: string[];
@@ -43,7 +45,7 @@ interface FileIngestionProgress {
 @WebSocketGateway({
   namespace: 'logs',
   cors: {
-    origin: process.env['CORS_ORIGIN']!,
+    origin: createCorsOriginValidator(process.env['CORS_ORIGIN'] || 'http://localhost:3000'),
     credentials: true,
   },
 })

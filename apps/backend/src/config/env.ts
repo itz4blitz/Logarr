@@ -1,5 +1,20 @@
 import { z } from 'zod';
 
+function isValidDatabaseUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return (
+      (url.protocol === 'postgres:' || url.protocol === 'postgresql:') &&
+      url.username.length > 0 &&
+      url.password.length > 0 &&
+      url.hostname.length > 0 &&
+      url.pathname.length > 1
+    );
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Environment configuration schema.
  * All required values must be set - no defaults that hide misconfiguration.
@@ -7,7 +22,13 @@ import { z } from 'zod';
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']),
   BACKEND_PORT: z.coerce.number().min(1).max(65535),
-  DATABASE_URL: z.string().url(),
+  DATABASE_URL: z
+    .string()
+    .url()
+    .refine(
+      isValidDatabaseUrl,
+      'DATABASE_URL must include postgres username, password, host, and database name'
+    ),
   REDIS_URL: z.string(),
   CORS_ORIGIN: z.string().min(1),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).optional(),
