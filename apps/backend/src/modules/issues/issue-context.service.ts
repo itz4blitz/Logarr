@@ -15,7 +15,7 @@ export interface IssueAnalysisContext {
   // Core issue data
   issue: {
     id: string;
-    serverId: string;
+    serverId: string | null;
     title: string;
     source: string;
     severity: string;
@@ -119,7 +119,7 @@ export class IssueContextService {
     return {
       issue: {
         ...issue,
-        serverId: issue.serverId,
+        serverId: issue.serverId as string,
       },
       timeline: {
         hourly: timeline.hourly,
