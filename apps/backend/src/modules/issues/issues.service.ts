@@ -1078,7 +1078,7 @@ export class IssuesService {
 
     // Create audit record
     await this.db.insert(schema.aiAnalyses).values({
-      serverId: context.issue.id,
+      serverId: context.issue.serverId,
       provider: result.provider,
       prompt: `${system}\n\n${user}`,
       response: result.analysis,
