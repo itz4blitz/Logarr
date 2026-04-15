@@ -15,6 +15,7 @@ export interface IssueAnalysisContext {
   // Core issue data
   issue: {
     id: string;
+    serverId: string;
     title: string;
     source: string;
     severity: string;
@@ -116,7 +117,10 @@ export class IssueContextService {
     const timelinePatterns = this.analyzeTimelinePatterns(timeline.hourly, timeline.daily);
 
     return {
-      issue,
+      issue: {
+        ...issue,
+        serverId: issue.serverId,
+      },
       timeline: {
         hourly: timeline.hourly,
         daily: timeline.daily,
@@ -137,6 +141,7 @@ export class IssueContextService {
     const [issue] = await this.db
       .select({
         id: schema.issues.id,
+        serverId: schema.issues.serverId,
         title: schema.issues.title,
         source: schema.issues.source,
         severity: schema.issues.severity,
