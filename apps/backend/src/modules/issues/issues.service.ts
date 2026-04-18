@@ -498,6 +498,7 @@ export class IssuesService {
 
     if (updateDto.status === 'resolved') {
       updateData.resolvedAt = new Date();
+      updateData.resolvedBy = updateDto.resolvedBy ?? null;
     } else if (updateDto.status) {
       updateData.resolvedAt = null;
       updateData.resolvedBy = null;

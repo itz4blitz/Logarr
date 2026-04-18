@@ -633,7 +633,7 @@ describe('IssuesService', () => {
     it('should include resolvedAt when bulk resolving issues', async () => {
       configureMockDb(mockDb, {
         select: [{ id: '550e8400-e29b-41d4-a716-446655440000' }],
-        update: [{ id: 'issue-1', status: 'resolved' }],
+        update: [{ id: '550e8400-e29b-41d4-a716-446655440000', status: 'resolved' }],
       });
 
       await service.bulkUpdateStatus({
