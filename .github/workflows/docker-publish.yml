@@ -4,8 +4,16 @@ on:
   push:
     branches: [master]
     tags: ['v*']
+    paths-ignore:
+      - '.github/agents/**'
+      - '.github/instructions/**'
+      - '.github/copilot-instructions.md'
   pull_request:
     branches: [master]
+    paths-ignore:
+      - '.github/agents/**'
+      - '.github/instructions/**'
+      - '.github/copilot-instructions.md'
 
 env:
   REGISTRY: ghcr.io
