@@ -15,6 +15,7 @@ export interface IssueAnalysisContext {
   // Core issue data
   issue: {
     id: string;
+    serverId: string | null;
     title: string;
     source: string;
     severity: string;
@@ -137,6 +138,7 @@ export class IssueContextService {
     const [issue] = await this.db
       .select({
         id: schema.issues.id,
+        serverId: schema.issues.serverId,
         title: schema.issues.title,
         source: schema.issues.source,
         severity: schema.issues.severity,

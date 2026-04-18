@@ -1194,7 +1194,7 @@ describe('IssuesService', () => {
 
     it('should analyze issue with AI and return structured result', async () => {
       const mockContext = {
-        issue: { id: 'issue-1', title: 'Test Error' },
+        issue: { id: 'issue-1', serverId: 'server-1', title: 'Test Error' },
         sampleOccurrences: [{ id: 'occ-1' }],
         stackTraces: [],
         affectedUsers: ['user-1'],
@@ -1240,6 +1240,61 @@ Connection timeout
       expect(result).toHaveProperty('analysis');
       expect(result).toHaveProperty('metadata');
       expect(result.metadata.provider).toBe('openai');
+    });
+
+    it('should store AI analysis audit record using issue serverId', async () => {
+      const mockContext = {
+        issue: { id: 'issue-1', serverId: 'server-123', title: 'Test Error' },
+        sampleOccurrences: [],
+        stackTraces: [],
+        affectedUsers: [],
+        affectedSessions: [],
+      };
+      const mockAnalysis = `## Root Cause Analysis
+### Primary Cause
+Connection timeout
+### Confidence: 85%
+### Evidence
+- Network logs show timeout
+
+## Recommendations
+### Fix 1
+**Priority:** High
+**Action:** Increase timeout
+**Rationale:** Allows more time for connection`;
+
+      mockAiProviderService.getDefaultProvider.mockResolvedValue({ id: 'openai' });
+      mockIssueContextService.gatherContext.mockResolvedValue(mockContext);
+      mockAnalysisPromptBuilder.buildPrompt.mockReturnValue({
+        system: 'system prompt',
+        user: 'user prompt',
+      });
+      mockAiProviderService.generateAnalysisWithSystemPrompt.mockResolvedValue({
+        analysis: mockAnalysis,
+        provider: 'openai',
+        model: 'gpt-4',
+        tokensUsed: 100,
+      });
+
+      const insertQuery = {
+        values: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue([{ id: 'conv-1' }]),
+      };
+      mockDb.insert = vi.fn().mockReturnValue(insertQuery);
+      mockDb.update = vi.fn().mockImplementation(() => ({
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue([]),
+      }));
+
+      await service.analyzeIssue('issue-1');
+
+      expect(mockDb.insert).toHaveBeenCalledTimes(2);
+      expect(insertQuery.values).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          serverId: 'server-123',
+        })
+      );
     });
 
     it('should re-throw error when AI generation fails', async () => {
