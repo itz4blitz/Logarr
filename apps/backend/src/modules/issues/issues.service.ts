@@ -530,7 +530,7 @@ export class IssuesService {
     }
 
     if (!updateDto.status || !ISSUE_STATUSES.includes(updateDto.status)) {
-      throw new BadRequestException('Status must be one of: open, acknowledged, in_progress, resolved, ignored');
+      throw new BadRequestException(`Status must be one of: ${ISSUE_STATUSES.join(', ')}`);
     }
 
     if (uniqueIssueIds.some((issueId) => !isUUID(issueId, '4'))) {

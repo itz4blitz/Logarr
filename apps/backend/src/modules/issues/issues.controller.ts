@@ -64,7 +64,7 @@ export class IssuesController {
   @Post('bulk-update')
   async bulkUpdateStatus(@Body() bulkUpdateDto: BulkUpdateIssueStatusDto) {
     if (!bulkUpdateDto.status || !ISSUE_STATUSES.includes(bulkUpdateDto.status)) {
-      throw new BadRequestException('Status must be one of: open, acknowledged, in_progress, resolved, ignored');
+      throw new BadRequestException(`Status must be one of: ${ISSUE_STATUSES.join(', ')}`);
     }
 
     if (!Array.isArray(bulkUpdateDto.issueIds) || bulkUpdateDto.issueIds.length === 0) {
