@@ -432,6 +432,7 @@ describe('useBulkUpdateIssues', () => {
   it('should call API bulk update mutation', async () => {
     const response = [{ id: 'issue-1', status: 'resolved' }];
     vi.mocked(api.bulkUpdateIssueStatus).mockResolvedValue(response as any);
+    const invalidateSpy = vi.spyOn(QueryClient.prototype, 'invalidateQueries');
 
     const { result } = renderHook(() => useBulkUpdateIssues(), {
       wrapper: createWrapper(),
@@ -448,6 +449,9 @@ describe('useBulkUpdateIssues', () => {
       status: 'resolved',
       resolvedBy: 'admin',
     });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['issues'] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.issue('issue-1') });
+    invalidateSpy.mockRestore();
   });
 });
 

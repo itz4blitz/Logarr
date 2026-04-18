@@ -1,6 +1,7 @@
 import * as crypto from 'crypto';
 
 import { Injectable, Inject, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { isUUID } from 'class-validator';
 import { and, eq, gte, inArray, sql, desc, asc, count, avg } from 'drizzle-orm';
 
 import { DATABASE_CONNECTION } from '../../database';
@@ -495,8 +496,11 @@ export class IssuesService {
       updatedAt: new Date(),
     };
 
-    if (updateDto.status === 'resolved' && updateDto.resolvedBy) {
+    if (updateDto.status === 'resolved') {
       updateData.resolvedAt = new Date();
+    } else if (updateDto.status) {
+      updateData.resolvedAt = null;
+      updateData.resolvedBy = null;
     }
 
     const [updated] = await this.db
@@ -521,32 +525,45 @@ export class IssuesService {
       throw new BadRequestException('At least one issue ID is required');
     }
 
-    const foundIssues = await this.db
-      .select({ id: schema.issues.id })
-      .from(schema.issues)
-      .where(inArray(schema.issues.id, uniqueIssueIds));
-
-    if (foundIssues.length !== uniqueIssueIds.length) {
-      throw new NotFoundException('One or more issues not found');
+    if (uniqueIssueIds.some((issueId) => !isUUID(issueId))) {
+      throw new BadRequestException('All issue IDs must be valid UUIDs');
     }
 
-    const updateData: Partial<typeof schema.issues.$inferInsert> = {
-      status: updateDto.status,
-      updatedAt: new Date(),
-    };
+    return this.db.transaction(async (tx) => {
+      const foundIssues = await tx
+        .select({ id: schema.issues.id })
+        .from(schema.issues)
+        .where(inArray(schema.issues.id, uniqueIssueIds));
 
-    if (updateDto.status === 'resolved') {
-      updateData.resolvedAt = new Date();
-      if (updateDto.resolvedBy) {
-        updateData.resolvedBy = updateDto.resolvedBy;
+      if (foundIssues.length !== uniqueIssueIds.length) {
+        throw new NotFoundException('One or more issues not found');
       }
-    }
 
-    return this.db
-      .update(schema.issues)
-      .set(updateData)
-      .where(inArray(schema.issues.id, uniqueIssueIds))
-      .returning();
+      const updateData: Partial<typeof schema.issues.$inferInsert> = {
+        status: updateDto.status,
+        updatedAt: new Date(),
+      };
+
+      if (updateDto.status === 'resolved') {
+        updateData.resolvedAt = new Date();
+        updateData.resolvedBy = updateDto.resolvedBy ?? null;
+      } else {
+        updateData.resolvedAt = null;
+        updateData.resolvedBy = null;
+      }
+
+      const updatedIssues = await tx
+        .update(schema.issues)
+        .set(updateData)
+        .where(inArray(schema.issues.id, uniqueIssueIds))
+        .returning();
+
+      if (updatedIssues.length !== uniqueIssueIds.length) {
+        throw new NotFoundException('One or more issues not found');
+      }
+
+      return updatedIssues;
+    });
   }
 
   /**

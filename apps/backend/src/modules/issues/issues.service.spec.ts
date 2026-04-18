@@ -548,9 +548,24 @@ describe('IssuesService', () => {
       const resolvedIssue = { ...mockUpdatedIssue, status: 'resolved', resolvedAt: new Date() };
       configureMockDb(mockDb, { update: [resolvedIssue] });
 
-      await service.update('issue-1', { status: 'resolved' as any, resolvedBy: 'user-1' });
+      await service.update('issue-1', { status: 'resolved' as any });
 
       expect(mockDb.update).toHaveBeenCalled();
+    });
+
+    it('should clear resolved metadata when status changes away from resolved', async () => {
+      configureMockDb(mockDb, { update: [mockUpdatedIssue] });
+
+      await service.update('issue-1', { status: 'open' as any });
+
+      const updateQuery = mockDb.update.mock.results[0]?.value as { set?: ReturnType<typeof vi.fn> };
+      expect(updateQuery?.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'open',
+          resolvedAt: null,
+          resolvedBy: null,
+        })
+      );
     });
 
     it('should throw NotFoundException when issue not found', async () => {
@@ -569,12 +584,24 @@ describe('IssuesService', () => {
       );
     });
 
+    it('should throw BadRequestException when issue IDs are not valid UUIDs', async () => {
+      await expect(
+        service.bulkUpdateStatus({
+          issueIds: ['not-a-uuid'],
+          status: 'resolved' as any,
+        })
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it('should throw NotFoundException when one or more issues are not found', async () => {
-      configureMockDb(mockDb, { select: [{ id: 'issue-1' }] });
+      configureMockDb(mockDb, { select: [{ id: '550e8400-e29b-41d4-a716-446655440000' }] });
 
       await expect(
         service.bulkUpdateStatus({
-          issueIds: ['issue-1', 'issue-2'],
+          issueIds: [
+            '550e8400-e29b-41d4-a716-446655440000',
+            '550e8400-e29b-41d4-a716-446655440001',
+          ],
           status: 'acknowledged' as any,
         })
       ).rejects.toThrow(NotFoundException);
@@ -586,27 +613,31 @@ describe('IssuesService', () => {
         { id: 'issue-2', status: 'acknowledged' },
       ];
       configureMockDb(mockDb, {
-        select: [{ id: 'issue-1' }, { id: 'issue-2' }],
+        select: [
+          { id: '550e8400-e29b-41d4-a716-446655440000' },
+          { id: '550e8400-e29b-41d4-a716-446655440001' },
+        ],
         update: updatedIssues,
       });
 
       const result = await service.bulkUpdateStatus({
-        issueIds: ['issue-1', 'issue-2'],
+        issueIds: ['550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440001'],
         status: 'acknowledged' as any,
       });
 
       expect(result).toEqual(updatedIssues);
       expect(mockDb.update).toHaveBeenCalled();
+      expect(mockDb.transaction).toHaveBeenCalled();
     });
 
     it('should include resolvedAt when bulk resolving issues', async () => {
       configureMockDb(mockDb, {
-        select: [{ id: 'issue-1' }],
+        select: [{ id: '550e8400-e29b-41d4-a716-446655440000' }],
         update: [{ id: 'issue-1', status: 'resolved' }],
       });
 
       await service.bulkUpdateStatus({
-        issueIds: ['issue-1'],
+        issueIds: ['550e8400-e29b-41d4-a716-446655440000'],
         status: 'resolved' as any,
         resolvedBy: 'admin',
       });
@@ -619,6 +650,41 @@ describe('IssuesService', () => {
           resolvedAt: expect.any(Date),
         })
       );
+    });
+
+    it('should clear resolved metadata when bulk status is not resolved', async () => {
+      configureMockDb(mockDb, {
+        select: [{ id: '550e8400-e29b-41d4-a716-446655440000' }],
+        update: [{ id: 'issue-1', status: 'open' }],
+      });
+
+      await service.bulkUpdateStatus({
+        issueIds: ['550e8400-e29b-41d4-a716-446655440000'],
+        status: 'open' as any,
+      });
+
+      const updateQuery = mockDb.update.mock.results[0]?.value as { set?: ReturnType<typeof vi.fn> };
+      expect(updateQuery?.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'open',
+          resolvedAt: null,
+          resolvedBy: null,
+        })
+      );
+    });
+
+    it('should throw NotFoundException when update count does not match requested IDs', async () => {
+      configureMockDb(mockDb, {
+        select: [{ id: '550e8400-e29b-41d4-a716-446655440000' }],
+        update: [],
+      });
+
+      await expect(
+        service.bulkUpdateStatus({
+          issueIds: ['550e8400-e29b-41d4-a716-446655440000'],
+          status: 'ignored' as any,
+        })
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

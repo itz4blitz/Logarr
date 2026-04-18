@@ -1631,6 +1631,7 @@ function IssueRow({
     >
       <Checkbox
         checked={selected}
+        aria-label={`Select issue ${issue.title}`}
         onCheckedChange={(checked) => onSelect(checked === true)}
         onClick={(e) => e.stopPropagation()}
       />
@@ -1889,6 +1890,7 @@ function IssuesPageContent() {
 
   const selectedIssueIdSet = useMemo(() => new Set(selectedIssueIds), [selectedIssueIds]);
   const visibleIssueIds = useMemo(() => paginatedIssues.map((issue) => issue.id), [paginatedIssues]);
+  const visibleIssueIdSet = useMemo(() => new Set(visibleIssueIds), [visibleIssueIds]);
   const allVisibleSelected =
     visibleIssueIds.length > 0 && visibleIssueIds.every((id) => selectedIssueIdSet.has(id));
   const someVisibleSelected =
@@ -2298,13 +2300,18 @@ function IssuesPageContent() {
             <div className="hidden flex-1 flex-col overflow-hidden sm:flex">
               <div className="bg-muted/20 text-muted-foreground flex h-10 shrink-0 items-center gap-2 border-b px-4 text-xs">
                 <Checkbox
+                  aria-label="Select all issues on this page"
                   checked={allVisibleSelected ? true : someVisibleSelected ? 'indeterminate' : false}
                   onCheckedChange={(checked) => {
                     if (checked === true) {
-                      setSelectedIssueIds((prev) => Array.from(new Set([...prev, ...visibleIssueIds])));
+                      setSelectedIssueIds((prev) => {
+                        const prevSet = new Set(prev);
+                        const newIds = visibleIssueIds.filter((id) => !prevSet.has(id));
+                        return newIds.length > 0 ? [...prev, ...newIds] : prev;
+                      });
                       return;
                     }
-                    setSelectedIssueIds((prev) => prev.filter((id) => !visibleIssueIds.includes(id)));
+                    setSelectedIssueIds((prev) => prev.filter((id) => !visibleIssueIdSet.has(id)));
                   }}
                 />
                 <span>Select page</span>

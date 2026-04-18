@@ -8,7 +8,9 @@ import {
   Body,
   ParseUUIDPipe,
   Logger,
+  BadRequestException,
 } from '@nestjs/common';
+import { isUUID } from 'class-validator';
 
 import { IssueSearchDto, UpdateIssueDto, MergeIssuesDto, BulkUpdateIssueStatusDto } from './issues.dto';
 import { IssuesGateway } from './issues.gateway';
@@ -55,6 +57,14 @@ export class IssuesController {
 
   @Post('bulk-update')
   async bulkUpdateStatus(@Body() bulkUpdateDto: BulkUpdateIssueStatusDto) {
+    if (!Array.isArray(bulkUpdateDto.issueIds) || bulkUpdateDto.issueIds.length === 0) {
+      throw new BadRequestException('At least one issue ID is required');
+    }
+
+    if (bulkUpdateDto.issueIds.some((issueId) => !isUUID(issueId))) {
+      throw new BadRequestException('All issue IDs must be valid UUIDs');
+    }
+
     return this.issuesService.bulkUpdateStatus(bulkUpdateDto);
   }
 
