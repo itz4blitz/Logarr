@@ -1887,11 +1887,12 @@ function IssuesPageContent() {
     return issues.slice(start, start + pageSize);
   }, [issues, validPage, pageSize]);
 
+  const selectedIssueIdSet = useMemo(() => new Set(selectedIssueIds), [selectedIssueIds]);
   const visibleIssueIds = useMemo(() => paginatedIssues.map((issue) => issue.id), [paginatedIssues]);
   const allVisibleSelected =
-    visibleIssueIds.length > 0 && visibleIssueIds.every((id) => selectedIssueIds.includes(id));
+    visibleIssueIds.length > 0 && visibleIssueIds.every((id) => selectedIssueIdSet.has(id));
   const someVisibleSelected =
-    !allVisibleSelected && visibleIssueIds.some((id) => selectedIssueIds.includes(id));
+    !allVisibleSelected && visibleIssueIds.some((id) => selectedIssueIdSet.has(id));
 
   useEffect(() => {
     if (!issues) return;
@@ -2315,7 +2316,7 @@ function IssuesPageContent() {
                     issue={issue}
                     onClick={() => setDetailIssueId(issue.id)}
                     onAction={(action) => handleAction(issue.id, action)}
-                    selected={selectedIssueIds.includes(issue.id)}
+                    selected={selectedIssueIdSet.has(issue.id)}
                     onSelect={(selected) => {
                       setSelectedIssueIds((prev) =>
                         selected ? Array.from(new Set([...prev, issue.id])) : prev.filter((id) => id !== issue.id)
