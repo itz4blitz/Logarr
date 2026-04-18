@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { DATABASE_CONNECTION } from '../../database';
+import * as schema from '../../database/schema';
 import { createMockDb, configureMockDb, type MockDb } from '../../test/mock-db';
 import { AiProviderService } from '../settings/ai-provider.service';
 
@@ -1194,7 +1195,7 @@ describe('IssuesService', () => {
 
     it('should analyze issue with AI and return structured result', async () => {
       const mockContext = {
-        issue: { id: 'issue-1', title: 'Test Error' },
+        issue: { id: 'issue-1', serverId: 'server-1', title: 'Test Error' },
         sampleOccurrences: [{ id: 'occ-1' }],
         stackTraces: [],
         affectedUsers: ['user-1'],
@@ -1226,10 +1227,27 @@ Connection timeout
         tokensUsed: 500,
       });
 
-      mockDb.insert = vi.fn().mockImplementation(() => ({
-        values: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([{ id: 'conv-1' }]),
-      }));
+      const conversationValues = vi.fn().mockReturnThis();
+      const aiAnalysisValues = vi.fn().mockReturnThis();
+      mockDb.insert = vi.fn().mockImplementation((table) => {
+        if (table === schema.analysisConversations) {
+          return {
+            values: conversationValues,
+            returning: vi.fn().mockResolvedValue([{ id: 'conv-1' }]),
+          };
+        }
+
+        if (table === schema.aiAnalyses) {
+          return {
+            values: aiAnalysisValues,
+          };
+        }
+
+        return {
+          values: vi.fn().mockReturnThis(),
+          returning: vi.fn().mockResolvedValue([]),
+        };
+      });
       mockDb.update = vi.fn().mockImplementation(() => ({
         set: vi.fn().mockReturnThis(),
         where: vi.fn().mockResolvedValue([]),
@@ -1240,6 +1258,12 @@ Connection timeout
       expect(result).toHaveProperty('analysis');
       expect(result).toHaveProperty('metadata');
       expect(result.metadata.provider).toBe('openai');
+      expect(aiAnalysisValues).toHaveBeenCalledWith(
+        expect.objectContaining({ serverId: mockContext.issue.serverId })
+      );
+      expect(aiAnalysisValues).not.toHaveBeenCalledWith(
+        expect.objectContaining({ serverId: mockContext.issue.id })
+      );
     });
 
     it('should re-throw error when AI generation fails', async () => {
