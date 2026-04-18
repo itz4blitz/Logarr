@@ -119,7 +119,7 @@ export class IssueContextService {
     return {
       issue: {
         ...issue,
-        serverId: issue.serverId as string,
+        serverId: issue.serverId,
       },
       timeline: {
         hourly: timeline.hourly,
