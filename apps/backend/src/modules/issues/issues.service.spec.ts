@@ -562,6 +562,66 @@ describe('IssuesService', () => {
     });
   });
 
+  describe('bulkUpdateStatus', () => {
+    it('should throw BadRequestException when no issue IDs are provided', async () => {
+      await expect(service.bulkUpdateStatus({ issueIds: [], status: 'resolved' as any })).rejects.toThrow(
+        BadRequestException
+      );
+    });
+
+    it('should throw NotFoundException when one or more issues are not found', async () => {
+      configureMockDb(mockDb, { select: [{ id: 'issue-1' }] });
+
+      await expect(
+        service.bulkUpdateStatus({
+          issueIds: ['issue-1', 'issue-2'],
+          status: 'acknowledged' as any,
+        })
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should bulk update all matched issues', async () => {
+      const updatedIssues = [
+        { id: 'issue-1', status: 'acknowledged' },
+        { id: 'issue-2', status: 'acknowledged' },
+      ];
+      configureMockDb(mockDb, {
+        select: [{ id: 'issue-1' }, { id: 'issue-2' }],
+        update: updatedIssues,
+      });
+
+      const result = await service.bulkUpdateStatus({
+        issueIds: ['issue-1', 'issue-2'],
+        status: 'acknowledged' as any,
+      });
+
+      expect(result).toEqual(updatedIssues);
+      expect(mockDb.update).toHaveBeenCalled();
+    });
+
+    it('should include resolvedAt when bulk resolving issues', async () => {
+      configureMockDb(mockDb, {
+        select: [{ id: 'issue-1' }],
+        update: [{ id: 'issue-1', status: 'resolved' }],
+      });
+
+      await service.bulkUpdateStatus({
+        issueIds: ['issue-1'],
+        status: 'resolved' as any,
+        resolvedBy: 'admin',
+      });
+
+      const updateQuery = mockDb.update.mock.results[0]?.value as { set?: ReturnType<typeof vi.fn> };
+      expect(updateQuery?.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'resolved',
+          resolvedBy: 'admin',
+          resolvedAt: expect.any(Date),
+        })
+      );
+    });
+  });
+
   describe('getStats', () => {
     it('should return issue statistics', async () => {
       let callCount = 0;

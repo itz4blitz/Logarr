@@ -15,6 +15,7 @@ import {
   useIssues,
   useIssue,
   useIssueStats,
+  useBulkUpdateIssues,
   useAiProviderSettings,
 } from './use-api';
 
@@ -32,6 +33,7 @@ vi.mock('@/lib/api', () => ({
     getIssues: vi.fn(),
     getIssue: vi.fn(),
     getIssueStats: vi.fn(),
+    bulkUpdateIssueStatus: vi.fn(),
     getAiProviderSettings: vi.fn(),
   },
 }));
@@ -419,6 +421,33 @@ describe('useIssueStats', () => {
     });
 
     expect(result.current.data).toEqual(mockStats);
+  });
+});
+
+describe('useBulkUpdateIssues', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should call API bulk update mutation', async () => {
+    const response = [{ id: 'issue-1', status: 'resolved' }];
+    vi.mocked(api.bulkUpdateIssueStatus).mockResolvedValue(response as any);
+
+    const { result } = renderHook(() => useBulkUpdateIssues(), {
+      wrapper: createWrapper(),
+    });
+
+    await result.current.mutateAsync({
+      issueIds: ['issue-1'],
+      status: 'resolved',
+      resolvedBy: 'admin',
+    });
+
+    expect(api.bulkUpdateIssueStatus).toHaveBeenCalledWith({
+      issueIds: ['issue-1'],
+      status: 'resolved',
+      resolvedBy: 'admin',
+    });
   });
 });
 

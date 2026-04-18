@@ -311,6 +311,12 @@ export interface UpdateIssueDto {
   resolvedBy?: string;
 }
 
+export interface BulkUpdateIssueStatusDto {
+  issueIds: string[];
+  status: IssueStatus;
+  resolvedBy?: string;
+}
+
 // AI Provider types
 export type AiProviderType = 'openai' | 'anthropic' | 'google' | 'ollama' | 'lmstudio';
 
@@ -1061,6 +1067,13 @@ class ApiClient {
   async updateIssue(id: string, data: UpdateIssueDto): Promise<Issue> {
     return this.request<Issue>(`/issues/${id}`, {
       method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async bulkUpdateIssueStatus(data: BulkUpdateIssueStatusDto): Promise<Issue[]> {
+    return this.request<Issue[]>('/issues/bulk-update', {
+      method: 'POST',
       body: JSON.stringify(data),
     });
   }

@@ -6,6 +6,7 @@ import type {
   LogSearchParams,
   IssueSearchParams,
   UpdateIssueDto,
+  BulkUpdateIssueStatusDto,
   CreateAiProviderDto,
   UpdateAiProviderDto,
   AiProviderType,
@@ -307,6 +308,17 @@ export function useUpdateIssue() {
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['issues'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.issue(id) });
+    },
+  });
+}
+
+export function useBulkUpdateIssues() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: BulkUpdateIssueStatusDto) => api.bulkUpdateIssueStatus(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['issues'] });
     },
   });
 }

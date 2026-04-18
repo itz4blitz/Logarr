@@ -31,6 +31,12 @@ export interface MergeIssuesDto {
   newTitle?: string;
 }
 
+export interface BulkUpdateIssueStatusDto {
+  issueIds: string[];
+  status: IssueStatus;
+  resolvedBy?: string;
+}
+
 export interface IssueStatsDto {
   totalIssues: number;
   openIssues: number;

@@ -21,6 +21,7 @@ import type {
   UpdateIssueDto,
   IssueStatsDto,
   MergeIssuesDto,
+  BulkUpdateIssueStatusDto,
   IssueSeverity,
 } from './issues.dto';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
@@ -509,6 +510,43 @@ export class IssuesService {
     }
 
     return updated;
+  }
+
+  /**
+   * Bulk update status for multiple issues
+   */
+  async bulkUpdateStatus(updateDto: BulkUpdateIssueStatusDto) {
+    const uniqueIssueIds = Array.from(new Set(updateDto.issueIds));
+    if (uniqueIssueIds.length === 0) {
+      throw new BadRequestException('At least one issue ID is required');
+    }
+
+    const foundIssues = await this.db
+      .select({ id: schema.issues.id })
+      .from(schema.issues)
+      .where(inArray(schema.issues.id, uniqueIssueIds));
+
+    if (foundIssues.length !== uniqueIssueIds.length) {
+      throw new NotFoundException('One or more issues not found');
+    }
+
+    const updateData: Partial<typeof schema.issues.$inferInsert> = {
+      status: updateDto.status,
+      updatedAt: new Date(),
+    };
+
+    if (updateDto.status === 'resolved') {
+      updateData.resolvedAt = new Date();
+      if (updateDto.resolvedBy) {
+        updateData.resolvedBy = updateDto.resolvedBy;
+      }
+    }
+
+    return this.db
+      .update(schema.issues)
+      .set(updateData)
+      .where(inArray(schema.issues.id, uniqueIssueIds))
+      .returning();
   }
 
   /**

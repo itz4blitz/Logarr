@@ -10,7 +10,7 @@ import {
   Logger,
 } from '@nestjs/common';
 
-import { IssueSearchDto, UpdateIssueDto, MergeIssuesDto } from './issues.dto';
+import { IssueSearchDto, UpdateIssueDto, MergeIssuesDto, BulkUpdateIssueStatusDto } from './issues.dto';
 import { IssuesGateway } from './issues.gateway';
 import { IssuesService } from './issues.service';
 
@@ -51,6 +51,11 @@ export class IssuesController {
   @Post('merge')
   async mergeIssues(@Body() mergeDto: MergeIssuesDto) {
     return this.issuesService.mergeIssues(mergeDto);
+  }
+
+  @Post('bulk-update')
+  async bulkUpdateStatus(@Body() bulkUpdateDto: BulkUpdateIssueStatusDto) {
+    return this.issuesService.bulkUpdateStatus(bulkUpdateDto);
   }
 
   @Post(':id/acknowledge')
