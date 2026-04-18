@@ -1896,7 +1896,10 @@ function IssuesPageContent() {
   useEffect(() => {
     if (!issues) return;
     const validIds = new Set(issues.map((issue) => issue.id));
-    setSelectedIssueIds((prev) => prev.filter((id) => validIds.has(id)));
+    setSelectedIssueIds((prev) => {
+      const next = prev.filter((id) => validIds.has(id));
+      return next.length === prev.length ? prev : next;
+    });
   }, [issues]);
 
   // Real-time WebSocket updates
@@ -1949,7 +1952,8 @@ function IssuesPageContent() {
   const handleBulkStatusChange = (status: IssueStatus) => {
     if (selectedIssueIds.length === 0) return;
 
-    const validIssueIds = selectedIssueIds.filter((id) => (issues ?? []).some((issue) => issue.id === id));
+    const issueIdSet = new Set((issues ?? []).map((issue) => issue.id));
+    const validIssueIds = selectedIssueIds.filter((id) => issueIdSet.has(id));
     if (validIssueIds.length === 0) {
       setSelectedIssueIds([]);
       return;
