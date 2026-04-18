@@ -317,11 +317,8 @@ export function useBulkUpdateIssues() {
 
   return useMutation({
     mutationFn: (data: BulkUpdateIssueStatusDto) => api.bulkUpdateIssueStatus(data),
-    onSuccess: (_, { issueIds }) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['issues'] });
-      issueIds.forEach((issueId) => {
-        queryClient.invalidateQueries({ queryKey: queryKeys.issue(issueId) });
-      });
     },
   });
 }

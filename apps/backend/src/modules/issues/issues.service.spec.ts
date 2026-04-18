@@ -553,6 +553,17 @@ describe('IssuesService', () => {
       expect(mockDb.update).toHaveBeenCalled();
     });
 
+    it('should not overwrite resolvedBy when resolving without resolvedBy field', async () => {
+      configureMockDb(mockDb, { update: [{ ...mockUpdatedIssue, status: 'resolved' }] });
+
+      await service.update('issue-1', { status: 'resolved' as any });
+
+      const updateQuery = mockDb.update.mock.results[0]?.value as { set?: ReturnType<typeof vi.fn> };
+      const updatePayload = updateQuery?.set?.mock.calls[0]?.[0] as Record<string, unknown>;
+      expect(updatePayload).not.toHaveProperty('resolvedBy');
+      expect(updatePayload).toEqual(expect.objectContaining({ status: 'resolved' }));
+    });
+
     it('should clear resolved metadata when status changes away from resolved', async () => {
       configureMockDb(mockDb, { update: [mockUpdatedIssue] });
 
@@ -593,8 +604,26 @@ describe('IssuesService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
+    it('should throw BadRequestException when issue IDs are not UUID v4', async () => {
+      await expect(
+        service.bulkUpdateStatus({
+          issueIds: ['6ba7b810-9dad-11d1-80b4-00c04fd430c8'],
+          status: 'resolved' as any,
+        })
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException when status is invalid', async () => {
+      await expect(
+        service.bulkUpdateStatus({
+          issueIds: ['550e8400-e29b-41d4-a716-446655440000'],
+          status: 'not-a-status' as any,
+        })
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it('should throw NotFoundException when one or more issues are not found', async () => {
-      configureMockDb(mockDb, { select: [{ id: '550e8400-e29b-41d4-a716-446655440000' }] });
+      configureMockDb(mockDb, { update: [{ id: '550e8400-e29b-41d4-a716-446655440000' }] });
 
       await expect(
         service.bulkUpdateStatus({
@@ -613,10 +642,6 @@ describe('IssuesService', () => {
         { id: 'issue-2', status: 'acknowledged' },
       ];
       configureMockDb(mockDb, {
-        select: [
-          { id: '550e8400-e29b-41d4-a716-446655440000' },
-          { id: '550e8400-e29b-41d4-a716-446655440001' },
-        ],
         update: updatedIssues,
       });
 
@@ -632,7 +657,6 @@ describe('IssuesService', () => {
 
     it('should include resolvedAt when bulk resolving issues', async () => {
       configureMockDb(mockDb, {
-        select: [{ id: '550e8400-e29b-41d4-a716-446655440000' }],
         update: [{ id: '550e8400-e29b-41d4-a716-446655440000', status: 'resolved' }],
       });
 
@@ -654,7 +678,6 @@ describe('IssuesService', () => {
 
     it('should clear resolved metadata when bulk status is not resolved', async () => {
       configureMockDb(mockDb, {
-        select: [{ id: '550e8400-e29b-41d4-a716-446655440000' }],
         update: [{ id: 'issue-1', status: 'open' }],
       });
 
@@ -675,7 +698,6 @@ describe('IssuesService', () => {
 
     it('should throw NotFoundException when update count does not match requested IDs', async () => {
       configureMockDb(mockDb, {
-        select: [{ id: '550e8400-e29b-41d4-a716-446655440000' }],
         update: [],
       });
 
@@ -685,6 +707,27 @@ describe('IssuesService', () => {
           status: 'ignored' as any,
         })
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should not overwrite resolvedBy when bulk resolving without resolvedBy field', async () => {
+      configureMockDb(mockDb, {
+        update: [{ id: '550e8400-e29b-41d4-a716-446655440000', status: 'resolved' }],
+      });
+
+      await service.bulkUpdateStatus({
+        issueIds: ['550e8400-e29b-41d4-a716-446655440000'],
+        status: 'resolved' as any,
+      });
+
+      const updateQuery = mockDb.update.mock.results[0]?.value as { set?: ReturnType<typeof vi.fn> };
+      const updatePayload = updateQuery?.set?.mock.calls[0]?.[0] as Record<string, unknown>;
+      expect(updatePayload).not.toHaveProperty('resolvedBy');
+      expect(updatePayload).toEqual(
+        expect.objectContaining({
+          status: 'resolved',
+          resolvedAt: expect.any(Date),
+        })
+      );
     });
   });
 

@@ -450,7 +450,7 @@ describe('useBulkUpdateIssues', () => {
       resolvedBy: 'admin',
     });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['issues'] });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.issue('issue-1') });
+    expect(invalidateSpy).not.toHaveBeenCalledWith({ queryKey: queryKeys.issue('issue-1') });
     invalidateSpy.mockRestore();
   });
 });

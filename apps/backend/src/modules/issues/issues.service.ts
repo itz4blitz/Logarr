@@ -25,6 +25,7 @@ import type {
   BulkUpdateIssueStatusDto,
   IssueSeverity,
 } from './issues.dto';
+import { ISSUE_STATUSES } from './issues.dto';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 /**
@@ -498,7 +499,9 @@ export class IssuesService {
 
     if (updateDto.status === 'resolved') {
       updateData.resolvedAt = new Date();
-      updateData.resolvedBy = updateDto.resolvedBy ?? null;
+      if ('resolvedBy' in updateDto) {
+        updateData.resolvedBy = updateDto.resolvedBy ?? null;
+      }
     } else if (updateDto.status) {
       updateData.resolvedAt = null;
       updateData.resolvedBy = null;
@@ -526,20 +529,15 @@ export class IssuesService {
       throw new BadRequestException('At least one issue ID is required');
     }
 
-    if (uniqueIssueIds.some((issueId) => !isUUID(issueId))) {
-      throw new BadRequestException('All issue IDs must be valid UUIDs');
+    if (!updateDto.status || !ISSUE_STATUSES.includes(updateDto.status)) {
+      throw new BadRequestException('Status must be one of: open, acknowledged, in_progress, resolved, ignored');
+    }
+
+    if (uniqueIssueIds.some((issueId) => !isUUID(issueId, '4'))) {
+      throw new BadRequestException('All issue IDs must be valid UUID v4s');
     }
 
     return this.db.transaction(async (tx) => {
-      const foundIssues = await tx
-        .select({ id: schema.issues.id })
-        .from(schema.issues)
-        .where(inArray(schema.issues.id, uniqueIssueIds));
-
-      if (foundIssues.length !== uniqueIssueIds.length) {
-        throw new NotFoundException('One or more issues not found');
-      }
-
       const updateData: Partial<typeof schema.issues.$inferInsert> = {
         status: updateDto.status,
         updatedAt: new Date(),
@@ -547,7 +545,9 @@ export class IssuesService {
 
       if (updateDto.status === 'resolved') {
         updateData.resolvedAt = new Date();
-        updateData.resolvedBy = updateDto.resolvedBy ?? null;
+        if ('resolvedBy' in updateDto) {
+          updateData.resolvedBy = updateDto.resolvedBy ?? null;
+        }
       } else {
         updateData.resolvedAt = null;
         updateData.resolvedBy = null;
