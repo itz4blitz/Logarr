@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.5] - 2026-04-19
+
 ### Added
+- Bulk issue status updates with desktop multi-select actions in the Issues dashboard (#52)
 
 - Pre-built Docker images published to GitHub Container Registry and Docker Hub
   - `itz4blitz/logarr-backend:latest` - Backend API image
@@ -23,12 +26,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Docker workflow now skips build/publish for agent-only changes to reduce unnecessary runs (#51)
 - Increased health check `start_period` from 40s to 90s in docker-compose.yml
 - Whisparr log mount renamed from `/whisparr-logs` to `/whisp-logs` for consistency
 - Health check response now includes `inGracePeriod` boolean field
 
 ### Fixed
 
+- AI analysis context now uses the correct server mapping in issue analysis flows (#49)
+- Backend lint blockers resolved to keep CI checks green
 - Docker compose restart no longer fails due to file ingestion health check (#26)
 - Multiple arr instances can now be configured with separate log paths (#25)
 
