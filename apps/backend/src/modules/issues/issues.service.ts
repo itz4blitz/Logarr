@@ -11,6 +11,7 @@ import { AiProviderService } from '../settings/ai-provider.service';
 import { AnalysisPromptBuilder } from './analysis-prompt-builder';
 import { parseAnalysisResponse } from './analysis-response-parser';
 import { IssueContextService, type IssueAnalysisContext } from './issue-context.service';
+import { ISSUE_STATUSES } from './issues.dto';
 
 import type {
   AnalysisResult,
@@ -25,7 +26,6 @@ import type {
   BulkUpdateIssueStatusDto,
   IssueSeverity,
 } from './issues.dto';
-import { ISSUE_STATUSES } from './issues.dto';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 /**

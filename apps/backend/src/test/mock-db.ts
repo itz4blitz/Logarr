@@ -78,7 +78,7 @@ export type MockDb = {
 export function createMockDb(): MockDb {
   const mockResults = new Map<string, unknown>();
 
-  const createMockOperation = (opName: string) => {
+  const createMockOperation = (opName: string): ReturnType<typeof vi.fn> => {
     return vi.fn().mockImplementation(() => {
       const result = mockResults.get(opName) ?? [];
       return createChainableQuery(result);
@@ -98,7 +98,9 @@ export function createMockDb(): MockDb {
     query: {},
     $with: vi.fn(),
     with: vi.fn().mockImplementation(() => createChainableQuery([])),
-    transaction: vi.fn().mockImplementation(async (fn) => fn(mockDb)),
+    transaction: vi
+      .fn()
+      .mockImplementation((fn: (tx: MockDb) => unknown) => Promise.resolve(fn(mockDb))),
     _mockResults: mockResults,
     _setResult: (operation: string, result: unknown) => {
       mockResults.set(operation, result);
@@ -121,7 +123,7 @@ export function configureMockDb(
     delete?: unknown;
     execute?: unknown;
   }
-) {
+): void {
   if (config.select !== undefined) mockDb._setResult('select', config.select);
   if (config.selectDistinct !== undefined)
     mockDb._setResult('selectDistinct', config.selectDistinct);
