@@ -1,5 +1,6 @@
 // Mirror the enums from schema
-export type IssueStatus = 'open' | 'acknowledged' | 'in_progress' | 'resolved' | 'ignored';
+export const ISSUE_STATUSES = ['open', 'acknowledged', 'in_progress', 'resolved', 'ignored'] as const;
+export type IssueStatus = (typeof ISSUE_STATUSES)[number];
 export type IssueSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info';
 export type IssueSource = 'jellyfin' | 'sonarr' | 'radarr' | 'prowlarr' | 'docker' | 'system';
 
@@ -29,6 +30,12 @@ export interface UpdateIssueDto {
 export interface MergeIssuesDto {
   issueIds: string[];
   newTitle?: string;
+}
+
+export interface BulkUpdateIssueStatusDto {
+  issueIds: string[];
+  status: IssueStatus;
+  resolvedBy?: string;
 }
 
 export interface IssueStatsDto {

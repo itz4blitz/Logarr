@@ -1,6 +1,7 @@
 import * as crypto from 'crypto';
 
 import { Injectable, Inject, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { isUUID } from 'class-validator';
 import { and, eq, gte, inArray, sql, desc, asc, count, avg } from 'drizzle-orm';
 
 import { DATABASE_CONNECTION } from '../../database';
@@ -10,6 +11,7 @@ import { AiProviderService } from '../settings/ai-provider.service';
 import { AnalysisPromptBuilder } from './analysis-prompt-builder';
 import { parseAnalysisResponse } from './analysis-response-parser';
 import { IssueContextService, type IssueAnalysisContext } from './issue-context.service';
+import { ISSUE_STATUSES } from './issues.dto';
 
 import type {
   AnalysisResult,
@@ -21,6 +23,7 @@ import type {
   UpdateIssueDto,
   IssueStatsDto,
   MergeIssuesDto,
+  BulkUpdateIssueStatusDto,
   IssueSeverity,
 } from './issues.dto';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
@@ -494,8 +497,14 @@ export class IssuesService {
       updatedAt: new Date(),
     };
 
-    if (updateDto.status === 'resolved' && updateDto.resolvedBy) {
+    if (updateDto.status === 'resolved') {
       updateData.resolvedAt = new Date();
+      if ('resolvedBy' in updateDto) {
+        updateData.resolvedBy = updateDto.resolvedBy ?? null;
+      }
+    } else if (updateDto.status) {
+      updateData.resolvedAt = null;
+      updateData.resolvedBy = null;
     }
 
     const [updated] = await this.db
@@ -509,6 +518,53 @@ export class IssuesService {
     }
 
     return updated;
+  }
+
+  /**
+   * Bulk update status for multiple issues
+   */
+  async bulkUpdateStatus(updateDto: BulkUpdateIssueStatusDto) {
+    const uniqueIssueIds = Array.from(new Set(updateDto.issueIds));
+    if (uniqueIssueIds.length === 0) {
+      throw new BadRequestException('At least one issue ID is required');
+    }
+
+    if (!updateDto.status || !ISSUE_STATUSES.includes(updateDto.status)) {
+      throw new BadRequestException(`Status must be one of: ${ISSUE_STATUSES.join(', ')}`);
+    }
+
+    if (uniqueIssueIds.some((issueId) => !isUUID(issueId, '4'))) {
+      throw new BadRequestException('All issue IDs must be valid UUID v4s');
+    }
+
+    return this.db.transaction(async (tx) => {
+      const updateData: Partial<typeof schema.issues.$inferInsert> = {
+        status: updateDto.status,
+        updatedAt: new Date(),
+      };
+
+      if (updateDto.status === 'resolved') {
+        updateData.resolvedAt = new Date();
+        if ('resolvedBy' in updateDto) {
+          updateData.resolvedBy = updateDto.resolvedBy ?? null;
+        }
+      } else {
+        updateData.resolvedAt = null;
+        updateData.resolvedBy = null;
+      }
+
+      const updatedIssues = await tx
+        .update(schema.issues)
+        .set(updateData)
+        .where(inArray(schema.issues.id, uniqueIssueIds))
+        .returning();
+
+      if (updatedIssues.length !== uniqueIssueIds.length) {
+        throw new NotFoundException('One or more issues not found');
+      }
+
+      return updatedIssues;
+    });
   }
 
   /**

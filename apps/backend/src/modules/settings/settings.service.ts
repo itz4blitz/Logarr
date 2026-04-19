@@ -289,14 +289,14 @@ export class SettingsService {
       .insert(schema.retentionHistory)
       .values({
         startedAt: data.startedAt,
-        completedAt: data.completedAt || null,
-        infoDeleted: data.infoDeleted || 0,
-        debugDeleted: data.debugDeleted || 0,
-        warnDeleted: data.warnDeleted || 0,
-        errorDeleted: data.errorDeleted || 0,
-        orphanedOccurrencesDeleted: data.orphanedOccurrencesDeleted || 0,
+        completedAt: data.completedAt ?? null,
+        infoDeleted: data.infoDeleted ?? 0,
+        debugDeleted: data.debugDeleted ?? 0,
+        warnDeleted: data.warnDeleted ?? 0,
+        errorDeleted: data.errorDeleted ?? 0,
+        orphanedOccurrencesDeleted: data.orphanedOccurrencesDeleted ?? 0,
         status: data.status,
-        errorMessage: data.errorMessage || null,
+        errorMessage: data.errorMessage ?? null,
       })
       .returning({ id: schema.retentionHistory.id });
 
@@ -431,7 +431,7 @@ export class SettingsService {
    */
   async getOrCreateJwtSecret(): Promise<string> {
     const existingSecret = await this.getSetting<string | null>(SETTINGS_KEYS.SECURITY_JWT_SECRET, null);
-    if (existingSecret) {
+    if (existingSecret !== null && existingSecret !== '') {
       return existingSecret;
     }
 

@@ -8,9 +8,17 @@ import {
   Body,
   ParseUUIDPipe,
   Logger,
+  BadRequestException,
 } from '@nestjs/common';
+import { isUUID } from 'class-validator';
 
-import { IssueSearchDto, UpdateIssueDto, MergeIssuesDto } from './issues.dto';
+import {
+  IssueSearchDto,
+  UpdateIssueDto,
+  MergeIssuesDto,
+  BulkUpdateIssueStatusDto,
+  ISSUE_STATUSES,
+} from './issues.dto';
 import { IssuesGateway } from './issues.gateway';
 import { IssuesService } from './issues.service';
 
@@ -51,6 +59,23 @@ export class IssuesController {
   @Post('merge')
   async mergeIssues(@Body() mergeDto: MergeIssuesDto) {
     return this.issuesService.mergeIssues(mergeDto);
+  }
+
+  @Post('bulk-update')
+  async bulkUpdateStatus(@Body() bulkUpdateDto: BulkUpdateIssueStatusDto) {
+    if (!bulkUpdateDto.status || !ISSUE_STATUSES.includes(bulkUpdateDto.status)) {
+      throw new BadRequestException(`Status must be one of: ${ISSUE_STATUSES.join(', ')}`);
+    }
+
+    if (!Array.isArray(bulkUpdateDto.issueIds) || bulkUpdateDto.issueIds.length === 0) {
+      throw new BadRequestException('At least one issue ID is required');
+    }
+
+    if (bulkUpdateDto.issueIds.some((issueId) => !isUUID(issueId, '4'))) {
+      throw new BadRequestException('All issue IDs must be valid UUID v4s');
+    }
+
+    return this.issuesService.bulkUpdateStatus(bulkUpdateDto);
   }
 
   @Post(':id/acknowledge')

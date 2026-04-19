@@ -86,6 +86,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import {
   useIssues,
   useIssueStats,
+  useBulkUpdateIssues,
   useAcknowledgeIssue,
   useResolveIssue,
   useIgnoreIssue,
@@ -1613,10 +1614,14 @@ function IssueRow({
   issue,
   onClick,
   onAction,
+  selected,
+  onSelect,
 }: {
   issue: Issue;
   onClick: () => void;
   onAction: (action: 'acknowledge' | 'resolve' | 'ignore' | 'reopen') => void;
+  selected: boolean;
+  onSelect: (selected: boolean) => void;
 }) {
   return (
     <div
@@ -1624,6 +1629,13 @@ function IssueRow({
       style={{ height: ROW_HEIGHT }}
       onClick={onClick}
     >
+      <Checkbox
+        checked={selected}
+        aria-label={`Select issue ${issue.title}`}
+        onCheckedChange={(checked) => onSelect(checked === true)}
+        onClick={(e) => e.stopPropagation()}
+      />
+
       {/* Provider Icon */}
       <ProviderIcon providerId={sourceToProviderMap[issue.source]} size="sm" />
 
@@ -1814,6 +1826,7 @@ function IssuesPageContent() {
   const [backfillProgress, setBackfillProgress] = useState<BackfillProgress | null>(null);
   const [showBackfillDialog, setShowBackfillDialog] = useState(false);
   const [page, setPage] = useState(0);
+  const [selectedIssueIds, setSelectedIssueIds] = useState<string[]>([]);
 
   // Clear URL params after reading them (one-time)
   useEffect(() => {
@@ -1861,6 +1874,7 @@ function IssuesPageContent() {
   const ignoreIssue = useIgnoreIssue();
   const reopenIssue = useReopenIssue();
   const backfillIssues = useBackfillIssues();
+  const bulkUpdateIssues = useBulkUpdateIssues();
 
   // Pagination calculations
   const totalPages = Math.max(1, Math.ceil((issues?.length || 0) / pageSize));
@@ -1873,6 +1887,23 @@ function IssuesPageContent() {
     const start = validPage * pageSize;
     return issues.slice(start, start + pageSize);
   }, [issues, validPage, pageSize]);
+
+  const selectedIssueIdSet = useMemo(() => new Set(selectedIssueIds), [selectedIssueIds]);
+  const visibleIssueIds = useMemo(() => paginatedIssues.map((issue) => issue.id), [paginatedIssues]);
+  const visibleIssueIdSet = useMemo(() => new Set(visibleIssueIds), [visibleIssueIds]);
+  const allVisibleSelected =
+    visibleIssueIds.length > 0 && visibleIssueIds.every((id) => selectedIssueIdSet.has(id));
+  const someVisibleSelected =
+    !allVisibleSelected && visibleIssueIds.some((id) => selectedIssueIdSet.has(id));
+
+  useEffect(() => {
+    if (!issues) return;
+    const validIds = new Set(issues.map((issue) => issue.id));
+    setSelectedIssueIds((prev) => {
+      const next = prev.filter((id) => validIds.has(id));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [issues]);
 
   // Real-time WebSocket updates
   const handleNewIssue = useCallback((issue: Issue) => {
@@ -1919,6 +1950,30 @@ function IssuesPageContent() {
         reopenIssue.mutate(issueId);
         break;
     }
+  };
+
+  const handleBulkStatusChange = (status: IssueStatus) => {
+    if (selectedIssueIds.length === 0) return;
+
+    const issueIdSet = new Set((issues ?? []).map((issue) => issue.id));
+    const validIssueIds = selectedIssueIds.filter((id) => issueIdSet.has(id));
+    if (validIssueIds.length === 0) {
+      setSelectedIssueIds([]);
+      return;
+    }
+
+    bulkUpdateIssues.mutate(
+      { issueIds: validIssueIds, status },
+      {
+        onSuccess: () => {
+          toast.success(`Updated ${validIssueIds.length} issue${validIssueIds.length === 1 ? '' : 's'}`);
+          setSelectedIssueIds([]);
+        },
+        onError: (error) => {
+          toast.error(error.message || 'Failed to update selected issues');
+        },
+      }
+    );
   };
 
   const handleBackfill = () => {
@@ -2168,6 +2223,52 @@ function IssuesPageContent() {
         </div>
       </div>
 
+      {selectedIssueIds.length > 0 && (
+        <div className="bg-muted/30 hidden shrink-0 items-center gap-2 rounded-md border px-3 py-2 sm:flex">
+          <span className="text-sm font-medium">{selectedIssueIds.length} selected</span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleBulkStatusChange('acknowledged')}
+            disabled={bulkUpdateIssues.isPending}
+          >
+            Acknowledge
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleBulkStatusChange('resolved')}
+            disabled={bulkUpdateIssues.isPending}
+          >
+            Resolve
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleBulkStatusChange('ignored')}
+            disabled={bulkUpdateIssues.isPending}
+          >
+            Ignore
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleBulkStatusChange('open')}
+            disabled={bulkUpdateIssues.isPending}
+          >
+            Reopen
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setSelectedIssueIds([])}
+            disabled={bulkUpdateIssues.isPending}
+          >
+            Clear
+          </Button>
+        </div>
+      )}
+
       {/* Issues List */}
       <div
         ref={containerRef}
@@ -2197,6 +2298,24 @@ function IssuesPageContent() {
 
             {/* Desktop Row View - with fit-to-viewport pagination */}
             <div className="hidden flex-1 flex-col overflow-hidden sm:flex">
+              <div className="bg-muted/20 text-muted-foreground flex h-10 shrink-0 items-center gap-2 border-b px-4 text-xs">
+                <Checkbox
+                  aria-label="Select all issues on this page"
+                  checked={allVisibleSelected ? true : someVisibleSelected ? 'indeterminate' : false}
+                  onCheckedChange={(checked) => {
+                    if (checked === true) {
+                      setSelectedIssueIds((prev) => {
+                        const prevSet = new Set(prev);
+                        const newIds = visibleIssueIds.filter((id) => !prevSet.has(id));
+                        return newIds.length > 0 ? [...prev, ...newIds] : prev;
+                      });
+                      return;
+                    }
+                    setSelectedIssueIds((prev) => prev.filter((id) => !visibleIssueIdSet.has(id)));
+                  }}
+                />
+                <span>Select page</span>
+              </div>
               <div className="flex-1 overflow-hidden">
                 {paginatedIssues.map((issue) => (
                   <IssueRow
@@ -2204,6 +2323,12 @@ function IssuesPageContent() {
                     issue={issue}
                     onClick={() => setDetailIssueId(issue.id)}
                     onAction={(action) => handleAction(issue.id, action)}
+                    selected={selectedIssueIdSet.has(issue.id)}
+                    onSelect={(selected) => {
+                      setSelectedIssueIds((prev) =>
+                        selected ? Array.from(new Set([...prev, issue.id])) : prev.filter((id) => id !== issue.id)
+                      );
+                    }}
                   />
                 ))}
               </div>

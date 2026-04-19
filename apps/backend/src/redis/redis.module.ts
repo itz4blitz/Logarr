@@ -1,8 +1,9 @@
-import { Module, Global } from '@nestjs/common';
+import { Module, Global, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
 export const REDIS_CLIENT = 'REDIS_CLIENT';
+const logger = new Logger('RedisModule');
 
 @Global()
 @Module({
@@ -13,8 +14,8 @@ export const REDIS_CLIENT = 'REDIS_CLIENT';
       useFactory: (configService: ConfigService) => {
         const redisUrl = configService.get<string>('REDIS_URL');
 
-        if (!redisUrl) {
-          console.warn('REDIS_URL is not configured, Redis features will be disabled');
+        if (redisUrl === undefined || redisUrl === null || redisUrl === '') {
+          logger.warn('REDIS_URL is not configured, Redis features will be disabled');
           return null;
         }
 
@@ -30,11 +31,11 @@ export const REDIS_CLIENT = 'REDIS_CLIENT';
         });
 
         client.on('error', (err) => {
-          console.error('Redis connection error:', err.message);
+          logger.error(`Redis connection error: ${err.message}`);
         });
 
         client.on('connect', () => {
-          console.log('Redis connected');
+          logger.debug('Redis connected');
         });
 
         return client;
