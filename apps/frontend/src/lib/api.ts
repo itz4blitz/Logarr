@@ -957,7 +957,7 @@ class ApiClient {
   }
 
   async deleteServer(id: string): Promise<void> {
-    await fetch(`${this.baseUrl}/servers/${id}`, { method: 'DELETE' });
+    return this.request<void>(`/servers/${id}`, { method: 'DELETE' });
   }
 
   async testServerConnection(id: string): Promise<ConnectionStatus> {

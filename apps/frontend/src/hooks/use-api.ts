@@ -414,6 +414,15 @@ export function useIssueTimeline(id: string) {
   });
 }
 
+export function useLatestAnalysisConversation(issueId: string) {
+  return useQuery({
+    queryKey: ['issues', 'analyze', 'conversation', issueId] as const,
+    queryFn: () => api.getLatestAnalysisConversation(issueId),
+    enabled: !!issueId,
+    staleTime: 10000,
+  });
+}
+
 export function useAnalyzeIssue() {
   const queryClient = useQueryClient();
 

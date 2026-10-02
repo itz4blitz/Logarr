@@ -97,6 +97,7 @@ import {
   useIssue,
   useAnalyzeIssue,
   useDefaultAiProvider,
+  useLatestAnalysisConversation,
 } from '@/hooks/use-api';
 import { useIssueSocket, type BackfillProgress } from '@/hooks/use-issue-socket';
 import { cn } from '@/lib/utils';
@@ -484,7 +485,43 @@ function IssueDetailModal({
   );
   const { data: timeline, isLoading: timelineLoading } = useIssueTimeline(issueId || '');
   const { data: defaultAiProvider } = useDefaultAiProvider();
+  const { data: existingConversation, isLoading: existingConversationLoading } =
+    useLatestAnalysisConversation(issueId || '');
   const analyzeIssue = useAnalyzeIssue();
+
+  useEffect(() => {
+    if (!existingConversation || analysisResult) return;
+
+    const firstAssistantMessage = existingConversation.messages.find(
+      (message) => message.role === 'assistant'
+    );
+    if (!firstAssistantMessage) return;
+
+    try {
+      const parsedAnalysis = JSON.parse(firstAssistantMessage.content) as DeepAnalysisResult['analysis'];
+      setAnalysisResult({
+        analysis: parsedAnalysis,
+        metadata: {
+          provider: existingConversation.provider,
+          model: existingConversation.model,
+          tokensUsed: existingConversation.totalTokens,
+          generatedAt: existingConversation.createdAt,
+          contextSummary: {
+            occurrencesIncluded: 0,
+            stackTracesIncluded: 0,
+            usersIncluded: 0,
+            sessionsIncluded: 0,
+          },
+        },
+        conversationId: existingConversation.id,
+      });
+      setConversationHistory(existingConversation.messages);
+    } catch (error) {
+      console.error('Failed to parse stored analysis for issue', issueId, error);
+    }
+    
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingConversation]);
 
   const handleAnalyze = async () => {
     if (!issueId) return;
@@ -1353,6 +1390,10 @@ function IssueDetailModal({
                           isLoading={isFollowUpLoading}
                           conversationHistory={conversationHistory}
                         />
+                      ) : existingConversationLoading ? (
+                        <div className="flex items-center justify-center p-8">
+                          <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+                        </div>
                       ) : defaultAiProvider ? (
                         // AI provider configured but no analysis yet
                         <div className="bg-muted/30 rounded-xl border border-white/5 p-8 text-center">
@@ -2433,6 +2474,7 @@ function IssuesPageContent() {
 
       {/* Issue Detail Modal */}
       <IssueDetailModal
+        key={detailIssueId ?? 'none'}
         issueId={detailIssueId}
         open={detailIssueId !== null}
         onClose={() => setDetailIssueId(null)}

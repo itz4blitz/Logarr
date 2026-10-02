@@ -36,6 +36,13 @@ interface AiGenerationOptions {
   baseUrl?: string;
   maxTokens?: number;
   temperature?: number;
+    /**
+   * When true, tells providers that support it (currently Ollama) to
+   * constrain output to syntactically valid JSON. Set explicitly by
+   * callers that expect a JSON response, rather than inferred from
+   * prompt text, so it can't silently drift out of sync if prompts change.
+   */
+  jsonMode?: boolean;
 }
 
 interface AiGenerationResult {
@@ -390,6 +397,12 @@ class OllamaStrategy implements AiProviderStrategy {
           { role: 'user', content: userPrompt },
         ],
         stream: false,
+        // Forces Ollama to only emit syntactically valid JSON tokens.
+        // Without this, models frequently add preamble text, wrap the
+        // response in markdown code fences the parser sometimes misses,
+        // or produce almost-but-not-quite valid JSON - all of which show
+        // up as "AI analysis could not be parsed as structured data".
+        ...(options.jsonMode ? { format: 'json' } : {}),
         options: {
           num_predict: options.maxTokens ?? 1000,
           temperature: options.temperature ?? 0.7,
@@ -1032,7 +1045,8 @@ export class AiProviderService {
       .limit(1);
 
     const apiKey = dbResult[0]?.apiKey;
-    if (!apiKey) {
+    const providerConfig = AI_PROVIDER_BASE[setting.provider as AiProviderType];
+    if (!apiKey && providerConfig?.requiresApiKey) {
       throw new BadRequestException('AI provider has no API key configured');
     }
 
@@ -1042,10 +1056,11 @@ export class AiProviderService {
     }
 
     const options: AiGenerationOptions = {
-      apiKey,
+      apiKey: apiKey ?? '',
       model: setting.model,
       maxTokens: setting.maxTokens ?? 1000,
       temperature: setting.temperature ?? 0.7,
+      
     };
     if (setting.baseUrl) {
       options.baseUrl = setting.baseUrl;
@@ -1094,7 +1109,8 @@ export class AiProviderService {
       .limit(1);
 
     const apiKey = dbResult[0]?.apiKey;
-    if (!apiKey) {
+    const providerConfig = AI_PROVIDER_BASE[setting.provider as AiProviderType];
+    if (!apiKey && providerConfig?.requiresApiKey) {
       throw new BadRequestException('AI provider has no API key configured');
     }
 
@@ -1104,10 +1120,11 @@ export class AiProviderService {
     }
 
     const options: AiGenerationOptions = {
-      apiKey,
+      apiKey: apiKey ?? '',
       model: setting.model,
       maxTokens: setting.maxTokens ?? 2000, // Higher limit for structured analysis
       temperature: setting.temperature ?? 0.3, // Lower temperature for more consistent JSON output
+      jsonMode: true, // This method's callers always expect a structured JSON response
     };
     if (setting.baseUrl) {
       options.baseUrl = setting.baseUrl;
