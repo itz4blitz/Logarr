@@ -173,10 +173,12 @@ export const ARR_LOG_FILE_CONFIG: LogFileConfig = {
 
 /**
  * NLog timestamp + metadata regex
- * Matches: 2024-01-15 10:30:45.123|Level|Component|Message
+ * Matches: 2024-01-15 10:30:45.1|Level|Component|Message
+ * The fractional second is optional and may have 1-7 digits: *arr apps log with
+ * the NLog layout `yyyy-MM-dd HH:mm:ss.f` (one digit), older/custom layouts use 3.
  */
 const NLOG_LINE_REGEX =
-  /^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:\.\d{3})?)\|(\w+)\|([^|]+)\|(.*)$/;
+  /^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:\.\d{1,7})?)\|(\w+)\|([^|]+)\|(.*)$/;
 
 /**
  * Log level mapping from NLog format

@@ -101,16 +101,66 @@ describe('Arr Parser', () => {
       expect(result?.raw).toBe(line);
     });
 
-    it('should handle timestamp without milliseconds', () => {
-      const line = '2024-01-15 10:30:45|Info|Test|No milliseconds';
-      // This should not match the NLog format since .123 is expected
+    it('should handle timestamp without fractional seconds', () => {
+      const line = '2024-01-15 10:30:45|Info|Test|No fractional seconds';
       const result = parseArrLogLine(line);
-      // Actually checking the regex - it uses (?:\.\d{3})? which makes ms optional
+
       expect(result).not.toBeNull();
+      expect(result?.timestamp.getMilliseconds()).toBe(0);
+      expect(result?.message).toBe('No fractional seconds');
+    });
+
+    describe('fractional second precision', () => {
+      it.each([
+        ['.2', 200],
+        ['.25', 250],
+        ['.123', 123],
+        ['.1234', 123],
+        ['.1234567', 123],
+        ['', 0],
+      ])('should parse fractional seconds %j as %i ms', (fraction, expectedMs) => {
+        const line = `2026-10-10 12:00:01${fraction}|Info|RssSyncService|RSS Sync Completed. Reports found: 50`;
+        const result = parseArrLogLine(line);
+
+        expect(result).not.toBeNull();
+        expect(result?.level).toBe('info');
+        expect(result?.source).toBe('RssSyncService');
+        expect(result?.message).toBe('RSS Sync Completed. Reports found: 50');
+        expect(result?.timestamp.getTime()).toBe(
+          new Date(2026, 9, 10, 12, 0, 1, expectedMs).getTime()
+        );
+      });
     });
   });
 
   describe('isArrLogContinuation', () => {
+    it('should not treat a one-digit fractional second line as a continuation', () => {
+      expect(
+        isArrLogContinuation('2026-10-10 12:00:01.2|Info|RssSyncService|RSS Sync Completed.')
+      ).toBe(false);
+    });
+
+    it('should parse a realistic multi-line exception sample', () => {
+      const lines = [
+        '2026-10-10 12:00:05.4|Error|DownloadClientProvider|Error connecting to qBittorrent',
+        '',
+        '[v4.0.10.2544] System.Net.Http.HttpRequestException: Connection refused (localhost:8080)',
+        '   at System.Net.Http.HttpConnectionPool.ConnectToTcpHostAsync(String host, Int32 port, HttpRequestMessage initialRequest, Boolean async, CancellationToken cancellationToken)',
+      ];
+
+      const first = parseArrLogLine(lines[0] as string);
+      expect(first).not.toBeNull();
+      expect(first?.level).toBe('error');
+      expect(first?.source).toBe('DownloadClientProvider');
+      expect(first?.timestamp.getTime()).toBe(new Date(2026, 9, 10, 12, 0, 5, 400).getTime());
+      expect(isArrLogContinuation(lines[0] as string)).toBe(false);
+
+      // Exception detail lines are not NLog entries and must be treated as continuations
+      expect(parseArrLogLine(lines[2] as string)).toBeNull();
+      expect(isArrLogContinuation(lines[2] as string)).toBe(true);
+      expect(isArrLogContinuation(lines[3] as string)).toBe(true);
+    });
+
     it('should detect stack trace lines', () => {
       expect(isArrLogContinuation('   at System.Threading.Task.Run()')).toBe(true);
       expect(isArrLogContinuation('  at MyClass.MyMethod()')).toBe(true);
