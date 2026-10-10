@@ -77,6 +77,13 @@ const ENV_SERVER_CONFIGS: EnvServerConfig[] = [
     name: 'Lidarr',
     containerLogPath: '/lidarr-logs',
   },
+  {
+    urlEnvKey: 'READARR_URL',
+    apiKeyEnvKey: 'READARR_API_KEY',
+    providerId: 'readarr',
+    name: 'Readarr',
+    containerLogPath: '/readarr-logs',
+  },
 ];
 
 @Injectable()

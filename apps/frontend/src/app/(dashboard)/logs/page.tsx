@@ -158,6 +158,7 @@ function LogDetailModal({
       case 'sonarr':
       case 'prowlarr':
       case 'lidarr':
+      case 'readarr':
         // *arr apps: system/events shows searchable event log
         return `${baseUrl}/system/events`;
       default:

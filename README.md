@@ -11,7 +11,7 @@
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Unified logging, intelligent issue detection, and AI-powered analysis for Plex, Jellyfin, Emby, Sonarr, Radarr, Prowlarr, Whisparr, Lidarr, and more.
+Unified logging, intelligent issue detection, and AI-powered analysis for Plex, Jellyfin, Emby, Sonarr, Radarr, Prowlarr, Whisparr, Lidarr, Readarr, and more.
 
 [Quick Start](#quick-start) · [Features](#features) · [Screenshots](#screenshots) · [Documentation](#documentation)
 
@@ -95,13 +95,15 @@ _Configure multiple AI providers for issue analysis (Anthropic, OpenAI, Google, 
 
 ## Supported Servers
 
-| Server       | Status       | Server       | Status       |
-| ------------ | ------------ | ------------ | ------------ |
-| **Jellyfin** | ✅ Supported | **Plex**     | ✅ Supported |
-| **Sonarr**   | ✅ Supported | **Emby**     | ✅ Supported |
-| **Radarr**   | ✅ Supported | **Whisparr** | ✅ Supported |
-| **Prowlarr** | ✅ Supported | **Lidarr**   | ✅ Supported |
-| **Kodi**     | 🚧 Planned   |              |              |
+| Server       | Status         | Server       | Status       |
+| ------------ | -------------- | ------------ | ------------ |
+| **Jellyfin** | ✅ Supported   | **Plex**     | ✅ Supported |
+| **Sonarr**   | ✅ Supported   | **Emby**     | ✅ Supported |
+| **Radarr**   | ✅ Supported   | **Whisparr** | ✅ Supported |
+| **Prowlarr** | ✅ Supported   | **Lidarr**   | ✅ Supported |
+| **Readarr**  | ⚠️ Supported\* | **Kodi**     | 🚧 Planned   |
+
+> \*Readarr was retired upstream (archived June 2025, last release v0.4.18). Logarr supports it on a best-effort basis; expect permanent metadata (BookInfo) health errors on most installs.
 
 > Logarr uses a provider architecture—adding support for new servers is straightforward. [Contributions welcome!](#contributing)
 
@@ -179,13 +181,14 @@ flowchart TB
         PR[Prowlarr]
         WH[Whisparr]
         LI[Lidarr]
+        RE[Readarr]
     end
 
     FE <--> API
     FE <--> WS
     API <--> PG
     API <--> RD
-    API <--> PX & JF & EM & SO & RA & PR & WH & LI
+    API <--> PX & JF & EM & SO & RA & PR & WH & LI & RE
 ```
 
 ### How It Works
@@ -274,6 +277,7 @@ RADARR_LOGS_PATH=/path/to/radarr/config/logs
 PROWLARR_LOGS_PATH=/path/to/prowlarr/config/logs
 WHISPARR_LOGS_PATH=/path/to/whisparr/config/logs
 LIDARR_LOGS_PATH=/path/to/lidarr/config/logs
+READARR_LOGS_PATH=/path/to/readarr/config/logs
 ```
 
 2. **Restart Logarr** — The docker-compose mounts these paths automatically.
@@ -290,6 +294,7 @@ LIDARR_LOGS_PATH=/path/to/lidarr/config/logs
 | Prowlarr | `/prowlarr-logs` |
 | Whisparr | `/whisp-logs`    |
 | Lidarr   | `/lidarr-logs`   |
+| Readarr  | `/readarr-logs`  |
 
 #### Multiple Instances (e.g., Movies vs Shorts, 1080p vs 4K)
 
@@ -335,6 +340,7 @@ Simply add multiple servers in the UI using the same server type but different U
 | Prowlarr | `/config/logs`             | `~/.config/Prowlarr/logs`           | `C:\ProgramData\Prowlarr\logs`          |
 | Whisparr | `/config/logs`             | `~/.config/Whisparr/logs`           | `C:\ProgramData\Whisparr\logs`          |
 | Lidarr   | `/config/logs`             | `~/.config/Lidarr/logs`             | `C:\ProgramData\Lidarr\logs`            |
+| Readarr  | `/config/logs`             | `~/.config/Readarr/logs`            | `C:\ProgramData\Readarr\logs`           |
 
 ---
 
@@ -377,6 +383,7 @@ logarr/
 │   ├── provider-prowlarr/  # Prowlarr integration
 │   ├── provider-whisparr/  # Whisparr integration
 │   ├── provider-lidarr/    # Lidarr integration
+│   ├── provider-readarr/   # Readarr integration (retired upstream)
 │   └── provider-arr/       # Base *arr provider
 └── docker-compose.yml
 ```
@@ -488,6 +495,7 @@ pnpm test:e2e          # Run Playwright E2E tests
 | `@logarr/core`              | Core HTTP utilities                    |
 | `@logarr/provider-arr`      | \*arr application log parser           |
 | `@logarr/provider-emby`     | Emby log parser                        |
+| `@logarr/provider-readarr`  | Readarr provider                       |
 | `@logarr/provider-whisparr` | Whisparr provider                      |
 | `@logarr/provider-lidarr`   | Lidarr provider                        |
 
