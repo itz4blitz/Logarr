@@ -13,7 +13,9 @@ import {
   ArrBaseProvider,
   ArrClient,
   READARR_LOG_FILE_CONFIG,
-  type ArrActivityType,
+  describeArrEvent,
+  resolveArrEventName,
+  type ArrEventTable,
   type ArrHistoryRecordBase,
   type ArrPaginatedResponse,
 } from '@logarr/provider-arr';
@@ -23,52 +25,20 @@ import { ReadarrEventTypeNames } from './readarr.types.js';
 import type { ReadarrHistoryRecord } from './readarr.types.js';
 import type { NormalizedActivity } from '@logarr/core';
 
-// Local interface until core package is rebuilt
-interface LogFileConfig {
-  defaultPaths: {
-    docker: readonly string[];
-    linux: readonly string[];
-    windows: readonly string[];
-    macos: readonly string[];
-  };
-  filePatterns: readonly string[];
-  encoding?: string;
-  rotatesDaily?: boolean;
-  datePattern?: RegExp;
-}
-
-interface ReadarrEventMapping {
-  readonly activityType: ArrActivityType;
-  readonly severity: 'info' | 'warn' | 'error';
-  readonly titlePrefix: string;
-}
-
 /**
- * Readarr history event name -> activity type, severity and title prefix.
- * Explicit on purpose: the base mapper has no Readarr names and defaults to 'grab'.
+ * Display label and severity per Readarr history event name.
+ * Must agree with the Lidarr table for equivalent events.
  */
-const READARR_EVENT_MAP: Readonly<Record<string, ReadarrEventMapping>> = {
-  grabbed: { activityType: 'grab', severity: 'info', titlePrefix: 'Grabbed' },
-  bookFileImported: { activityType: 'import_complete', severity: 'info', titlePrefix: 'Imported' },
-  downloadImported: { activityType: 'import_complete', severity: 'info', titlePrefix: 'Imported' },
-  downloadFailed: {
-    activityType: 'download_failed',
-    severity: 'error',
-    titlePrefix: 'Download Failed',
-  },
-  bookImportIncomplete: {
-    activityType: 'import_failed',
-    severity: 'warn',
-    titlePrefix: 'Import Incomplete',
-  },
-  bookFileDeleted: { activityType: 'deleted', severity: 'info', titlePrefix: 'Deleted' },
-  bookFileRenamed: { activityType: 'renamed', severity: 'info', titlePrefix: 'Renamed' },
-  bookFileRetagged: { activityType: 'renamed', severity: 'info', titlePrefix: 'Retagged' },
-  downloadIgnored: {
-    activityType: 'download_failed',
-    severity: 'warn',
-    titlePrefix: 'Download Ignored',
-  },
+const READARR_EVENTS: ArrEventTable = {
+  grabbed: { label: 'Grabbed', severity: 'info' },
+  bookFileImported: { label: 'Imported', severity: 'info' },
+  downloadFailed: { label: 'Download Failed', severity: 'error' },
+  bookFileDeleted: { label: 'Deleted', severity: 'info' },
+  bookFileRenamed: { label: 'Renamed', severity: 'info' },
+  bookImportIncomplete: { label: 'Import Incomplete', severity: 'warn' },
+  downloadImported: { label: 'Download Imported', severity: 'info' },
+  bookFileRetagged: { label: 'Retagged', severity: 'info' },
+  downloadIgnored: { label: 'Download Ignored', severity: 'info' },
 };
 
 /**
@@ -145,7 +115,7 @@ export class ReadarrProvider extends ArrBaseProvider {
   /**
    * Override log file config with Readarr-specific paths
    */
-  override getLogFileConfig(): LogFileConfig {
+  override getLogFileConfig(): ReturnType<ArrBaseProvider['getLogFileConfig']> {
     return READARR_LOG_FILE_CONFIG;
   }
 
@@ -165,67 +135,59 @@ export class ReadarrProvider extends ArrBaseProvider {
 
   protected override normalizeHistoryRecord(record: ArrHistoryRecordBase): NormalizedActivity {
     const readarrRecord = record as ReadarrHistoryRecord;
-    const eventTypeName = this.resolveEventTypeName(readarrRecord.eventType);
-    const mapping = READARR_EVENT_MAP[eventTypeName];
+    const eventTypeName = resolveArrEventName(readarrRecord.eventType, ReadarrEventTypeNames);
+    const display = describeArrEvent(eventTypeName, READARR_EVENTS);
 
     const authorName = readarrRecord.author?.authorName ?? 'Unknown Author';
     const bookTitle = readarrRecord.book?.title ?? '';
     const label = bookTitle !== '' ? `${authorName} - ${bookTitle}` : authorName;
     const message = readarrRecord.data?.['message']?.toString();
+    const sourceTitle = readarrRecord.sourceTitle;
+    const quoted = bookTitle !== '' ? `"${bookTitle}"` : 'Book file';
 
-    let title: string;
     let description: string;
 
-    switch (mapping?.activityType) {
-      case 'grab':
-        title = `Grabbed: ${label}`;
-        description = `Release grabbed: ${readarrRecord.sourceTitle}`;
+    switch (eventTypeName) {
+      case 'grabbed':
+        description = `Release grabbed: ${sourceTitle}`;
         break;
-      case 'import_complete':
-        title = `Imported: ${label}`;
+      case 'bookFileImported':
         description =
           bookTitle !== '' ? `"${bookTitle}" imported successfully` : 'Book imported successfully';
         break;
-      case 'download_failed':
-        title = `${mapping.titlePrefix}: ${label}`;
-        description =
-          message ??
-          (eventTypeName === 'downloadIgnored'
-            ? `Download ignored: ${readarrRecord.sourceTitle}`
-            : `Failed to download: ${readarrRecord.sourceTitle}`);
+      case 'downloadFailed':
+        description = message ?? `Failed to download: ${sourceTitle}`;
         break;
-      case 'import_failed':
-        title = `${mapping.titlePrefix}: ${label}`;
-        description = message ?? `Import incomplete: ${readarrRecord.sourceTitle}`;
+      case 'bookFileDeleted':
+        description = `${quoted} was deleted`;
         break;
-      case 'deleted':
-        title = `Deleted: ${label}`;
-        description = bookTitle !== '' ? `"${bookTitle}" was deleted` : 'Book file was deleted';
+      case 'bookFileRenamed':
+        description = `${quoted} was renamed`;
         break;
-      case 'renamed':
-        title = `${mapping.titlePrefix}: ${label}`;
-        description =
-          eventTypeName === 'bookFileRetagged'
-            ? bookTitle !== ''
-              ? `"${bookTitle}" was retagged`
-              : 'Book file was retagged'
-            : bookTitle !== ''
-              ? `"${bookTitle}" was renamed`
-              : 'Book file was renamed';
+      case 'bookImportIncomplete':
+        description = message ?? `Import incomplete: ${sourceTitle}`;
+        break;
+      case 'downloadImported':
+        description = `Download imported: ${sourceTitle}`;
+        break;
+      case 'bookFileRetagged':
+        description = `${quoted} was retagged`;
+        break;
+      case 'downloadIgnored':
+        description = `Download ignored: ${sourceTitle}`;
         break;
       default:
-        title = `${eventTypeName}: ${label}`;
-        description = readarrRecord.sourceTitle;
+        description = sourceTitle;
     }
 
     return {
       id: `readarr-history-${readarrRecord.id}`,
       type: eventTypeName,
-      name: title,
+      name: `${display.label}: ${label}`,
       overview: description,
-      severity: mapping?.severity ?? (/fail/i.test(eventTypeName) ? 'error' : 'info'),
+      severity: display.severity,
       timestamp: new Date(readarrRecord.date),
-      itemId: readarrRecord.bookId?.toString(),
+      ...(readarrRecord.bookId > 0 ? { itemId: String(readarrRecord.bookId) } : {}),
       metadata: {
         authorId: readarrRecord.authorId,
         bookId: readarrRecord.bookId,
@@ -235,24 +197,5 @@ export class ReadarrProvider extends ArrBaseProvider {
         downloadClient: readarrRecord.data?.['downloadClient'],
       },
     };
-  }
-
-  /**
-   * Resolve the history event name. Readarr v1 returns camelCase strings, but
-   * numeric (or numeric string) enum values are tolerated. Numbers outside the
-   * enum (e.g. 2, which Readarr does not define) resolve to 'unknown'; other
-   * strings are kept as-is.
-   */
-  private resolveEventTypeName(eventType: unknown): string {
-    if (typeof eventType === 'number') {
-      return ReadarrEventTypeNames[eventType] ?? 'unknown';
-    }
-    if (typeof eventType !== 'string' || eventType === '') {
-      return 'unknown';
-    }
-    if (/^\d+$/.test(eventType)) {
-      return ReadarrEventTypeNames[Number(eventType)] ?? 'unknown';
-    }
-    return eventType;
   }
 }

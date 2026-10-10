@@ -421,8 +421,8 @@ describe('ReadarrProvider', () => {
       [1, 'grabbed', 'Grabbed:', 'info'],
       ['bookFileImported', 'bookFileImported', 'Imported:', 'info'],
       [3, 'bookFileImported', 'Imported:', 'info'],
-      ['downloadImported', 'downloadImported', 'Imported:', 'info'],
-      [8, 'downloadImported', 'Imported:', 'info'],
+      ['downloadImported', 'downloadImported', 'Download Imported:', 'info'],
+      [8, 'downloadImported', 'Download Imported:', 'info'],
       ['downloadFailed', 'downloadFailed', 'Download Failed:', 'error'],
       [4, 'downloadFailed', 'Download Failed:', 'error'],
       ['bookImportIncomplete', 'bookImportIncomplete', 'Import Incomplete:', 'warn'],
@@ -433,8 +433,8 @@ describe('ReadarrProvider', () => {
       [6, 'bookFileRenamed', 'Renamed:', 'info'],
       ['bookFileRetagged', 'bookFileRetagged', 'Retagged:', 'info'],
       [9, 'bookFileRetagged', 'Retagged:', 'info'],
-      ['downloadIgnored', 'downloadIgnored', 'Download Ignored:', 'warn'],
-      [10, 'downloadIgnored', 'Download Ignored:', 'warn'],
+      ['downloadIgnored', 'downloadIgnored', 'Download Ignored:', 'info'],
+      [10, 'downloadIgnored', 'Download Ignored:', 'info'],
       ['3', 'bookFileImported', 'Imported:', 'info'],
     ] as const)(
       'should map eventType %j to type %s (%s, %s)',
@@ -497,7 +497,7 @@ describe('ReadarrProvider', () => {
 
         expect(activity?.type).toBe(type);
         expect(activity?.severity).toBe('info');
-        expect(activity?.name).toBe('unknown: Frank Herbert - Dune');
+        expect(activity?.name).toBe('Unknown: Frank Herbert - Dune');
       }
     );
 
@@ -511,7 +511,7 @@ describe('ReadarrProvider', () => {
       const activity = activities.find((a) => a.id === 'readarr-history-101');
 
       expect(activity?.type).toBe('somethingNew');
-      expect(activity?.name).toBe('somethingNew: Frank Herbert - Dune');
+      expect(activity?.name).toBe('Something New: Frank Herbert - Dune');
       expect(activity?.severity).toBe('info');
     });
 
@@ -532,6 +532,20 @@ describe('ReadarrProvider', () => {
         expect(activity?.severity).toBe(severity);
       }
     );
+
+    it.each([
+      [0, undefined],
+      [-1, undefined],
+      [42, '42'],
+    ] as const)('should set itemId only for positive bookId (%j)', async (bookId, itemId) => {
+      routeFetch(mockFetch, { history: { records: [historyRecord({ bookId })] } });
+      await provider.connect({ url: BASE_URL, apiKey: API_KEY });
+
+      const activities = await provider.getActivity();
+      const activity = activities.find((a) => a.id === 'readarr-history-101');
+
+      expect(activity?.itemId).toBe(itemId);
+    });
 
     it('should not treat unknown events as grabs', async () => {
       routeFetch(mockFetch, { history: { records: [historyRecord({ eventType: 2 })] } });
