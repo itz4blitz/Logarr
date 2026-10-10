@@ -229,8 +229,8 @@ describe('BazarrProvider connection', () => {
       connected: false,
       error: 'Not initialized',
     });
-    await expect(provider.getActivity()).rejects.toThrow('Not connected');
-    await expect(provider.getServerInfo()).rejects.toThrow('Not connected');
+    await expect(provider.getActivity()).rejects.toThrow(new Error('Not connected'));
+    await expect(provider.getServerInfo()).rejects.toThrow(new Error('Not connected'));
   });
 
   it('forgets the client on disconnect', async () => {
@@ -294,7 +294,7 @@ describe('BazarrProvider.getActivity', () => {
     });
     expect(mv?.timestamp).toEqual(new Date(2026, 9, 10, 11, 30, 0));
 
-    const health = activity.find((a) => a.type === 'health');
+    const health = activity.find((a) => a.type === 'health_warning');
     expect(health?.id).toMatch(/^bazarr-health-[0-9a-f]+$/);
     expect(health).toMatchObject({
       name: 'Health issue: /tv',
@@ -302,7 +302,7 @@ describe('BazarrProvider.getActivity', () => {
       severity: 'warn',
     });
 
-    expect(byId.get('bazarr-job-42-2026-10-10 11:00:00')).toMatchObject({
+    expect(byId.get('bazarr-job-42-2026-10-10-11-00-00')).toMatchObject({
       type: 'job_failed',
       name: 'Job failed: Update Series',
       severity: 'error',
@@ -424,7 +424,38 @@ describe('BazarrProvider.getActivity', () => {
       'subtitle_download',
       'subtitle_upgrade',
     ]);
-    expect(errorSpy).toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledWith('[bazarr] Failed to get health:', expect.any(Error));
+  });
+
+  it('rethrows the first error when every source fails', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const down = fail(404, 'Not Found');
+    route({ episodes: down, movies: down, health: down, jobs: down });
+    const provider = await connected();
+
+    await expect(provider.getActivity()).rejects.toThrow(/Bazarr API error/);
+    for (const source of ['episode history', 'movie history', 'health', 'jobs']) {
+      expect(errorSpy).toHaveBeenCalledWith(`[bazarr] Failed to get ${source}:`, expect.any(Error));
+    }
+  });
+
+  it('warns when history paging is capped before reaching the cutoff', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    route({
+      episodes: () =>
+        ok({
+          data: Array.from({ length: 50 }, (_, i) => ({
+            id: i + 1,
+            parsed_timestamp: '2026-10-10 12:00:00',
+          })),
+        }),
+    });
+    const provider = await connected();
+    await provider.getActivity(new Date(2026, 9, 10, 11, 0, 0));
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[bazarr] History paging stopped')
+    );
   });
 
   it('filters history older than since (with a timezone safety margin)', async () => {
@@ -613,7 +644,7 @@ describe('BazarrProvider.getActivity robustness', () => {
     );
 
     expect(result).toHaveLength(1);
-    expect(result[0]?.type).toBe('health');
+    expect(result[0]?.type).toBe('health_warning');
   });
 
   it('gives different health issues different ids, and the same issue the same id', async () => {

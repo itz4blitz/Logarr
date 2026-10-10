@@ -35,7 +35,7 @@ import type {
 /** History page size requested from Bazarr */
 const HISTORY_PAGE_SIZE = 50;
 /** Maximum history pages fetched per endpoint per poll (when a `since` cutoff exists) */
-const HISTORY_MAX_PAGES = 3;
+const HISTORY_MAX_PAGES_WITH_SINCE = 3;
 /**
  * History timestamps are naive local time of the Bazarr host, so the `since` cutoff is
  * widened by this margin to absorb timezone differences. Re-read rows are deduplicated
@@ -46,6 +46,14 @@ const HISTORY_SINCE_MARGIN_MS = 24 * 60 * 60 * 1000;
 /** Anything with an explicit UTC offset can be parsed natively */
 const ISO_WITH_TIMEZONE =
   /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})$/i;
+
+/** Lowercase kebab id fragment (stable, no spaces or punctuation) */
+function idPart(value: string | number): string {
+  return String(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
 
 function parseJobTime(value: string | null | undefined): Date | undefined {
   if (value === undefined || value === null || value === '') {
@@ -169,7 +177,7 @@ export class BazarrProvider implements MediaServerProvider {
   async getActivity(since?: Date): Promise<readonly NormalizedActivity[]> {
     const client = this.getClient();
 
-    const [episodes, movies, health, jobs] = await Promise.all([
+    const sections = await Promise.all([
       this.safely('episode history', () =>
         this.collectHistory(
           (length, start) => client.getEpisodeHistory(length, start),
@@ -194,28 +202,35 @@ export class BazarrProvider implements MediaServerProvider {
       ),
     ]);
 
-    return [...episodes, ...movies, ...health, ...jobs].sort(
-      (a, b) => b.timestamp.getTime() - a.timestamp.getTime()
-    );
+    // Partial failure is tolerated; if every source failed, surface the first error so the
+    // poll marks the server unhealthy instead of reporting "connected, no activity".
+    const failures = sections.filter((section) => section.error !== undefined);
+    if (failures.length === sections.length) {
+      throw failures[0]?.error;
+    }
+
+    return sections
+      .flatMap((section) => section.items)
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
   }
 
   private getClient(): BazarrClient {
     if (this.client === null) {
-      throw new Error('Not connected to Bazarr server');
+      throw new Error('Not connected');
     }
     return this.client;
   }
 
-  /** Run one activity section; a failing endpoint must not drop the others */
+  /** Run one activity source; a failing endpoint must not drop the others */
   private async safely(
-    label: string,
+    source: string,
     run: () => Promise<readonly NormalizedActivity[]>
-  ): Promise<readonly NormalizedActivity[]> {
+  ): Promise<{ items: readonly NormalizedActivity[]; error?: unknown }> {
     try {
-      return await run();
+      return { items: await run() };
     } catch (error) {
-      console.error(`Failed to fetch Bazarr ${label}:`, error);
-      return [];
+      console.error(`[${this.id}] Failed to get ${source}:`, error);
+      return { items: [], error };
     }
   }
 
@@ -229,8 +244,9 @@ export class BazarrProvider implements MediaServerProvider {
     since: Date | undefined
   ): Promise<NormalizedActivity[]> {
     const cutoff = since !== undefined ? since.getTime() - HISTORY_SINCE_MARGIN_MS : undefined;
-    const maxPages = cutoff !== undefined ? HISTORY_MAX_PAGES : 1;
+    const maxPages = cutoff !== undefined ? HISTORY_MAX_PAGES_WITH_SINCE : 1;
     const result: NormalizedActivity[] = [];
+    let reachedEnd = false;
 
     for (let page = 0; page < maxPages; page++) {
       const records = await fetchPage(HISTORY_PAGE_SIZE, page * HISTORY_PAGE_SIZE);
@@ -253,8 +269,15 @@ export class BazarrProvider implements MediaServerProvider {
         (cutoff !== undefined && !anyParsed) ||
         (cutoff !== undefined && oldestTime !== undefined && oldestTime.getTime() < cutoff)
       ) {
+        reachedEnd = true;
         break;
       }
+    }
+
+    if (cutoff !== undefined && !reachedEnd) {
+      console.warn(
+        `[${this.id}] History paging stopped after ${maxPages} pages; older events may have been skipped`
+      );
     }
 
     return result;
@@ -348,7 +371,7 @@ export class BazarrProvider implements MediaServerProvider {
   private normalizeHealthIssue(issue: BazarrHealthIssue): NormalizedActivity {
     return {
       id: `bazarr-health-${stableHash(`${issue.object}|${issue.issue}`)}`,
-      type: 'health',
+      type: 'health_warning',
       name: `Health issue: ${issue.object}`,
       overview: issue.issue,
       severity: 'warn',
@@ -359,7 +382,7 @@ export class BazarrProvider implements MediaServerProvider {
 
   private normalizeFailedJob(job: BazarrJob): NormalizedActivity {
     return {
-      id: `bazarr-job-${job.job_id}-${job.last_run_time ?? 'unknown'}`,
+      id: `bazarr-job-${idPart(job.job_id)}-${idPart(job.last_run_time ?? 'unknown')}`,
       type: 'job_failed',
       name: `Job failed: ${job.job_name}`,
       overview: job.progress_message ?? 'Background job failed',

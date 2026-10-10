@@ -458,7 +458,7 @@ export const integrations: Integration[] = [
     defaultPort: 6767,
     configFields: [...standardApiFields, standardLogPathField],
     capabilities: {
-      realTimeLogs: false,
+      realTimeLogs: true,
       activityLog: true,
       sessions: false,
       webhooks: false,

@@ -161,10 +161,10 @@ describe('Integrations Registry', () => {
       expect(bazarr?.defaultPort).toBe(6767);
     });
 
-    it('should only advertise implemented capabilities', () => {
+    it('should declare log-file tailing but no webhooks or metrics', () => {
       const bazarr = getIntegrationById('bazarr');
       expect(bazarr?.capabilities).toEqual({
-        realTimeLogs: false,
+        realTimeLogs: true,
         activityLog: true,
         sessions: false,
         webhooks: false,
