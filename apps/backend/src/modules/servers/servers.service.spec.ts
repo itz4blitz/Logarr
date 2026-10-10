@@ -1254,6 +1254,32 @@ describe('ServersService', () => {
       return query.set.mock.calls[0]![0] as Record<string, unknown>;
     };
 
+    it('does not store a username for providers without supportsUsername (create)', async () => {
+      configureMockDb(mockDb, { insert: [mockServer] });
+
+      await service.create({
+        name: 'Sonarr',
+        providerId: 'sonarr',
+        url: 'http://localhost:8989',
+        apiKey: 'key',
+        username: 'admin',
+      });
+
+      expect(insertedValues()['username']).toBeNull();
+    });
+
+    it('ignores a username update for providers without supportsUsername', async () => {
+      configureMockDb(mockDb, {
+        select: [{ ...mockServer, providerId: 'sonarr' }],
+        update: [mockServer],
+      });
+
+      await service.update('server-1', { username: 'admin', name: 'Renamed' });
+
+      expect(updatedValues()).not.toHaveProperty('username');
+      expect(updatedValues()['name']).toBe('Renamed');
+    });
+
     it('registers the qbittorrent provider without session support', () => {
       const qbit = service.getAvailableProviders().find((p) => p.id === 'qbittorrent');
       expect(qbit?.capabilities.supportsUsername).toBe(true);

@@ -14,7 +14,7 @@ export function supportsUsername(providerId: string): boolean {
 
 /**
  * Build the create-server payload from the dynamic "add source" form values.
- * The password field is stored in apiKey (it may be empty for qBittorrent).
+ * The password field is stored in apiKey (it may be empty for providers with the apiKeyOptional capability).
  */
 export function buildCreateServerPayload(
   providerId: string,

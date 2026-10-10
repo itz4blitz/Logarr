@@ -113,9 +113,14 @@ export class ServersService {
         name: dto.name,
         providerId: dto.providerId,
         url: dto.url,
-        // apiKey may be empty only for qBittorrent (authentication bypass); the column is NOT NULL
+        // apiKey may be empty only for providers with apiKeyOptional (e.g. qBittorrent auth bypass);
+        // the column is NOT NULL
         apiKey: dto.apiKey ?? '',
-        username: normalizeUsername(dto.username) ?? null,
+        // Only providers that authenticate with a username may store one
+        username:
+          provider.capabilities.supportsUsername === true
+            ? (normalizeUsername(dto.username) ?? null)
+            : null,
         logPath: dto.logPath,
         fileIngestionEnabled: dto.fileIngestionEnabled ?? false,
         logPaths: dto.logPaths,
@@ -141,7 +146,11 @@ export class ServersService {
 
     // An empty username clears it (stored as NULL)
     const { username, ...rest } = dto;
-    const normalizedUsername = normalizeUsername(username);
+    // Ignored for providers that do not authenticate with a username
+    const normalizedUsername =
+      this.providers.get(currentServer.providerId)?.capabilities.supportsUsername === true
+        ? normalizeUsername(username)
+        : undefined;
 
     const result = await this.db
       .update(schema.servers)

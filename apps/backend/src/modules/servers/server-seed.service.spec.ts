@@ -17,6 +17,7 @@ describe('ServerSeedService - qBittorrent', () => {
   let mockDb: MockDb;
   let service: ServerSeedService;
   const originalEnv: Record<string, string | undefined> = {};
+  let providerList: Array<{ id: string; capabilities: Record<string, boolean> }>;
 
   const insertedRows = (): Array<Record<string, unknown>> =>
     mockDb.insert.mock.results.map(
@@ -28,6 +29,10 @@ describe('ServerSeedService - qBittorrent', () => {
     );
 
   beforeEach(() => {
+    providerList = [
+      { id: 'qbittorrent', capabilities: { apiKeyOptional: true, supportsUsername: true } },
+      { id: 'jellyfin', capabilities: {} },
+    ];
     for (const key of SEEDED_ENV_KEYS) {
       originalEnv[key] = process.env[key];
       delete process.env[key];
@@ -41,7 +46,12 @@ describe('ServerSeedService - qBittorrent', () => {
     }
     mockDb = createMockDb();
     configureMockDb(mockDb, { select: [] });
-    service = new ServerSeedService(mockDb as never);
+    service = new ServerSeedService(
+      mockDb as never,
+      {
+        getAvailableProviders: () => providerList,
+      } as never
+    );
   });
 
   afterEach(() => {
@@ -109,6 +119,15 @@ describe('ServerSeedService - qBittorrent', () => {
   it('does not seed when a qBittorrent server already exists', async () => {
     process.env['QBITTORRENT_URL'] = 'http://qbit:8080';
     configureMockDb(mockDb, { select: [{ id: 'existing' }] });
+
+    await service.onModuleInit();
+
+    expect(mockDb.insert).not.toHaveBeenCalled();
+  });
+
+  it('requires an API key when the provider does not declare apiKeyOptional', async () => {
+    providerList = [{ id: 'qbittorrent', capabilities: {} }];
+    process.env['QBITTORRENT_URL'] = 'http://qbit:8080';
 
     await service.onModuleInit();
 

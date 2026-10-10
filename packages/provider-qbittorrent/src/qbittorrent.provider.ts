@@ -33,6 +33,11 @@ const INITIAL_LOG_LIMIT = 500;
 /** How often an empty log response triggers a full resync (detects qBittorrent restarts) */
 const LOG_RESYNC_INTERVAL_MS = 10 * 60_000;
 
+/** missingFiles -> missing-files */
+function kebab(value: string): string {
+  return value.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+}
+
 function truncate(value: string, max: number): string {
   return value.length > max ? `${value.slice(0, max - 1)}…` : value;
 }
@@ -274,7 +279,7 @@ export class QBittorrentProvider implements MediaServerProvider {
     const day = timestamp.toISOString().slice(0, 10);
     return torrents.map((torrent) => ({
       // Day bucket: a persisting/recurring error is re-announced at most once per day
-      id: `qbittorrent-torrent-error-${torrent.hash}-${torrent.state}-${day}`,
+      id: `qbittorrent-torrent-error-${torrent.hash}-${kebab(torrent.state)}-${day}`,
       type: 'torrent_error',
       name: `Torrent error: ${torrent.name}`,
       overview:

@@ -446,7 +446,7 @@ describe('QBittorrentProvider activity edge cases', () => {
       const [missing] = await provider.getActivity();
 
       expect(error?.id).toBe('qbittorrent-torrent-error-abc-error-2026-10-10');
-      expect(missing?.id).toBe('qbittorrent-torrent-error-abc-missingFiles-2026-10-10');
+      expect(missing?.id).toBe('qbittorrent-torrent-error-abc-missing-files-2026-10-10');
     });
 
     it('emits nothing once the torrent is no longer errored', async () => {

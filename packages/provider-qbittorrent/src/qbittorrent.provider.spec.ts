@@ -370,7 +370,7 @@ describe('QBittorrentProvider', () => {
       const second = await provider.getActivity();
 
       expect(first.map((a) => a.id)).toEqual([
-        'qbittorrent-torrent-error-abc-missingFiles-2026-10-10',
+        'qbittorrent-torrent-error-abc-missing-files-2026-10-10',
         'qbittorrent-torrent-error-def-error-2026-10-10',
       ]);
       expect(second.map((a) => a.id)).toEqual(first.map((a) => a.id));

@@ -4,6 +4,8 @@ import { eq } from 'drizzle-orm';
 import { DATABASE_CONNECTION } from '../../database';
 import * as schema from '../../database/schema';
 
+import { ServersService } from './servers.service';
+
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 /**
@@ -17,8 +19,6 @@ interface EnvServerConfig {
   apiKeyEnvKey: string;
   /** Optional env var holding a login username */
   usernameEnvKey?: string;
-  /** When true only the URL is required (credentials may be empty, e.g. auth bypass) */
-  credentialsOptional?: boolean;
   providerId: string;
   name: string;
   /** Container path for log files (used in Docker) */
@@ -86,7 +86,6 @@ const ENV_SERVER_CONFIGS: EnvServerConfig[] = [
     urlEnvKey: 'QBITTORRENT_URL',
     usernameEnvKey: 'QBITTORRENT_USERNAME',
     apiKeyEnvKey: 'QBITTORRENT_PASSWORD',
-    credentialsOptional: true,
     providerId: 'qbittorrent',
     name: 'qBittorrent',
     containerLogPath: '/qbittorrent-logs',
@@ -99,7 +98,8 @@ export class ServerSeedService implements OnModuleInit {
 
   constructor(
     @Inject(DATABASE_CONNECTION)
-    private readonly db: PostgresJsDatabase<typeof schema>
+    private readonly db: PostgresJsDatabase<typeof schema>,
+    private readonly serversService: ServersService
   ) {}
 
   async onModuleInit() {
@@ -121,6 +121,11 @@ export class ServerSeedService implements OnModuleInit {
     let seededCount = 0;
 
     for (const config of ENV_SERVER_CONFIGS) {
+      // Whether only the URL is required (credentials may be empty, e.g. auth bypass) comes from
+      // the provider's capabilities
+      const apiKeyOptional =
+        this.serversService.getAvailableProviders().find((p) => p.id === config.providerId)
+          ?.capabilities.apiKeyOptional === true;
       const url = process.env[config.urlEnvKey];
       // Not trimmed for providers with a password: a leading/trailing space may be intentional,
       // and the UI stores the value verbatim too. Only the emptiness check ignores whitespace.
@@ -134,7 +139,7 @@ export class ServerSeedService implements OnModuleInit {
       this.logger.log(`Checking ${config.providerId}: URL=${!!url}, API key=${!!apiKey}`);
 
       // Skip if URL (or, unless credentials are optional, the API key) is not set
-      if (!url || url.trim() === '' || (!config.credentialsOptional && apiKey.trim() === '')) {
+      if (!url || url.trim() === '' || (!apiKeyOptional && apiKey.trim() === '')) {
         this.logger.log(`Skipping ${config.providerId}: missing URL or API key`);
         continue;
       }

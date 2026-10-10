@@ -101,7 +101,7 @@ export class ProxyService {
     // key in the X-API-Key header (and as Bearer token); auth-bypass servers need no header.
     if (server.username) {
       throw new BadRequestException(
-        'The request proxy does not support username/password (cookie session) login. Remove the username and use an API key (qBittorrent 5.3+) or authentication bypass.'
+        'The request proxy does not support servers that use username/password login (cookie session). Use an API key (qBittorrent 5.3+) or authentication bypass instead.'
       );
     }
 
