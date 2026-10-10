@@ -11,6 +11,7 @@ import {
   LIDARR_LOG_FILE_CONFIG,
   describeArrEvent,
   resolveArrEventName,
+  toArrItemId,
   type ArrEventTable,
   type ArrHistoryRecordBase,
   type ArrPaginatedResponse,
@@ -130,11 +131,7 @@ export class LidarrProvider extends ArrBaseProvider {
 
   protected override normalizeHistoryRecord(record: ArrHistoryRecordBase): NormalizedActivity {
     const lidarrRecord = record as LidarrHistoryRecord;
-    const resolved = resolveArrEventName(lidarrRecord.eventType, LidarrEventTypeNames);
-    // Canonicalise the casing of known events; unknown names are kept as reported
-    const eventName =
-      Object.keys(LIDARR_EVENTS).find((k) => k.toLowerCase() === resolved.toLowerCase()) ??
-      resolved;
+    const eventName = resolveArrEventName(lidarrRecord.eventType, LidarrEventTypeNames);
     const { label, severity } = describeArrEvent(eventName, LIDARR_EVENTS);
 
     const artist = lidarrRecord.artist?.artistName ?? 'Unknown Artist';
@@ -202,10 +199,7 @@ export class LidarrProvider extends ArrBaseProvider {
       overview,
       severity,
       timestamp: new Date(lidarrRecord.date),
-      itemId:
-        typeof lidarrRecord.albumId === 'number' && lidarrRecord.albumId > 0
-          ? String(lidarrRecord.albumId)
-          : undefined,
+      itemId: toArrItemId(lidarrRecord.albumId),
       metadata: {
         artistId: lidarrRecord.artistId,
         albumId: lidarrRecord.albumId,

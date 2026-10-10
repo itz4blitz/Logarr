@@ -678,10 +678,14 @@ describe('LidarrProvider', () => {
       }
     );
 
-    it('should set itemId undefined when albumId is 0 (artist-level events)', async () => {
-      const activity = await normalize(record({ albumId: 0, album: undefined }));
+    it.each([
+      [0, undefined],
+      [-1, undefined],
+      [42, '42'],
+    ])('should map albumId %i to itemId %s', async (albumId, expected) => {
+      const activity = await normalize(record({ albumId, album: undefined }));
 
-      expect(activity.itemId).toBeUndefined();
+      expect(activity.itemId).toBe(expected);
     });
 
     it.each(['importFailed', 'SomethingFAILED'])(
