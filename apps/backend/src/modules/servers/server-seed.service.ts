@@ -70,6 +70,13 @@ const ENV_SERVER_CONFIGS: EnvServerConfig[] = [
     name: 'Whisparr',
     containerLogPath: '/whisparr-logs',
   },
+  {
+    urlEnvKey: 'LIDARR_URL',
+    apiKeyEnvKey: 'LIDARR_API_KEY',
+    providerId: 'lidarr',
+    name: 'Lidarr',
+    containerLogPath: '/lidarr-logs',
+  },
 ];
 
 @Injectable()

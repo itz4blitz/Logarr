@@ -28,13 +28,16 @@
     "PROWLARR_API_KEY",
     "WHISPARR_URL",
     "WHISPARR_API_KEY",
+    "LIDARR_URL",
+    "LIDARR_API_KEY",
     "JELLYFIN_LOGS_PATH",
     "PLEX_LOGS_PATH",
     "EMBY_LOGS_PATH",
     "SONARR_LOGS_PATH",
     "RADARR_LOGS_PATH",
     "PROWLARR_LOGS_PATH",
-    "WHISPARR_LOGS_PATH"
+    "WHISPARR_LOGS_PATH",
+    "LIDARR_LOGS_PATH"
   ],
   "tasks": {
     "build": {

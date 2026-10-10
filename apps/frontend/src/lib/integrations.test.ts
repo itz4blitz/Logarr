@@ -89,6 +89,61 @@ describe('Integrations Registry', () => {
     });
   });
 
+  describe('Lidarr integration', () => {
+    it('should be defined as an *arr stack integration', () => {
+      const lidarr = getIntegrationById('lidarr');
+      expect(lidarr).toBeDefined();
+      expect(lidarr?.name).toBe('Lidarr');
+      expect(lidarr?.category).toBe('arr_stack');
+    });
+
+    it('should be marked as available', () => {
+      expect(getIntegrationById('lidarr')?.status).toBe('available');
+    });
+
+    it('should use the API connection type', () => {
+      expect(getIntegrationById('lidarr')?.connectionType).toBe('api');
+    });
+
+    it('should use the dashboard-icons icon', () => {
+      const lidarr = getIntegrationById('lidarr');
+      expect(lidarr?.iconType).toBe('dashboard-icons');
+      expect(lidarr?.icon).toBe('lidarr');
+    });
+
+    it('should have correct branding', () => {
+      const lidarr = getIntegrationById('lidarr');
+      expect(lidarr?.color).toBe('#00C853');
+      expect(lidarr?.bgColor).toBe('bg-green-500/10');
+    });
+
+    it('should have correct default port', () => {
+      expect(getIntegrationById('lidarr')?.defaultPort).toBe(8686);
+    });
+
+    it('should support the activity log', () => {
+      expect(getIntegrationById('lidarr')?.capabilities.activityLog).toBe(true);
+    });
+
+    it('should have required password API key and log path config fields', () => {
+      const lidarr = getIntegrationById('lidarr');
+      const fieldNames = lidarr?.configFields.map((f) => f.name);
+      expect(fieldNames).toContain('name');
+      expect(fieldNames).toContain('url');
+      expect(fieldNames).toContain('apiKey');
+      expect(fieldNames).toContain('logPath');
+
+      const apiKey = lidarr?.configFields.find((f) => f.name === 'apiKey');
+      expect(apiKey?.required).toBe(true);
+      expect(apiKey?.type).toBe('password');
+    });
+
+    it('should be found by search', () => {
+      const results = searchIntegrations('lidarr');
+      expect(results.some((i) => i.id === 'lidarr')).toBe(true);
+    });
+  });
+
   describe('getIntegrationsByCategory', () => {
     it('should include Whisparr in arr_stack category', () => {
       const arrIntegrations = getIntegrationsByCategory('arr_stack');
@@ -118,11 +173,12 @@ describe('Integrations Registry', () => {
     it('should include other available *arr integrations', () => {
       const available = getAvailableIntegrations();
       const ids = available.map((i) => i.id);
-      // Sonarr, Radarr, Prowlarr, and Whisparr should be available
+      // Sonarr, Radarr, Prowlarr, Whisparr, and Lidarr should be available
       expect(ids).toContain('sonarr');
       expect(ids).toContain('radarr');
       expect(ids).toContain('prowlarr');
       expect(ids).toContain('whisparr');
+      expect(ids).toContain('lidarr');
     });
   });
 

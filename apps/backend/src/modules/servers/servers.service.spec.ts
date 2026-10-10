@@ -122,6 +122,26 @@ describe('ServersService', () => {
       await expect(service.create(dto)).rejects.toThrow('Unknown provider');
     });
 
+    it('should accept lidarr as a registered provider', async () => {
+      const lidarrServer = {
+        ...mockServer,
+        id: 'lidarr-1',
+        name: 'Lidarr',
+        providerId: 'lidarr',
+        url: 'http://lidarr:8686',
+      };
+      configureMockDb(mockDb, { insert: [lidarrServer] });
+
+      const result = await service.create({
+        name: 'Lidarr',
+        providerId: 'lidarr',
+        url: 'http://lidarr:8686',
+        apiKey: 'test-key',
+      });
+
+      expect(result).toEqual(lidarrServer);
+    });
+
     it('should start file ingestion if enabled', async () => {
       const serverWithIngestion = {
         ...mockServer,

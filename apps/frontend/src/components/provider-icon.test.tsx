@@ -70,6 +70,14 @@ describe('providerMeta', () => {
     });
   });
 
+  describe('Lidarr metadata', () => {
+    it('should have Lidarr name and green branding', () => {
+      expect(providerMeta.lidarr.name).toBe('Lidarr');
+      expect(providerMeta.lidarr.color).toBe('#00C853');
+      expect(providerMeta.lidarr.bgColor).toBe('bg-green-500/10');
+    });
+  });
+
   describe('All *arr provider metadata', () => {
     const arrProviders = ['sonarr', 'radarr', 'prowlarr', 'whisparr', 'lidarr', 'readarr'];
 
@@ -87,6 +95,12 @@ describe('getProviderMeta', () => {
     const meta = getProviderMeta('whisparr');
     expect(meta.name).toBe('Whisparr');
     expect(meta.color).toBe('#FF69B4');
+  });
+
+  it('should return Lidarr metadata', () => {
+    const meta = getProviderMeta('lidarr');
+    expect(meta.name).toBe('Lidarr');
+    expect(meta.color).toBe('#00C853');
   });
 
   it('should be case insensitive', () => {

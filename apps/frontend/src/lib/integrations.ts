@@ -399,7 +399,7 @@ export const integrations: Integration[] = [
     name: 'Lidarr',
     description: 'Music collection manager for Usenet and BitTorrent',
     category: 'arr_stack',
-    status: 'coming_soon',
+    status: 'available',
     connectionType: 'api',
     icon: 'lidarr',
     iconType: 'dashboard-icons',

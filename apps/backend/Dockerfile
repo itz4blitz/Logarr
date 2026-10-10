@@ -58,6 +58,8 @@ COPY --from=builder --chown=nestjs:nodejs /app/packages/provider-emby/package.js
 COPY --from=builder --chown=nestjs:nodejs /app/packages/provider-emby/dist ./packages/provider-emby/dist
 COPY --from=builder --chown=nestjs:nodejs /app/packages/provider-whisparr/package.json ./packages/provider-whisparr/
 COPY --from=builder --chown=nestjs:nodejs /app/packages/provider-whisparr/dist ./packages/provider-whisparr/dist
+COPY --from=builder --chown=nestjs:nodejs /app/packages/provider-lidarr/package.json ./packages/provider-lidarr/
+COPY --from=builder --chown=nestjs:nodejs /app/packages/provider-lidarr/dist ./packages/provider-lidarr/dist
 
 # Copy backend
 COPY --from=builder --chown=nestjs:nodejs /app/apps/backend/package.json ./apps/backend/

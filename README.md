@@ -11,7 +11,7 @@
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Unified logging, intelligent issue detection, and AI-powered analysis for Plex, Jellyfin, Emby, Sonarr, Radarr, Prowlarr, Whisparr, and more.
+Unified logging, intelligent issue detection, and AI-powered analysis for Plex, Jellyfin, Emby, Sonarr, Radarr, Prowlarr, Whisparr, Lidarr, and more.
 
 [Quick Start](#quick-start) · [Features](#features) · [Screenshots](#screenshots) · [Documentation](#documentation)
 
@@ -100,7 +100,8 @@ _Configure multiple AI providers for issue analysis (Anthropic, OpenAI, Google, 
 | **Jellyfin** | ✅ Supported | **Plex**     | ✅ Supported |
 | **Sonarr**   | ✅ Supported | **Emby**     | ✅ Supported |
 | **Radarr**   | ✅ Supported | **Whisparr** | ✅ Supported |
-| **Prowlarr** | ✅ Supported | **Kodi**     | 🚧 Planned   |
+| **Prowlarr** | ✅ Supported | **Lidarr**   | ✅ Supported |
+| **Kodi**     | 🚧 Planned   |              |              |
 
 > Logarr uses a provider architecture—adding support for new servers is straightforward. [Contributions welcome!](#contributing)
 
@@ -177,13 +178,14 @@ flowchart TB
         RA[Radarr]
         PR[Prowlarr]
         WH[Whisparr]
+        LI[Lidarr]
     end
 
     FE <--> API
     FE <--> WS
     API <--> PG
     API <--> RD
-    API <--> PX & JF & EM & SO & RA & PR & WH
+    API <--> PX & JF & EM & SO & RA & PR & WH & LI
 ```
 
 ### How It Works
@@ -271,6 +273,7 @@ SONARR_LOGS_PATH=/path/to/sonarr/config/logs
 RADARR_LOGS_PATH=/path/to/radarr/config/logs
 PROWLARR_LOGS_PATH=/path/to/prowlarr/config/logs
 WHISPARR_LOGS_PATH=/path/to/whisparr/config/logs
+LIDARR_LOGS_PATH=/path/to/lidarr/config/logs
 ```
 
 2. **Restart Logarr** — The docker-compose mounts these paths automatically.
@@ -286,6 +289,7 @@ WHISPARR_LOGS_PATH=/path/to/whisparr/config/logs
 | Radarr   | `/radarr-logs`   |
 | Prowlarr | `/prowlarr-logs` |
 | Whisparr | `/whisp-logs`    |
+| Lidarr   | `/lidarr-logs`   |
 
 #### Multiple Instances (e.g., Movies vs Shorts, 1080p vs 4K)
 
@@ -330,6 +334,7 @@ Simply add multiple servers in the UI using the same server type but different U
 | Radarr   | `/config/logs`             | `~/.config/Radarr/logs`             | `C:\ProgramData\Radarr\logs`            |
 | Prowlarr | `/config/logs`             | `~/.config/Prowlarr/logs`           | `C:\ProgramData\Prowlarr\logs`          |
 | Whisparr | `/config/logs`             | `~/.config/Whisparr/logs`           | `C:\ProgramData\Whisparr\logs`          |
+| Lidarr   | `/config/logs`             | `~/.config/Lidarr/logs`             | `C:\ProgramData\Lidarr\logs`            |
 
 ---
 
@@ -371,6 +376,7 @@ logarr/
 │   ├── provider-radarr/    # Radarr integration
 │   ├── provider-prowlarr/  # Prowlarr integration
 │   ├── provider-whisparr/  # Whisparr integration
+│   ├── provider-lidarr/    # Lidarr integration
 │   └── provider-arr/       # Base *arr provider
 └── docker-compose.yml
 ```
@@ -483,6 +489,7 @@ pnpm test:e2e          # Run Playwright E2E tests
 | `@logarr/provider-arr`      | \*arr application log parser           |
 | `@logarr/provider-emby`     | Emby log parser                        |
 | `@logarr/provider-whisparr` | Whisparr provider                      |
+| `@logarr/provider-lidarr`   | Lidarr provider                        |
 
 > Coverage thresholds are enforced at 80% for statements, branches, functions, and lines.
 
