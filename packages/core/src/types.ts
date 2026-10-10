@@ -33,7 +33,10 @@ export interface ProviderCapabilities {
  */
 export interface ProviderConfig {
   readonly url: string;
+  /** API key, token, or password (may be empty for providers without authentication) */
   readonly apiKey: string;
+  /** Optional login username (providers using username/password authentication) */
+  readonly username?: string | undefined;
   readonly logPath?: string | undefined;
 }
 
@@ -393,6 +396,7 @@ export interface Server {
   readonly providerId: string;
   readonly url: string;
   readonly apiKey: string;
+  readonly username: string | null;
   readonly logPath: string | null;
   readonly isEnabled: boolean;
   readonly isConnected: boolean;
@@ -418,6 +422,7 @@ export interface CreateServerInput {
   readonly providerId: string;
   readonly url: string;
   readonly apiKey: string;
+  readonly username?: string;
   readonly logPath?: string;
 }
 
@@ -428,6 +433,7 @@ export interface UpdateServerInput {
   readonly name?: string;
   readonly url?: string;
   readonly apiKey?: string;
+  readonly username?: string;
   readonly logPath?: string;
   readonly isEnabled?: boolean;
   // File-based log ingestion fields

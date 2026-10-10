@@ -14,7 +14,7 @@ import {
   FolderOpen,
   FileSearch,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod/v3';
@@ -50,19 +50,29 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useUpdateServer, useTestConnection } from '@/hooks/use-api';
+import { areCredentialsOptional, buildUpdateCredentials } from '@/lib/server-payload';
 import { cn } from '@/lib/utils';
 
-const formSchema = z.object({
+// qBittorrent allows an empty password / API key (authentication bypass)
+const buildFormSchema = (providerId: string) =>
+  baseFormSchema.superRefine((data, ctx) => {
+    if (!areCredentialsOptional(providerId) && data.apiKey.trim() === '') {
+      ctx.addIssue({ code: 'custom', path: ['apiKey'], message: 'API key is required' });
+    }
+  });
+
+const baseFormSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
   url: z.string().url('Must be a valid URL'),
-  apiKey: z.string().min(1, 'API key is required'),
+  apiKey: z.string(),
+  username: z.string().optional(),
   logPath: z.string().optional(),
   fileIngestionEnabled: z.boolean(),
   logPaths: z.string().optional(),
   logFilePatterns: z.string().optional(),
 });
 
-type FormData = z.infer<typeof formSchema>;
+type FormData = z.infer<typeof baseFormSchema>;
 
 interface EditServerDialogProps {
   server: ServerType;
@@ -75,12 +85,16 @@ export function EditServerDialog({ server, open, onOpenChange }: EditServerDialo
   const testConnection = useTestConnection();
   const [isTesting, setIsTesting] = useState(false);
 
+  const formSchema = useMemo(() => buildFormSchema(server.providerId), [server.providerId]);
+  const hasUsername = areCredentialsOptional(server.providerId);
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: server.name,
       url: server.url,
       apiKey: server.apiKey,
+      username: server.username ?? '',
       logPath: server.logPath || '',
       fileIngestionEnabled: server.fileIngestionEnabled || false,
       logPaths: server.logPaths?.join(', ') || '',
@@ -96,6 +110,7 @@ export function EditServerDialog({ server, open, onOpenChange }: EditServerDialo
         name: server.name,
         url: server.url,
         apiKey: server.apiKey,
+        username: server.username ?? '',
         logPath: server.logPath || '',
         fileIngestionEnabled: server.fileIngestionEnabled || false,
         logPaths: server.logPaths?.join(', ') || '',
@@ -156,7 +171,7 @@ export function EditServerDialog({ server, open, onOpenChange }: EditServerDialo
         data: {
           name: data.name,
           url: data.url,
-          apiKey: data.apiKey,
+          ...buildUpdateCredentials(server.providerId, data),
           logPath: data.logPath || undefined,
           fileIngestionEnabled: data.fileIngestionEnabled,
           logPaths: logPaths?.length ? logPaths : undefined,
@@ -288,24 +303,68 @@ export function EditServerDialog({ server, open, onOpenChange }: EditServerDialo
                 />
               </div>
 
-              {/* API Key full width */}
-              <FormField
-                control={form.control}
-                name="apiKey"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-1.5">
-                      <Key className="h-3.5 w-3.5" />
-                      API Key
-                    </FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="Enter API key" {...field} />
-                    </FormControl>
-                    <FormDescription>Found in Dashboard → API Keys</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {hasUsername ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="username"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-1.5">
+                          <Tag className="h-3.5 w-3.5" />
+                          Username
+                        </FormLabel>
+                        <FormControl>
+                          <Input placeholder="admin" {...field} />
+                        </FormControl>
+                        <FormDescription>Leave empty for API-key or no-auth setups</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="apiKey"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-1.5">
+                          <Key className="h-3.5 w-3.5" />
+                          Password / API key
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="password"
+                            placeholder="WebUI password, or API key (5.3+)"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          With a username: password. Without: API key. Empty if auth is bypassed
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              ) : (
+                <FormField
+                  control={form.control}
+                  name="apiKey"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-1.5">
+                        <Key className="h-3.5 w-3.5" />
+                        API Key
+                      </FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="Enter API key" {...field} />
+                      </FormControl>
+                      <FormDescription>Found in Dashboard → API Keys</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
 
             {/* File Ingestion Section */}

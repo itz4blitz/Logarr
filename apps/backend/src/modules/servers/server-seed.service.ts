@@ -13,7 +13,12 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
  */
 interface EnvServerConfig {
   urlEnvKey: string;
+  /** Env var holding the API key (or the password when usernameEnvKey is used) */
   apiKeyEnvKey: string;
+  /** Optional env var holding a login username */
+  usernameEnvKey?: string;
+  /** When true only the URL is required (credentials may be empty, e.g. auth bypass) */
+  credentialsOptional?: boolean;
   providerId: string;
   name: string;
   /** Container path for log files (used in Docker) */
@@ -77,6 +82,15 @@ const ENV_SERVER_CONFIGS: EnvServerConfig[] = [
     name: 'Lidarr',
     containerLogPath: '/lidarr-logs',
   },
+  {
+    urlEnvKey: 'QBITTORRENT_URL',
+    usernameEnvKey: 'QBITTORRENT_USERNAME',
+    apiKeyEnvKey: 'QBITTORRENT_PASSWORD',
+    credentialsOptional: true,
+    providerId: 'qbittorrent',
+    name: 'qBittorrent',
+    containerLogPath: '/qbittorrent-logs',
+  },
 ];
 
 @Injectable()
@@ -108,12 +122,19 @@ export class ServerSeedService implements OnModuleInit {
 
     for (const config of ENV_SERVER_CONFIGS) {
       const url = process.env[config.urlEnvKey];
-      const apiKey = process.env[config.apiKeyEnvKey];
+      // Not trimmed for providers with a password: a leading/trailing space may be intentional,
+      // and the UI stores the value verbatim too. Only the emptiness check ignores whitespace.
+      const apiKey = config.usernameEnvKey
+        ? (process.env[config.apiKeyEnvKey] ?? '')
+        : (process.env[config.apiKeyEnvKey]?.trim() ?? '');
+      const username = config.usernameEnvKey
+        ? process.env[config.usernameEnvKey]?.trim() || null
+        : null;
 
       this.logger.log(`Checking ${config.providerId}: URL=${!!url}, API key=${!!apiKey}`);
 
-      // Skip if URL or API key not set
-      if (!url || url.trim() === '' || !apiKey || apiKey.trim() === '') {
+      // Skip if URL (or, unless credentials are optional, the API key) is not set
+      if (!url || url.trim() === '' || (!config.credentialsOptional && apiKey.trim() === '')) {
         this.logger.log(`Skipping ${config.providerId}: missing URL or API key`);
         continue;
       }
@@ -145,7 +166,8 @@ export class ServerSeedService implements OnModuleInit {
           name: config.name,
           providerId: config.providerId,
           url: url.trim(),
-          apiKey: apiKey.trim(),
+          apiKey,
+          username,
           // Enable file ingestion if log path is configured
           fileIngestionEnabled: hasLogPath,
           logPaths: effectiveLogPath ? [effectiveLogPath] : null,

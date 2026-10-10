@@ -87,6 +87,10 @@ WHISPARR_API_KEY={{ op://Development/Logarr-Dev/WHISPARR_API_KEY }}
 # Lidarr
 LIDARR_URL={{ op://Development/Logarr-Dev/LIDARR_URL }}
 LIDARR_API_KEY={{ op://Development/Logarr-Dev/LIDARR_API_KEY }}
+# qBittorrent (not in the 1Password vault yet: add the items, then uncomment)
+# QBITTORRENT_URL={{ op://Development/Logarr-Dev/QBITTORRENT_URL }}
+# QBITTORRENT_USERNAME={{ op://Development/Logarr-Dev/QBITTORRENT_USERNAME }}
+# QBITTORRENT_PASSWORD={{ op://Development/Logarr-Dev/QBITTORRENT_PASSWORD }}
 
 # =============================================================================
 # SECURITY & AUTHENTICATION
@@ -111,3 +115,4 @@ RADARR_LOGS_PATH={{ op://Development/Logarr-Dev/RADARR_LOGS_PATH }}
 PROWLARR_LOGS_PATH={{ op://Development/Logarr-Dev/PROWLARR_LOGS_PATH }}
 WHISPARR_LOGS_PATH={{ op://Development/Logarr-Dev/WHISPARR_LOGS_PATH }}
 LIDARR_LOGS_PATH={{ op://Development/Logarr-Dev/LIDARR_LOGS_PATH }}
+# QBITTORRENT_LOGS_PATH={{ op://Development/Logarr-Dev/QBITTORRENT_LOGS_PATH }}

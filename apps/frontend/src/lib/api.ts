@@ -9,6 +9,7 @@ export interface Server {
   providerId: string;
   url: string;
   apiKey: string;
+  username: string | null;
   logPath: string | null;
   isConnected: boolean;
   lastSeen: string | null;
@@ -31,6 +32,7 @@ export interface CreateServerDto {
   providerId: string;
   url: string;
   apiKey: string;
+  username?: string;
   logPath?: string;
   fileIngestionEnabled?: boolean;
   logPaths?: string[];
@@ -41,6 +43,7 @@ export interface UpdateServerDto {
   name?: string;
   url?: string;
   apiKey?: string;
+  username?: string;
   logPath?: string;
   fileIngestionEnabled?: boolean;
   logPaths?: string[];

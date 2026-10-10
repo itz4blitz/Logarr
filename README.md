@@ -11,7 +11,7 @@
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Unified logging, intelligent issue detection, and AI-powered analysis for Plex, Jellyfin, Emby, Sonarr, Radarr, Prowlarr, Whisparr, Lidarr, and more.
+Unified logging, intelligent issue detection, and AI-powered analysis for Plex, Jellyfin, Emby, Sonarr, Radarr, Prowlarr, Whisparr, Lidarr, qBittorrent, and more.
 
 [Quick Start](#quick-start) · [Features](#features) · [Screenshots](#screenshots) · [Documentation](#documentation)
 
@@ -95,13 +95,13 @@ _Configure multiple AI providers for issue analysis (Anthropic, OpenAI, Google, 
 
 ## Supported Servers
 
-| Server       | Status       | Server       | Status       |
-| ------------ | ------------ | ------------ | ------------ |
-| **Jellyfin** | ✅ Supported | **Plex**     | ✅ Supported |
-| **Sonarr**   | ✅ Supported | **Emby**     | ✅ Supported |
-| **Radarr**   | ✅ Supported | **Whisparr** | ✅ Supported |
-| **Prowlarr** | ✅ Supported | **Lidarr**   | ✅ Supported |
-| **Kodi**     | 🚧 Planned   |              |              |
+| Server       | Status       | Server          | Status       |
+| ------------ | ------------ | --------------- | ------------ |
+| **Jellyfin** | ✅ Supported | **Plex**        | ✅ Supported |
+| **Sonarr**   | ✅ Supported | **Emby**        | ✅ Supported |
+| **Radarr**   | ✅ Supported | **Whisparr**    | ✅ Supported |
+| **Prowlarr** | ✅ Supported | **Lidarr**      | ✅ Supported |
+| **Kodi**     | 🚧 Planned   | **qBittorrent** | ✅ Supported |
 
 > Logarr uses a provider architecture—adding support for new servers is straightforward. [Contributions welcome!](#contributing)
 
@@ -179,6 +179,7 @@ flowchart TB
         PR[Prowlarr]
         WH[Whisparr]
         LI[Lidarr]
+        QB[qBittorrent]
     end
 
     FE <--> API
@@ -186,6 +187,7 @@ flowchart TB
     API <--> PG
     API <--> RD
     API <--> PX & JF & EM & SO & RA & PR & WH & LI
+    API <--> PX & JF & EM & SO & RA & PR & WH & QB
 ```
 
 ### How It Works
@@ -274,22 +276,43 @@ RADARR_LOGS_PATH=/path/to/radarr/config/logs
 PROWLARR_LOGS_PATH=/path/to/prowlarr/config/logs
 WHISPARR_LOGS_PATH=/path/to/whisparr/config/logs
 LIDARR_LOGS_PATH=/path/to/lidarr/config/logs
+
+# Download clients
+QBITTORRENT_LOGS_PATH=/path/to/qbittorrent/config/qBittorrent/logs
 ```
 
 2. **Restart Logarr** — The docker-compose mounts these paths automatically.
 
 3. **Configure in UI** — Go to **Sources** → Edit your server → Enable file ingestion with the container path:
 
-| Server   | Container Path   |
-| -------- | ---------------- |
-| Plex     | `/plex-logs`     |
-| Jellyfin | `/jellyfin-logs` |
-| Emby     | `/emby-logs`     |
-| Sonarr   | `/sonarr-logs`   |
-| Radarr   | `/radarr-logs`   |
-| Prowlarr | `/prowlarr-logs` |
-| Whisparr | `/whisp-logs`    |
-| Lidarr   | `/lidarr-logs`   |
+| Server      | Container Path      |
+| ----------- | ------------------- |
+| Plex        | `/plex-logs`        |
+| Jellyfin    | `/jellyfin-logs`    |
+| Emby        | `/emby-logs`        |
+| Sonarr      | `/sonarr-logs`      |
+| Radarr      | `/radarr-logs`      |
+| Prowlarr    | `/prowlarr-logs`    |
+| Whisparr    | `/whisp-logs`       |
+| Lidarr      | `/lidarr-logs`      |
+| qBittorrent | `/qbittorrent-logs` |
+
+#### qBittorrent authentication
+
+qBittorrent is a standalone provider (WebUI API v2) and is detected from the stored credentials:
+
+| Setup                        | Username | Password / API key | Notes                                                    |
+| ---------------------------- | -------- | ------------------ | -------------------------------------------------------- |
+| Username + password          | set      | WebUI password     | Cookie session, re-login on expiry                       |
+| API key (qBittorrent >= 5.2) | empty    | API key            | Sent as `Authorization: Bearer`                          |
+| No authentication            | empty    | empty              | "Bypass authentication" for Logarr's IP / subnet enabled |
+
+Environment variables for auto-setup: `QBITTORRENT_URL`, `QBITTORRENT_USERNAME`, `QBITTORRENT_PASSWORD`.
+
+- qBittorrent bans an IP for 1 hour after 5 failed logins. After a failed login Logarr backs off (5, 15, then 60 minutes) instead of retrying every poll; fix the credentials and edit the source to retry immediately.
+- Behind a reverse proxy or with Host header validation enabled, qBittorrent may answer 401; allow Logarr's host name in "Server domains".
+- The API log feed only reports warnings and critical messages, and is skipped when a log path is configured (the `qbittorrent.log` file is tailed instead). Log file timestamps have no timezone: set the backend `TZ` to qBittorrent's timezone.
+- Default log locations are best guesses: `/config/qBittorrent/logs` (linuxserver) and `/config/logs` (hotio) are unverified, so set the log path explicitly.
 
 #### Multiple Instances (e.g., Movies vs Shorts, 1080p vs 4K)
 
@@ -325,16 +348,17 @@ Simply add multiple servers in the UI using the same server type but different U
 
 #### Common Log Locations
 
-| Server   | Docker                     | Linux                               | Windows                                 |
-| -------- | -------------------------- | ----------------------------------- | --------------------------------------- |
-| Plex     | `/config/Library/.../Logs` | `/var/lib/plexmediaserver/.../Logs` | `%LOCALAPPDATA%\Plex Media Server\Logs` |
-| Jellyfin | `/config/log`              | `/var/lib/jellyfin/log`             | `C:\ProgramData\Jellyfin\Server\log`    |
-| Emby     | `/config/logs`             | `/var/lib/emby/logs`                | `C:\ProgramData\Emby-Server\logs`       |
-| Sonarr   | `/config/logs`             | `~/.config/Sonarr/logs`             | `C:\ProgramData\Sonarr\logs`            |
-| Radarr   | `/config/logs`             | `~/.config/Radarr/logs`             | `C:\ProgramData\Radarr\logs`            |
-| Prowlarr | `/config/logs`             | `~/.config/Prowlarr/logs`           | `C:\ProgramData\Prowlarr\logs`          |
-| Whisparr | `/config/logs`             | `~/.config/Whisparr/logs`           | `C:\ProgramData\Whisparr\logs`          |
-| Lidarr   | `/config/logs`             | `~/.config/Lidarr/logs`             | `C:\ProgramData\Lidarr\logs`            |
+| Server      | Docker                                               | Linux                               | Windows                                 |
+| ----------- | ---------------------------------------------------- | ----------------------------------- | --------------------------------------- |
+| Plex        | `/config/Library/.../Logs`                           | `/var/lib/plexmediaserver/.../Logs` | `%LOCALAPPDATA%\Plex Media Server\Logs` |
+| Jellyfin    | `/config/log`                                        | `/var/lib/jellyfin/log`             | `C:\ProgramData\Jellyfin\Server\log`    |
+| Emby        | `/config/logs`                                       | `/var/lib/emby/logs`                | `C:\ProgramData\Emby-Server\logs`       |
+| Sonarr      | `/config/logs`                                       | `~/.config/Sonarr/logs`             | `C:\ProgramData\Sonarr\logs`            |
+| Radarr      | `/config/logs`                                       | `~/.config/Radarr/logs`             | `C:\ProgramData\Radarr\logs`            |
+| Prowlarr    | `/config/logs`                                       | `~/.config/Prowlarr/logs`           | `C:\ProgramData\Prowlarr\logs`          |
+| Whisparr    | `/config/logs`                                       | `~/.config/Whisparr/logs`           | `C:\ProgramData\Whisparr\logs`          |
+| Lidarr      | `/config/logs`                                       | `~/.config/Lidarr/logs`             | `C:\ProgramData\Lidarr\logs`            |
+| qBittorrent | `/config/qBittorrent/logs` (linuxserver, unverified) | `~/.local/share/qBittorrent/logs`   | `%LOCALAPPDATA%\qBittorrent\logs`       |
 
 ---
 
@@ -377,6 +401,7 @@ logarr/
 │   ├── provider-prowlarr/  # Prowlarr integration
 │   ├── provider-whisparr/  # Whisparr integration
 │   ├── provider-lidarr/    # Lidarr integration
+│   ├── provider-qbittorrent/ # qBittorrent integration
 │   └── provider-arr/       # Base *arr provider
 └── docker-compose.yml
 ```
@@ -481,15 +506,24 @@ pnpm test:e2e          # Run Playwright E2E tests
 
 ### Test Packages
 
-| Package                     | Description                            |
-| --------------------------- | -------------------------------------- |
-| `@logarr/backend`           | Backend services and controllers       |
-| `frontend`                  | React components, hooks, and utilities |
-| `@logarr/core`              | Core HTTP utilities                    |
-| `@logarr/provider-arr`      | \*arr application log parser           |
-| `@logarr/provider-emby`     | Emby log parser                        |
-| `@logarr/provider-whisparr` | Whisparr provider                      |
-| `@logarr/provider-lidarr`   | Lidarr provider                        |
+| Package                        | Description                            |
+| ------------------------------ | -------------------------------------- |
+| `@logarr/backend`              | Backend services and controllers       |
+| `frontend`                     | React components, hooks, and utilities |
+| `@logarr/core`                 | Core HTTP utilities                    |
+| `@logarr/provider-arr`         | \*arr application log parser           |
+| `@logarr/provider-emby`        | Emby log parser                        |
+| `@logarr/provider-whisparr`    | Whisparr provider                      |
+| `@logarr/provider-lidarr`      | Lidarr provider                        |
+| Package                        | Description                            |
+| ------------------------------ | -------------------------------------- |
+| `@logarr/backend`              | Backend services and controllers       |
+| `frontend`                     | React components, hooks, and utilities |
+| `@logarr/core`                 | Core HTTP utilities                    |
+| `@logarr/provider-arr`         | \*arr application log parser           |
+| `@logarr/provider-emby`        | Emby log parser                        |
+| `@logarr/provider-whisparr`    | Whisparr provider                      |
+| `@logarr/provider-qbittorrent` | qBittorrent provider                   |
 
 > Coverage thresholds are enforced at 80% for statements, branches, functions, and lines.
 

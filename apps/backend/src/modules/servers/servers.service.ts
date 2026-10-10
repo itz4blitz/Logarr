@@ -3,10 +3,18 @@ import { JellyfinProvider } from '@logarr/provider-jellyfin';
 import { LidarrProvider } from '@logarr/provider-lidarr';
 import { PlexProvider } from '@logarr/provider-plex';
 import { ProwlarrProvider } from '@logarr/provider-prowlarr';
+import { QBittorrentProvider } from '@logarr/provider-qbittorrent';
 import { RadarrProvider } from '@logarr/provider-radarr';
 import { SonarrProvider } from '@logarr/provider-sonarr';
 import { WhisparrProvider } from '@logarr/provider-whisparr';
-import { Injectable, Inject, NotFoundException, forwardRef, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  NotFoundException,
+  BadRequestException,
+  forwardRef,
+  Logger,
+} from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 
 import { DATABASE_CONNECTION } from '../../database';
@@ -17,6 +25,17 @@ import { IngestionService } from '../ingestion/ingestion.service';
 import type { CreateServerDto, UpdateServerDto } from './servers.dto';
 import type { MediaServerProvider } from '@logarr/core';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+
+/**
+ * Normalise a username from an API client: strings are trimmed (empty -> null), an explicit
+ * null clears it, anything else (missing or a non-string value) is left untouched (undefined).
+ */
+function normalizeUsername(username: unknown): string | null | undefined {
+  if (typeof username === 'string') {
+    return username.trim() || null;
+  }
+  return username === null ? null : undefined;
+}
 
 @Injectable()
 export class ServersService {
@@ -55,6 +74,8 @@ export class ServersService {
 
     const lidarrProvider = new LidarrProvider();
     this.providers.set(lidarrProvider.id, lidarrProvider);
+    const qbittorrentProvider = new QBittorrentProvider();
+    this.providers.set(qbittorrentProvider.id, qbittorrentProvider);
   }
 
   async findAll() {
@@ -82,13 +103,19 @@ export class ServersService {
       throw new Error(`Unknown provider: ${dto.providerId}`);
     }
 
+    if (dto.providerId !== 'qbittorrent' && (dto.apiKey ?? '') === '') {
+      throw new BadRequestException('API key is required');
+    }
+
     const result = await this.db
       .insert(schema.servers)
       .values({
         name: dto.name,
         providerId: dto.providerId,
         url: dto.url,
-        apiKey: dto.apiKey,
+        // apiKey may be empty only for qBittorrent (authentication bypass); the column is NOT NULL
+        apiKey: dto.apiKey ?? '',
+        username: normalizeUsername(dto.username) ?? null,
         logPath: dto.logPath,
         fileIngestionEnabled: dto.fileIngestionEnabled ?? false,
         logPaths: dto.logPaths,
@@ -112,10 +139,15 @@ export class ServersService {
     // Get the current server state to detect changes
     const currentServer = await this.findOne(id);
 
+    // An empty username clears it (stored as NULL)
+    const { username, ...rest } = dto;
+    const normalizedUsername = normalizeUsername(username);
+
     const result = await this.db
       .update(schema.servers)
       .set({
-        ...dto,
+        ...rest,
+        ...(normalizedUsername !== undefined && { username: normalizedUsername }),
         updatedAt: new Date(),
       })
       .where(eq(schema.servers.id, id))
@@ -228,6 +260,7 @@ export class ServersService {
       await provider.connect({
         url: server.url,
         apiKey: server.apiKey,
+        username: server.username ?? undefined,
         logPath: server.logPath ?? undefined,
       });
 

@@ -5,6 +5,7 @@ import { JellyfinProvider, JellyfinClient } from '@logarr/provider-jellyfin';
 import { LidarrProvider } from '@logarr/provider-lidarr';
 import { PlexProvider, PlexClient } from '@logarr/provider-plex';
 import { ProwlarrProvider } from '@logarr/provider-prowlarr';
+import { QBittorrentProvider } from '@logarr/provider-qbittorrent';
 import { RadarrProvider } from '@logarr/provider-radarr';
 import { SonarrProvider } from '@logarr/provider-sonarr';
 import { WhisparrProvider } from '@logarr/provider-whisparr';
@@ -87,6 +88,8 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
 
     const lidarrProvider = new LidarrProvider();
     this.providers.set(lidarrProvider.id, lidarrProvider);
+    const qbittorrentProvider = new QBittorrentProvider();
+    this.providers.set(qbittorrentProvider.id, qbittorrentProvider);
   }
 
   async onModuleInit() {
@@ -231,6 +234,7 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
       await provider.connect({
         url: server.url,
         apiKey: server.apiKey,
+        username: server.username ?? undefined,
         logPath: server.logPath ?? undefined,
       });
 
@@ -294,6 +298,7 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
         await provider.connect({
           url: server.url,
           apiKey: server.apiKey,
+          username: server.username ?? undefined,
           logPath: server.logPath ?? undefined,
         });
 

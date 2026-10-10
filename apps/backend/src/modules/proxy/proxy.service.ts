@@ -1,5 +1,12 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable, Inject, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { firstValueFrom } from 'rxjs';
@@ -15,6 +22,7 @@ interface ServerWithConfig {
   providerId: string;
   url: string;
   apiKey: string;
+  username?: string | null;
   status?: string;
   lastChecked?: Date;
 }
@@ -88,6 +96,13 @@ export class ProxyService {
     // 1. Get server configuration
     const server = await this.findUserServer(serverId);
 
+    // qBittorrent username/password login uses cookie sessions, which the proxy does not support
+    if (server.providerId === 'qbittorrent' && server.username) {
+      throw new BadRequestException(
+        'The request proxy does not support qBittorrent username/password login. Use an API key (qBittorrent 5.3+) or authentication bypass.'
+      );
+    }
+
     // 2. Build target URL with path parameters
     const targetUrl = this.buildTargetUrl(server, dto.endpoint, dto.params);
 
@@ -95,7 +110,8 @@ export class ProxyService {
 
     // 3. Merge headers
     const headers: Record<string, string> = {
-      'X-Api-Key': server.apiKey,
+      // Providers without credentials (e.g. qBittorrent auth bypass) store an empty key
+      ...(server.apiKey !== '' && { 'X-Api-Key': server.apiKey }),
       'Content-Type': 'application/json',
       ...dto.headers,
     };

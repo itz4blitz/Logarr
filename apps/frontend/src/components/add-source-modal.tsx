@@ -40,6 +40,7 @@ import {
 } from '@/components/ui/select';
 import { useCreateServer } from '@/hooks/use-api';
 import { type Integration, type ConfigField, getIntegrationById } from '@/lib/integrations';
+import { buildCreateServerPayload } from '@/lib/server-payload';
 import { cn } from '@/lib/utils';
 
 interface AddSourceModalProps {
@@ -211,13 +212,7 @@ function ConfigurationStep({
 
   async function onSubmit(data: Record<string, unknown>) {
     try {
-      await createServer.mutateAsync({
-        name: data.name as string,
-        providerId: integration.id,
-        url: data.url as string,
-        apiKey: (data.apiKey || data.token || data.password || '') as string,
-        logPath: data.logPath as string | undefined,
-      });
+      await createServer.mutateAsync(buildCreateServerPayload(integration.id, data));
       onSuccess();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to add source');

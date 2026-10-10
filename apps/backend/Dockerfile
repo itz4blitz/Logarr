@@ -60,6 +60,8 @@ COPY --from=builder --chown=nestjs:nodejs /app/packages/provider-whisparr/packag
 COPY --from=builder --chown=nestjs:nodejs /app/packages/provider-whisparr/dist ./packages/provider-whisparr/dist
 COPY --from=builder --chown=nestjs:nodejs /app/packages/provider-lidarr/package.json ./packages/provider-lidarr/
 COPY --from=builder --chown=nestjs:nodejs /app/packages/provider-lidarr/dist ./packages/provider-lidarr/dist
+COPY --from=builder --chown=nestjs:nodejs /app/packages/provider-qbittorrent/package.json ./packages/provider-qbittorrent/
+COPY --from=builder --chown=nestjs:nodejs /app/packages/provider-qbittorrent/dist ./packages/provider-qbittorrent/dist
 
 # Copy backend
 COPY --from=builder --chown=nestjs:nodejs /app/apps/backend/package.json ./apps/backend/

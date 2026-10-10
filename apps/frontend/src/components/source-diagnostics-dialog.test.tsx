@@ -18,6 +18,7 @@ describe('SourceDiagnosticsDialog', () => {
     url: 'http://192.168.1.100:32400',
     providerId: 'plex',
     apiKey: 'test-api-key',
+    username: null,
     logPath: null,
     isConnected: true,
     lastSeen: '2024-01-01T00:00:00Z',
