@@ -1,3 +1,5 @@
+import { performance } from 'node:perf_hooks';
+
 import { describe, it, expect } from 'vitest';
 
 import {
@@ -286,5 +288,53 @@ describe('SEERR_CORRELATION_PATTERNS', () => {
     for (const { pattern } of SEERR_CORRELATION_PATTERNS) {
       expect('Server ready on port 5055'.match(pattern)).toBeNull();
     }
+  });
+});
+
+describe('adversarial input (algorithmic complexity)', () => {
+  const HEAD = '2026-10-10T12:00:00.000Z [info][API]: ';
+  const N = 100_000;
+
+  const cases: Record<string, string> = {
+    'nested valid-prefix JSON openers': HEAD + 'x' + ' {"a":['.repeat(Math.ceil(N / 7)) + '}',
+    'many " {" candidates': HEAD + ' {'.repeat(N / 2) + '}',
+    'long run of spaces': HEAD + ' '.repeat(N) + '}',
+    'unclosed brackets in label': '2026-10-10T12:00:00.000Z [info][' + '['.repeat(N),
+    'unclosed long label': '2026-10-10T12:00:00.000Z [info][' + 'a'.repeat(N),
+    'repeated ANSI introducers': '\u001b['.repeat(N / 2) + HEAD,
+    'long run of closing braces': HEAD + '}'.repeat(N),
+    'long unterminated JSON string': HEAD + 'x {"a":"' + 'a'.repeat(N) + '}',
+  };
+
+  it.each(Object.entries(cases))('parses %s quickly', (_name, line) => {
+    const start = performance.now();
+    parseSeerrLogLine(line);
+    isSeerrLogContinuation(line);
+    parseSeerrLogLineWithContext(line, ctx());
+    expect(performance.now() - start).toBeLessThan(50);
+  });
+
+  it('scales linearly for nested openers (4x input is far below 16x time)', () => {
+    const build = (n: number): string => HEAD + 'x' + ' {"a":['.repeat(n) + '}';
+    const time = (line: string): number => {
+      const s = performance.now();
+      parseSeerrLogLine(line);
+      return performance.now() - s;
+    };
+    time(build(1000)); // warm up
+    expect(time(build(40_000))).toBeLessThan(50);
+  });
+
+  it('still extracts metadata after a few brace-containing words in the message', () => {
+    const entry = parseSeerrLogLine(`${HEAD}a {b} c {d} e {"k":"v"}`);
+    expect(entry?.message).toBe('a {b} c {d} e');
+    expect(entry?.metadata).toEqual({ k: 'v' });
+  });
+
+  it('does not attempt to parse oversized metadata tails', () => {
+    const big = `{"k":"${'v'.repeat(70_000)}"}`;
+    const entry = parseSeerrLogLine(`${HEAD}msg ${big}`);
+    expect(entry?.metadata).toBeUndefined();
+    expect(entry?.message.startsWith('msg {')).toBe(true);
   });
 });

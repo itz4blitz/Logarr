@@ -88,15 +88,33 @@ function parseJsonObject(text: string): Record<string, unknown> | null {
 }
 
 /**
+ * Upper bounds for metadata detection. Every attempt copies and parses the tail of
+ * the line, so unbounded attempts on a line full of ` {` would be quadratic.
+ */
+const MAX_METADATA_ATTEMPTS = 16;
+const MAX_METADATA_LENGTH = 64 * 1024;
+
+/**
  * Split `message {json}` into message and metadata. Candidate split points are
- * every ` {` from the left, so braces inside the message are tolerated.
+ * the first few ` {` from the left (so braces inside the message are tolerated);
+ * the number of attempts and the size of the JSON tail are bounded to keep
+ * parsing linear for adversarial lines.
  */
 function splitMetadata(rest: string): {
   message: string;
   metadata: Record<string, unknown> | undefined;
 } {
   if (rest.endsWith('}')) {
-    for (let i = rest.indexOf(' {'); i !== -1; i = rest.indexOf(' {', i + 1)) {
+    let attempts = 0;
+    for (
+      let i = rest.indexOf(' {');
+      i !== -1 && attempts < MAX_METADATA_ATTEMPTS;
+      i = rest.indexOf(' {', i + 1)
+    ) {
+      if (rest.length - i - 1 > MAX_METADATA_LENGTH) {
+        continue;
+      }
+      attempts++;
       const metadata = parseJsonObject(rest.slice(i + 1));
       if (metadata !== null) {
         return { message: rest.slice(0, i).trimEnd(), metadata };
