@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { describeArrEvent, resolveArrEventName } from './arr.events.js';
+import { describeArrEvent, resolveArrEventName, toArrItemId } from './arr.events.js';
 
 import type { ArrEventTable } from './arr.events.js';
 
@@ -27,9 +27,14 @@ describe('resolveArrEventName', () => {
     }
   );
 
-  it('returns other strings unchanged', () => {
+  it('returns unmatched strings unchanged', () => {
     expect(resolveArrEventName('trackFileImported', NAMES)).toBe('trackFileImported');
-    expect(resolveArrEventName('Grabbed', NAMES)).toBe('Grabbed');
+  });
+
+  it('matches known names case-insensitively', () => {
+    expect(resolveArrEventName('Grabbed', NAMES)).toBe('grabbed');
+    expect(resolveArrEventName('DownloadFailed', NAMES)).toBe('downloadFailed');
+    expect(resolveArrEventName(' DOWNLOADFAILED ', NAMES)).toBe('downloadFailed');
   });
 
   it('does not resolve inherited object keys', () => {
@@ -78,4 +83,20 @@ describe('describeArrEvent', () => {
   it('does not resolve inherited object keys', () => {
     expect(describeArrEvent('constructor', {}).severity).toBe('info');
   });
+});
+
+describe('toArrItemId', () => {
+  it.each([
+    [1, '1'],
+    [42, '42'],
+  ])('stringifies %j', (input, expected) => {
+    expect(toArrItemId(input)).toBe(expected);
+  });
+
+  it.each([[0], [-1], [1.5], [NaN], [Infinity], ['5'], [null], [undefined], [{}]])(
+    'returns undefined for %j',
+    (input) => {
+      expect(toArrItemId(input)).toBeUndefined();
+    }
+  );
 });

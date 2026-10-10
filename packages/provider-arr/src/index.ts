@@ -3,7 +3,7 @@ export { ArrBaseProvider } from './arr.provider.js';
 export { ArrClient } from './arr.client.js';
 
 // Shared event name resolution and display helpers
-export { resolveArrEventName, describeArrEvent } from './arr.events.js';
+export { resolveArrEventName, describeArrEvent, toArrItemId } from './arr.events.js';
 export type { ArrEventSeverity, ArrEventDescriptor, ArrEventTable } from './arr.events.js';
 
 // Parser utilities for file-based log ingestion

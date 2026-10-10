@@ -21,7 +21,8 @@ export type ArrEventTable = Readonly<Record<string, ArrEventDescriptor>>;
  * Resolve a raw `eventType` to an event name.
  *
  * - integer number or numeric string: looked up in `names`; absent -> 'unknown'
- * - any other non-blank string: returned unchanged
+ * - any other non-blank string: matched case-insensitively against the known names in
+ *   `names` (so 'DownloadFailed' -> 'downloadFailed'); if none match, returned unchanged
  * - blank string, non-string/non-number, NaN/Infinity, fractional: 'unknown'
  */
 export function resolveArrEventName(
@@ -36,10 +37,21 @@ export function resolveArrEventName(
     const trimmed = eventType.trim();
     if (trimmed === '') return 'unknown';
     if (/^\d+$/.test(trimmed)) return names[Number(trimmed)] ?? 'unknown';
-    return eventType;
+    const lower = trimmed.toLowerCase();
+    const known = Object.values(names).find((name) => name.toLowerCase() === lower);
+    return known ?? eventType;
   }
 
   return 'unknown';
+}
+
+/**
+ * Convert a raw record id to an item id string.
+ * Returns the stringified id only for positive finite integers (numbers only; strings
+ * are not accepted), otherwise undefined (e.g. 0, -1, NaN, null).
+ */
+export function toArrItemId(id: unknown): string | undefined {
+  return typeof id === 'number' && Number.isInteger(id) && id > 0 ? String(id) : undefined;
 }
 
 function humanize(name: string): string {
