@@ -33,7 +33,15 @@ describe('ProviderIcon', () => {
   });
 
   describe('All *arr providers', () => {
-    const arrProviders = ['sonarr', 'radarr', 'prowlarr', 'whisparr', 'lidarr', 'readarr'];
+    const arrProviders = [
+      'sonarr',
+      'radarr',
+      'prowlarr',
+      'whisparr',
+      'lidarr',
+      'readarr',
+      'bazarr',
+    ];
 
     it.each(arrProviders)('should render %s icon', (providerId) => {
       const { container } = render(<ProviderIcon providerId={providerId} />);
@@ -52,6 +60,15 @@ describe('ProviderIcon', () => {
 });
 
 describe('providerMeta', () => {
+  describe('Bazarr metadata', () => {
+    it('should have Bazarr entry with brand color', () => {
+      expect(providerMeta.bazarr).toBeDefined();
+      expect(providerMeta.bazarr.name).toBe('Bazarr');
+      expect(providerMeta.bazarr.color).toBe('#7B68EE');
+      expect(providerMeta.bazarr.bgColor).toBe('bg-purple-500/10');
+    });
+  });
+
   describe('Whisparr metadata', () => {
     it('should have Whisparr entry', () => {
       expect(providerMeta.whisparr).toBeDefined();
@@ -79,7 +96,15 @@ describe('providerMeta', () => {
   });
 
   describe('All *arr provider metadata', () => {
-    const arrProviders = ['sonarr', 'radarr', 'prowlarr', 'whisparr', 'lidarr', 'readarr'];
+    const arrProviders = [
+      'sonarr',
+      'radarr',
+      'prowlarr',
+      'whisparr',
+      'lidarr',
+      'readarr',
+      'bazarr',
+    ];
 
     it.each(arrProviders)('should have metadata for %s', (providerId) => {
       expect(providerMeta[providerId]).toBeDefined();

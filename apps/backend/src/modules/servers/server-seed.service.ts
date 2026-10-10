@@ -77,6 +77,13 @@ const ENV_SERVER_CONFIGS: EnvServerConfig[] = [
     name: 'Lidarr',
     containerLogPath: '/lidarr-logs',
   },
+  {
+    urlEnvKey: 'BAZARR_URL',
+    apiKeyEnvKey: 'BAZARR_API_KEY',
+    providerId: 'bazarr',
+    name: 'Bazarr',
+    containerLogPath: '/bazarr-logs',
+  },
 ];
 
 @Injectable()

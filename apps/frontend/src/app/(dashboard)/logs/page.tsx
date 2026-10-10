@@ -160,6 +160,9 @@ function LogDetailModal({
       case 'lidarr':
         // *arr apps: system/events shows searchable event log
         return `${baseUrl}/system/events`;
+      case 'bazarr':
+        // Bazarr: system/logs shows the application log
+        return `${baseUrl}/system/logs`;
       default:
         return null;
     }

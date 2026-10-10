@@ -1,3 +1,4 @@
+import { BazarrProvider } from '@logarr/provider-bazarr';
 import { EmbyProvider } from '@logarr/provider-emby';
 import { JellyfinProvider } from '@logarr/provider-jellyfin';
 import { LidarrProvider } from '@logarr/provider-lidarr';
@@ -55,6 +56,8 @@ export class ServersService {
 
     const lidarrProvider = new LidarrProvider();
     this.providers.set(lidarrProvider.id, lidarrProvider);
+    const bazarrProvider = new BazarrProvider();
+    this.providers.set(bazarrProvider.id, bazarrProvider);
   }
 
   async findAll() {

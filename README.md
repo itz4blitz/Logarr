@@ -11,7 +11,7 @@
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Unified logging, intelligent issue detection, and AI-powered analysis for Plex, Jellyfin, Emby, Sonarr, Radarr, Prowlarr, Whisparr, Lidarr, and more.
+Unified logging, intelligent issue detection, and AI-powered analysis for Plex, Jellyfin, Emby, Sonarr, Radarr, Prowlarr, Whisparr, Lidarr, Bazarr, and more.
 
 [Quick Start](#quick-start) · [Features](#features) · [Screenshots](#screenshots) · [Documentation](#documentation)
 
@@ -101,7 +101,7 @@ _Configure multiple AI providers for issue analysis (Anthropic, OpenAI, Google, 
 | **Sonarr**   | ✅ Supported | **Emby**     | ✅ Supported |
 | **Radarr**   | ✅ Supported | **Whisparr** | ✅ Supported |
 | **Prowlarr** | ✅ Supported | **Lidarr**   | ✅ Supported |
-| **Kodi**     | 🚧 Planned   |              |              |
+| **Kodi**     | 🚧 Planned   | **Bazarr**   | ✅ Supported |
 
 > Logarr uses a provider architecture—adding support for new servers is straightforward. [Contributions welcome!](#contributing)
 
@@ -179,13 +179,14 @@ flowchart TB
         PR[Prowlarr]
         WH[Whisparr]
         LI[Lidarr]
+        BA[Bazarr]
     end
 
     FE <--> API
     FE <--> WS
     API <--> PG
     API <--> RD
-    API <--> PX & JF & EM & SO & RA & PR & WH & LI
+    API <--> PX & JF & EM & SO & RA & PR & WH & LI & BA
 ```
 
 ### How It Works
@@ -274,7 +275,12 @@ RADARR_LOGS_PATH=/path/to/radarr/config/logs
 PROWLARR_LOGS_PATH=/path/to/prowlarr/config/logs
 WHISPARR_LOGS_PATH=/path/to/whisparr/config/logs
 LIDARR_LOGS_PATH=/path/to/lidarr/config/logs
+
+# Bazarr (note: the directory is `log`, singular, and contains bazarr.log)
+BAZARR_LOGS_PATH=/path/to/bazarr/config/log
 ```
+
+> **Bazarr notes:** Bazarr writes naive local timestamps (no timezone), so run Logarr in the same timezone as Bazarr (e.g. set `TZ` on both containers). Bazarr health issues are recorded once per distinct issue, not on every poll.
 
 2. **Restart Logarr** — The docker-compose mounts these paths automatically.
 
@@ -290,6 +296,7 @@ LIDARR_LOGS_PATH=/path/to/lidarr/config/logs
 | Prowlarr | `/prowlarr-logs` |
 | Whisparr | `/whisp-logs`    |
 | Lidarr   | `/lidarr-logs`   |
+| Bazarr   | `/bazarr-logs`   |
 
 #### Multiple Instances (e.g., Movies vs Shorts, 1080p vs 4K)
 
@@ -335,6 +342,7 @@ Simply add multiple servers in the UI using the same server type but different U
 | Prowlarr | `/config/logs`             | `~/.config/Prowlarr/logs`           | `C:\ProgramData\Prowlarr\logs`          |
 | Whisparr | `/config/logs`             | `~/.config/Whisparr/logs`           | `C:\ProgramData\Whisparr\logs`          |
 | Lidarr   | `/config/logs`             | `~/.config/Lidarr/logs`             | `C:\ProgramData\Lidarr\logs`            |
+| Bazarr   | `/config/log`              | `~/.config/bazarr/log`              | `C:\ProgramData\Bazarr\log`             |
 
 ---
 
@@ -377,6 +385,7 @@ logarr/
 │   ├── provider-prowlarr/  # Prowlarr integration
 │   ├── provider-whisparr/  # Whisparr integration
 │   ├── provider-lidarr/    # Lidarr integration
+│   ├── provider-bazarr/    # Bazarr integration
 │   └── provider-arr/       # Base *arr provider
 └── docker-compose.yml
 ```
@@ -490,6 +499,7 @@ pnpm test:e2e          # Run Playwright E2E tests
 | `@logarr/provider-emby`     | Emby log parser                        |
 | `@logarr/provider-whisparr` | Whisparr provider                      |
 | `@logarr/provider-lidarr`   | Lidarr provider                        |
+| `@logarr/provider-bazarr`   | Bazarr provider                        |
 
 > Coverage thresholds are enforced at 80% for statements, branches, functions, and lines.
 

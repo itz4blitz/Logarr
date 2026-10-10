@@ -87,6 +87,9 @@ WHISPARR_API_KEY={{ op://Development/Logarr-Dev/WHISPARR_API_KEY }}
 # Lidarr
 LIDARR_URL={{ op://Development/Logarr-Dev/LIDARR_URL }}
 LIDARR_API_KEY={{ op://Development/Logarr-Dev/LIDARR_API_KEY }}
+# Bazarr
+BAZARR_URL={{ op://Development/Logarr-Dev/BAZARR_URL }}
+BAZARR_API_KEY={{ op://Development/Logarr-Dev/BAZARR_API_KEY }}
 
 # =============================================================================
 # SECURITY & AUTHENTICATION
@@ -111,3 +114,4 @@ RADARR_LOGS_PATH={{ op://Development/Logarr-Dev/RADARR_LOGS_PATH }}
 PROWLARR_LOGS_PATH={{ op://Development/Logarr-Dev/PROWLARR_LOGS_PATH }}
 WHISPARR_LOGS_PATH={{ op://Development/Logarr-Dev/WHISPARR_LOGS_PATH }}
 LIDARR_LOGS_PATH={{ op://Development/Logarr-Dev/LIDARR_LOGS_PATH }}
+BAZARR_LOGS_PATH={{ op://Development/Logarr-Dev/BAZARR_LOGS_PATH }}
