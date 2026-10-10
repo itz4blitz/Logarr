@@ -15,6 +15,7 @@ import {
   READARR_LOG_FILE_CONFIG,
   describeArrEvent,
   resolveArrEventName,
+  toArrItemId,
   type ArrEventTable,
   type ArrHistoryRecordBase,
   type ArrPaginatedResponse,
@@ -141,9 +142,9 @@ export class ReadarrProvider extends ArrBaseProvider {
     const authorName = readarrRecord.author?.authorName ?? 'Unknown Author';
     const bookTitle = readarrRecord.book?.title ?? '';
     const label = bookTitle !== '' ? `${authorName} - ${bookTitle}` : authorName;
-    const message = readarrRecord.data?.['message']?.toString();
+    const data = readarrRecord.data as Record<string, unknown> | undefined;
+    const message = this.dataString(data, 'message');
     const sourceTitle = readarrRecord.sourceTitle;
-    const quoted = bookTitle !== '' ? `"${bookTitle}"` : 'Book file';
 
     let description: string;
 
@@ -152,26 +153,27 @@ export class ReadarrProvider extends ArrBaseProvider {
         description = `Release grabbed: ${sourceTitle}`;
         break;
       case 'bookFileImported':
-        description =
-          bookTitle !== '' ? `"${bookTitle}" imported successfully` : 'Book imported successfully';
+        description = `Book file imported: ${sourceTitle}`;
         break;
       case 'downloadFailed':
         description = message ?? `Failed to download: ${sourceTitle}`;
         break;
-      case 'bookFileDeleted':
-        description = `${quoted} was deleted`;
+      case 'bookFileDeleted': {
+        const reason = this.dataString(data, 'reason');
+        description = `Book file deleted: ${sourceTitle}${reason !== undefined ? ` (${reason})` : ''}`;
         break;
+      }
       case 'bookFileRenamed':
-        description = `${quoted} was renamed`;
+        description = `Book file renamed: ${sourceTitle}`;
         break;
       case 'bookImportIncomplete':
-        description = message ?? `Import incomplete: ${sourceTitle}`;
+        description = message ?? `Book import incomplete: ${sourceTitle}`;
         break;
       case 'downloadImported':
         description = `Download imported: ${sourceTitle}`;
         break;
       case 'bookFileRetagged':
-        description = `${quoted} was retagged`;
+        description = `Book file retagged: ${sourceTitle}`;
         break;
       case 'downloadIgnored':
         description = `Download ignored: ${sourceTitle}`;
@@ -187,15 +189,28 @@ export class ReadarrProvider extends ArrBaseProvider {
       overview: description,
       severity: display.severity,
       timestamp: new Date(readarrRecord.date),
-      ...(readarrRecord.bookId > 0 ? { itemId: String(readarrRecord.bookId) } : {}),
+      itemId: toArrItemId(readarrRecord.bookId),
       metadata: {
         authorId: readarrRecord.authorId,
         bookId: readarrRecord.bookId,
+        mediaType: this.getMediaType(),
         quality: readarrRecord.quality?.quality?.name,
         downloadId: readarrRecord.downloadId,
-        indexer: readarrRecord.data?.['indexer'],
-        downloadClient: readarrRecord.data?.['downloadClient'],
+        indexer: data?.['indexer'],
+        downloadClient: data?.['downloadClient'],
+        releaseGroup: data?.['releaseGroup'],
       },
     };
+  }
+
+  /**
+   * Read a non-empty string-ish value from the history `data` bag
+   */
+  private dataString(data: Record<string, unknown> | undefined, key: string): string | undefined {
+    const value = data?.[key];
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+    return String(value);
   }
 }

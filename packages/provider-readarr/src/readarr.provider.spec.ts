@@ -391,17 +391,19 @@ describe('ReadarrProvider', () => {
         id: 'readarr-history-101',
         type: 'bookFileImported',
         name: 'Imported: Frank Herbert - Dune',
-        overview: '"Dune" imported successfully',
+        overview: 'Book file imported: Frank Herbert - Dune (2019) [epub]',
         severity: 'info',
         itemId: '42',
         timestamp: new Date('2026-10-10T12:00:00Z'),
         metadata: {
           authorId: 7,
           bookId: 42,
+          mediaType: 'book',
           quality: 'EPUB',
           downloadId: 'ABC123',
           indexer: 'MyIdx',
           downloadClient: 'qBit',
+          releaseGroup: undefined,
         },
       });
     });
@@ -672,7 +674,7 @@ describe('ReadarrProvider', () => {
       })) as { overview: string };
 
       expect(withMsg.overview).toBe('Missing tracks');
-      expect(without.overview).toBe('Import incomplete: Frank Herbert - Dune (2019) [epub]');
+      expect(without.overview).toBe('Book import incomplete: Frank Herbert - Dune (2019) [epub]');
     });
 
     it('should describe an ignored download without a message', async () => {
@@ -684,24 +686,56 @@ describe('ReadarrProvider', () => {
     });
 
     it.each([
-      ['bookFileDeleted', '"Dune" was deleted', 'Book file was deleted'],
-      ['bookFileRenamed', '"Dune" was renamed', 'Book file was renamed'],
-      ['bookFileRetagged', '"Dune" was retagged', 'Book file was retagged'],
-      ['bookFileImported', '"Dune" imported successfully', 'Book imported successfully'],
+      ['bookFileImported', 'Book file imported'],
+      ['bookFileDeleted', 'Book file deleted'],
+      ['bookFileRenamed', 'Book file renamed'],
+      ['bookFileRetagged', 'Book file retagged'],
+      ['downloadImported', 'Download imported'],
     ] as const)(
-      'should describe %s with and without a book title',
-      async (eventType, withBook, withoutBook) => {
-        const a = (await activityFor({ eventType })) as { overview: string };
-        const b = (await activityFor({ eventType, book: undefined })) as {
+      'should describe %s as "<thing> <verb>: <sourceTitle>"',
+      async (eventType, text) => {
+        const activity = (await activityFor({ eventType })) as { overview: string; name: string };
+        const withoutBook = (await activityFor({ eventType, book: undefined })) as {
           overview: string;
           name: string;
         };
 
-        expect(a.overview).toBe(withBook);
-        expect(b.overview).toBe(withoutBook);
-        expect(b.name.endsWith(': Frank Herbert')).toBe(true);
+        expect(activity.overview).toBe(`${text}: Frank Herbert - Dune (2019) [epub]`);
+        expect(withoutBook.overview).toBe(activity.overview);
+        expect(withoutBook.name.endsWith(': Frank Herbert')).toBe(true);
       }
     );
+
+    it('should append the deletion reason when present', async () => {
+      const activity = (await activityFor({
+        eventType: 'bookFileDeleted',
+        data: { reason: 'Manual' },
+      })) as { overview: string };
+
+      expect(activity.overview).toBe(
+        'Book file deleted: Frank Herbert - Dune (2019) [epub] (Manual)'
+      );
+    });
+
+    it('should canonicalise the case of the event type', async () => {
+      const activity = (await activityFor({
+        eventType: 'DownloadFailed',
+        data: {},
+      })) as { type: string; overview: string; severity: string };
+
+      expect(activity.type).toBe('downloadFailed');
+      expect(activity.severity).toBe('error');
+      expect(activity.overview).toBe('Failed to download: Frank Herbert - Dune (2019) [epub]');
+    });
+
+    it('should emit mediaType and releaseGroup in metadata', async () => {
+      const activity = (await activityFor({
+        data: { indexer: 'MyIdx', releaseGroup: 'GRP' },
+      })) as { metadata: Record<string, unknown> };
+
+      expect(activity.metadata['mediaType']).toBe('book');
+      expect(activity.metadata['releaseGroup']).toBe('GRP');
+    });
 
     it('should treat an empty-string eventType as unknown', async () => {
       const activity = (await activityFor({ eventType: '' })) as { type: string };
