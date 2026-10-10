@@ -175,7 +175,7 @@ export const ARR_LOG_FILE_CONFIG: LogFileConfig = {
  * NLog timestamp + metadata regex
  * Matches: 2024-01-15 10:30:45.1|Level|Component|Message
  * The fractional second is optional and may have 1-7 digits: *arr apps log with
- * the NLog layout `yyyy-MM-dd HH:mm:ss.f` (one digit), older/custom layouts use 3.
+ * the NLog layout `yyyy-MM-dd HH:mm:ss.f` (one digit); custom layouts may log up to 7 digits.
  */
 const NLOG_LINE_REGEX =
   /^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:\.\d{1,7})?)\|(\w+)\|([^|]+)\|(.*)$/;
@@ -263,91 +263,63 @@ export function isArrLogContinuation(line: string): boolean {
 }
 
 /**
- * Parse a log line with context for multi-line entry support
+ * Parse a log line with context for multi-line entry support.
  *
- * Handles:
- * - Regular single-line entries
- * - Multi-line entries with stack traces
- * - Exception details spanning multiple lines
+ * Follows the `MediaServerProvider.parseLogLineWithContext` contract: `entry` is the
+ * entry parsed from THIS line (not the previous one), continuation lines are flagged with
+ * `isContinuation` so the caller can buffer them, and `previousComplete` tells the caller
+ * the previously pending entry is finished. Attaching continuation lines is the caller's
+ * job; use `finalizeArrLogEntry` to enrich the assembled entry with exception details.
  */
 export function parseArrLogLineWithContext(line: string, context: LogParseContext): LogParseResult {
-  const trimmed = line.trim();
+  // Blank lines carry no information. NLog emits one between the header and the
+  // exception (`${newline}${exception}`), so they must neither flush the pending
+  // entry nor be added to its stack trace.
+  if (line.trim() === '') {
+    return { entry: null, isContinuation: false, previousComplete: false };
+  }
 
-  // Check if this is a continuation line
   if (isArrLogContinuation(line)) {
-    // Add to continuation buffer
-    context.continuationLines.push(line);
-
-    return {
-      entry: null,
-      isContinuation: true,
-      previousComplete: false,
-    };
+    return { entry: null, isContinuation: true, previousComplete: false };
   }
 
-  // This is a new log entry - first, check if we need to complete the previous entry
-  let completedEntry: ParsedLogEntry | null = null;
-
-  if (context.previousEntry && context.continuationLines.length > 0) {
-    // Check if it's an exception
-    const exceptionMatch = context.continuationLines[0]?.match(
-      /^((?:System|Microsoft|NLog|NzbDrone)\.\w+(?:\.\w+)*Exception):\s*(.*)$/i
-    );
-
-    let message = context.previousEntry.message;
-    let exception: string | undefined;
-
-    if (exceptionMatch) {
-      exception = exceptionMatch[1];
-      // Append exception message to the main message if it's different
-      const exceptionMessage = exceptionMatch[2];
-      if (
-        exceptionMessage !== undefined &&
-        exceptionMessage !== '' &&
-        !message.includes(exceptionMessage)
-      ) {
-        message = `${message} - ${exceptionMatch[2]}`;
-      }
-    }
-
-    // Build the complete entry with continuation lines
-    completedEntry = {
-      ...context.previousEntry,
-      message,
-      exception,
-      stackTrace: context.continuationLines.join('\n'),
-      raw: context.previousEntry.raw + '\n' + context.continuationLines.join('\n'),
-    };
-  } else if (context.previousEntry) {
-    // Previous entry is complete with no continuation
-    completedEntry = context.previousEntry;
-  }
-
-  // Clear continuation buffer
-  context.continuationLines = [];
-
-  // Parse the new line
-  const parsed = parseArrLogLine(trimmed);
-
-  if (parsed) {
-    // Store as new previous entry
-    context.previousEntry = parsed;
-
-    return {
-      entry: completedEntry,
-      isContinuation: false,
-      previousComplete: completedEntry !== null,
-    };
-  }
-
-  // Line didn't match expected format - treat as standalone
-  delete context.previousEntry;
+  const entry = parseArrLogLine(line);
 
   return {
-    entry: completedEntry,
+    entry,
     isContinuation: false,
-    previousComplete: completedEntry !== null,
+    previousComplete: entry !== null && context.previousEntry !== undefined,
   };
+}
+
+/**
+ * Enrich an assembled entry with exception details taken from its continuation lines.
+ *
+ * *arr prefixes the exception with its version, e.g. "[v4.0.10.2544] System.Foo: msg".
+ * Sets `exception` and appends the exception message to `message` when not already present.
+ */
+export function finalizeArrLogEntry(
+  entry: ParsedLogEntry,
+  continuationLines: readonly string[]
+): ParsedLogEntry {
+  const first = continuationLines.find((l) => l.trim() !== '');
+  const match = first
+    ?.trim()
+    .replace(/^\[v[\d.]+\]\s*/, '')
+    .match(/^((?:System|Microsoft|NLog|NzbDrone)\.\w+(?:\.\w+)*Exception):\s*(.*)$/i);
+  if (!match) return entry;
+
+  const [, exception, exceptionMessage] = match;
+  if (exception === undefined || exception === '') return entry;
+
+  const message =
+    exceptionMessage !== undefined &&
+    exceptionMessage !== '' &&
+    !entry.message.includes(exceptionMessage)
+      ? `${entry.message} - ${exceptionMessage}`
+      : entry.message;
+
+  return { ...entry, message, exception };
 }
 
 /**

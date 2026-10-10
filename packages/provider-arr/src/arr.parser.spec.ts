@@ -8,6 +8,7 @@ import {
   parseArrLogLine,
   isArrLogContinuation,
   parseArrLogLineWithContext,
+  finalizeArrLogEntry,
   extractArrMetadata,
   getArrSeverityBoost,
   ARR_LOG_FILE_CONFIG,
@@ -130,6 +131,14 @@ describe('Arr Parser', () => {
           new Date(2026, 9, 10, 12, 0, 1, expectedMs).getTime()
         );
       });
+
+      it('documents known limitation: an 8-digit fraction is not parsed as an entry and is treated as a continuation', () => {
+        const line = '2026-10-10 12:00:01.12345678|Info|RssSyncService|Too many digits';
+
+        // Regex allows at most 7 fraction digits, so the line does not match the NLog format
+        expect(parseArrLogLine(line)).toBeNull();
+        expect(isArrLogContinuation(line)).toBe(true);
+      });
     });
   });
 
@@ -196,45 +205,84 @@ describe('Arr Parser', () => {
   });
 
   describe('parseArrLogLineWithContext', () => {
-    const baseContext = {
-      continuationLines: [] as string[],
-      filePath: '/test/arr.log',
-      lineNumber: 1,
-    };
+    const context = { continuationLines: [] as string[], filePath: '/test/arr.log', lineNumber: 1 };
 
-    it('should parse a standalone entry', () => {
-      const line = '2024-01-15 10:30:45.123|Info|Test|Message';
-      const context = { ...baseContext };
-      const result = parseArrLogLineWithContext(line, context);
-
-      // First call stores in previousEntry, returns null for entry
-      expect(result.entry).toBeNull();
-      expect(result.isContinuation).toBe(false);
-    });
-
-    it('should identify continuation lines', () => {
-      const line = '   at System.Threading.Task.Run()';
-      const context = { ...baseContext };
-      const result = parseArrLogLineWithContext(line, context);
-
-      expect(result.entry).toBeNull();
-      expect(result.isContinuation).toBe(true);
-    });
-
-    it('should complete previous entry when new entry starts', () => {
-      // First line - sets previousEntry
-      const context = { ...baseContext, continuationLines: [] as string[] };
-      parseArrLogLineWithContext('2024-01-15 10:30:45.123|Info|Test|First message', context);
-
-      // Second line - should complete previous
+    it('returns the entry parsed from the current line', () => {
       const result = parseArrLogLineWithContext(
-        '2024-01-15 10:30:46.123|Info|Test|Second message',
+        '2024-01-15 10:30:45.123|Info|Test|Message',
         context
       );
 
+      expect(result.entry?.message).toBe('Message');
+      expect(result.isContinuation).toBe(false);
+      expect(result.previousComplete).toBe(false);
+    });
+
+    it('parses one-digit fraction timestamps', () => {
+      const result = parseArrLogLineWithContext('2026-10-10 12:00:05.4|Error|Src|Boom', context);
+
+      expect(result.entry?.timestamp.getTime()).toBe(
+        new Date(2026, 9, 10, 12, 0, 5, 400).getTime()
+      );
+    });
+
+    it('flags previousComplete when a previous entry is pending', () => {
+      const previousEntry = parseArrLogLine('2024-01-15 10:30:45.123|Info|Test|First')!;
+      const result = parseArrLogLineWithContext('2024-01-15 10:30:46.123|Info|Test|Second', {
+        ...context,
+        previousEntry,
+      });
+
+      expect(result.entry?.message).toBe('Second');
       expect(result.previousComplete).toBe(true);
-      expect(result.entry).not.toBeNull();
-      expect(result.entry?.message).toBe('First message');
+    });
+
+    it('identifies continuation lines', () => {
+      const result = parseArrLogLineWithContext('   at System.Threading.Task.Run()', context);
+
+      expect(result).toEqual({ entry: null, isContinuation: true, previousComplete: false });
+    });
+
+    it('treats the [vX] exception line as a continuation', () => {
+      const result = parseArrLogLineWithContext(
+        '[v4.0.10.2544] System.InvalidOperationException: bad state',
+        context
+      );
+
+      expect(result.isContinuation).toBe(true);
+    });
+
+    it('ignores blank lines without flushing the pending entry', () => {
+      const previousEntry = parseArrLogLine('2026-10-10 12:00:05.4|Error|Src|Boom')!;
+      const result = parseArrLogLineWithContext('', { ...context, previousEntry });
+
+      expect(result).toEqual({ entry: null, isContinuation: false, previousComplete: false });
+    });
+  });
+
+  describe('finalizeArrLogEntry', () => {
+    const entry = parseArrLogLine('2026-10-10 12:00:05.4|Error|Src|Boom')!;
+
+    it('populates exception and appends its message for a [vX] prefixed line', () => {
+      const result = finalizeArrLogEntry(entry, [
+        '[v4.0.10.2544] System.InvalidOperationException: bad state',
+        '   at Foo.Bar()',
+      ]);
+
+      expect(result.exception).toBe('System.InvalidOperationException');
+      expect(result.message).toBe('Boom - bad state');
+    });
+
+    it('skips leading blank lines and does not duplicate a message already present', () => {
+      const withMsg = parseArrLogLine('2026-10-10 12:00:05.4|Error|Src|bad state happened')!;
+      const result = finalizeArrLogEntry(withMsg, ['', 'System.IO.IOException: bad state']);
+
+      expect(result.exception).toBe('System.IO.IOException');
+      expect(result.message).toBe('bad state happened');
+    });
+
+    it('returns the entry unchanged when there is no exception line', () => {
+      expect(finalizeArrLogEntry(entry, ['   at Foo.Bar()'])).toBe(entry);
     });
   });
 

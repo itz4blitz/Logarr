@@ -6,6 +6,7 @@ export { ArrClient } from './arr.client.js';
 export {
   parseArrLogLine,
   parseArrLogLineWithContext,
+  finalizeArrLogEntry,
   isArrLogContinuation,
   extractArrMetadata,
   getArrSeverityBoost,
