@@ -18,13 +18,17 @@ interface LogParseResult {
 interface ContextAwareProvider extends MediaServerProvider {
   parseLogLineWithContext(line: string, context: LogParseContext): LogParseResult;
   isLogContinuation?(line: string): boolean;
-  // Optional hook to enrich an assembled multi-line entry (e.g. extract exception details).
-  // Only called when the entry has at least one continuation line.
-  finalizeLogEntry?(entry: ParsedLogEntry, continuationLines: readonly string[]): ParsedLogEntry;
 }
 
 function hasContextParsing(provider: MediaServerProvider): provider is ContextAwareProvider {
   return typeof (provider as ContextAwareProvider).parseLogLineWithContext === 'function';
+}
+
+type FinalizingProvider = MediaServerProvider &
+  Required<Pick<MediaServerProvider, 'finalizeLogEntry'>>;
+
+function hasFinalizeLogEntry(provider: MediaServerProvider): provider is FinalizingProvider {
+  return typeof provider.finalizeLogEntry === 'function';
 }
 
 function hasLogContinuation(provider: MediaServerProvider): provider is ContextAwareProvider {
@@ -179,9 +183,8 @@ export class LogFileProcessor {
     }
 
     let entry = this.pendingEntry;
-    const finalize = (this.provider as ContextAwareProvider).finalizeLogEntry;
-    if (typeof finalize === 'function' && this.continuationLines.length > 0) {
-      entry = finalize.call(this.provider, entry, this.continuationLines);
+    if (hasFinalizeLogEntry(this.provider) && this.continuationLines.length > 0) {
+      entry = this.provider.finalizeLogEntry(entry, this.continuationLines);
     }
     // Clear pending entry after finalizing
     this.pendingEntry = null;

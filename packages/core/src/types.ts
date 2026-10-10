@@ -337,6 +337,13 @@ export interface MediaServerProvider {
    * (e.g., stack trace lines, wrapped messages)
    */
   isLogContinuation?(line: string): boolean;
+
+  /**
+   * Enrich an assembled multi-line entry (e.g. extract exception details from
+   * its continuation lines). The caller attaches the stack trace/raw text itself.
+   * Only called when the entry has at least one continuation line.
+   */
+  finalizeLogEntry?(entry: ParsedLogEntry, continuationLines: readonly string[]): ParsedLogEntry;
 }
 
 /**
