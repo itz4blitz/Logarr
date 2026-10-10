@@ -9,6 +9,9 @@ import {
   ArrBaseProvider,
   ArrClient,
   LIDARR_LOG_FILE_CONFIG,
+  describeArrEvent,
+  resolveArrEventName,
+  type ArrEventTable,
   type ArrHistoryRecordBase,
   type ArrPaginatedResponse,
 } from '@logarr/provider-arr';
@@ -17,22 +20,6 @@ import { LidarrEventTypeNames } from './lidarr.types.js';
 
 import type { LidarrHistoryRecord } from './lidarr.types.js';
 import type { NormalizedActivity } from '@logarr/core';
-
-// Local interface until core package is rebuilt
-interface LogFileConfig {
-  defaultPaths: {
-    docker: readonly string[];
-    linux: readonly string[];
-    windows: readonly string[];
-    macos: readonly string[];
-  };
-  filePatterns: readonly string[];
-  encoding?: string;
-  rotatesDaily?: boolean;
-  datePattern?: RegExp;
-}
-
-type Severity = 'info' | 'warn' | 'error';
 
 /**
  * Extended client for Lidarr-specific endpoints
@@ -72,8 +59,8 @@ class LidarrClient extends ArrClient {
   }
 }
 
-/** Display prefix and severity per canonical (camelCase) event type */
-const EVENT_DISPLAY: Record<string, { readonly label: string; readonly severity: Severity }> = {
+/** Display label and severity per event (camelCase name as reported by the API) */
+const LIDARR_EVENTS: ArrEventTable = {
   grabbed: { label: 'Grabbed', severity: 'info' },
   artistFolderImported: { label: 'Artist Folder Imported', severity: 'info' },
   trackFileImported: { label: 'Imported', severity: 'info' },
@@ -123,7 +110,7 @@ export class LidarrProvider extends ArrBaseProvider {
   /**
    * Override log file config with Lidarr-specific paths
    */
-  override getLogFileConfig(): LogFileConfig {
+  override getLogFileConfig(): ReturnType<ArrBaseProvider['getLogFileConfig']> {
     return LIDARR_LOG_FILE_CONFIG;
   }
 
@@ -143,9 +130,12 @@ export class LidarrProvider extends ArrBaseProvider {
 
   protected override normalizeHistoryRecord(record: ArrHistoryRecordBase): NormalizedActivity {
     const lidarrRecord = record as LidarrHistoryRecord;
-    const eventName = this.resolveEventType(lidarrRecord.eventType);
-    const display = EVENT_DISPLAY[eventName];
-    let severity: Severity = display?.severity ?? 'info';
+    const resolved = resolveArrEventName(lidarrRecord.eventType, LidarrEventTypeNames);
+    // Canonicalise the casing of known events; unknown names are kept as reported
+    const eventName =
+      Object.keys(LIDARR_EVENTS).find((k) => k.toLowerCase() === resolved.toLowerCase()) ??
+      resolved;
+    const { label, severity } = describeArrEvent(eventName, LIDARR_EVENTS);
 
     const artist = lidarrRecord.artist?.artistName ?? 'Unknown Artist';
     const album = lidarrRecord.album?.title;
@@ -159,54 +149,50 @@ export class LidarrProvider extends ArrBaseProvider {
 
     switch (eventName) {
       case 'grabbed':
-        name = `Grabbed: ${subject}`;
+        name = `${label}: ${subject}`;
         overview = `Release grabbed: ${sourceTitle}`;
         break;
       case 'artistFolderImported':
-        name = `Artist Folder Imported: ${artist}`;
+        name = `${label}: ${artist}`;
         overview = `Artist folder imported: ${sourceTitle}`;
         break;
       case 'trackFileImported':
-        name = `Imported: ${subject}`;
+        name = `${label}: ${subject}`;
         overview = `Track imported: ${sourceTitle}`;
         break;
       case 'downloadFailed':
-        name = `Download Failed: ${subject}`;
+        name = `${label}: ${subject}`;
         overview = message ?? `Failed to download: ${sourceTitle}`;
         break;
       case 'trackFileDeleted': {
         const reason = this.dataString(data, 'reason');
-        name = `Deleted: ${subject}`;
+        name = `${label}: ${subject}`;
         overview = `Track file deleted: ${sourceTitle}${reason !== undefined ? ` (${reason})` : ''}`;
         break;
       }
       case 'trackFileRenamed':
-        name = `Renamed: ${subject}`;
+        name = `${label}: ${subject}`;
         overview = `Track file renamed: ${sourceTitle}`;
         break;
       case 'albumImportIncomplete':
-        name = `Import Incomplete: ${subject}`;
+        name = `${label}: ${subject}`;
         overview = message ?? `Album import incomplete: ${sourceTitle}`;
         break;
       case 'downloadImported':
-        name = `Download Imported: ${subject}`;
+        name = `${label}: ${subject}`;
         overview = `Download imported: ${sourceTitle}`;
         break;
       case 'trackFileRetagged':
-        name = `Retagged: ${subject}`;
+        name = `${label}: ${subject}`;
         overview = `Track file retagged: ${sourceTitle}`;
         break;
       case 'downloadIgnored':
-        name = `Download Ignored: ${subject}`;
+        name = `${label}: ${subject}`;
         overview = `Download ignored: ${sourceTitle}`;
         break;
       default:
-        name = `${eventName}: ${subject}`;
+        name = `${label}: ${subject}`;
         overview = sourceTitle;
-        // Future/unknown event types: surface failures as errors
-        if (/fail/i.test(eventName)) {
-          severity = 'error';
-        }
     }
 
     return {
@@ -232,31 +218,6 @@ export class LidarrProvider extends ArrBaseProvider {
         releaseGroup: data?.['releaseGroup'],
       },
     };
-  }
-
-  /**
-   * Resolve the API event type (number, numeric string or camelCase string,
-   * case-insensitive) to its canonical camelCase name.
-   *
-   * Unrecognised strings are returned unchanged; 0 / NaN-ish values map to 'unknown'.
-   */
-  private resolveEventType(eventType: string | number | undefined): string {
-    if (typeof eventType === 'number') {
-      return LidarrEventTypeNames[eventType] ?? 'unknown';
-    }
-
-    const raw = (eventType ?? '').trim();
-    if (raw === '') {
-      return 'unknown';
-    }
-
-    if (/^\d+$/.test(raw)) {
-      return LidarrEventTypeNames[Number(raw)] ?? 'unknown';
-    }
-
-    const lower = raw.toLowerCase();
-    const canonical = Object.values(LidarrEventTypeNames).find((n) => n.toLowerCase() === lower);
-    return canonical ?? raw;
   }
 
   /**

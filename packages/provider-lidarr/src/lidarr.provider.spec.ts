@@ -12,7 +12,6 @@ import type { LidarrHistoryRecord } from './lidarr.types.js';
 import type { NormalizedActivity } from '@logarr/core';
 
 const mockFetch = vi.fn();
-vi.stubGlobal('fetch', mockFetch);
 
 const BASE_URL = 'http://lidarr:8686';
 
@@ -113,7 +112,12 @@ describe('LidarrProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFetch.mockReset();
+    vi.stubGlobal('fetch', mockFetch);
     provider = new LidarrProvider();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   /** Connect with mocked routes and return the provider */
@@ -659,7 +663,7 @@ describe('LidarrProvider', () => {
 
       expect(activity.type).toBe('somethingNew');
       expect(activity.severity).toBe('info');
-      expect(activity.name).toBe('somethingNew: Daft Punk - Discovery');
+      expect(activity.name).toBe('Something New: Daft Punk - Discovery');
       expect(activity.overview).toBe('Artist - Album [FLAC]');
     });
 
