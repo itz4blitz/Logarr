@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
 
+import { cooldowns, sessionCache } from './qbittorrent.state.js';
+
 import type {
   QBittorrentAuthMode,
   QBittorrentLogEntry,
@@ -9,19 +11,11 @@ import type {
 
 const REQUEST_TIMEOUT_MS = 10_000;
 const API_PREFIX = '/api/v2';
-/** Expired cooldown entries are dropped after this long (they only carry the failure count) */
-const COOLDOWN_RETENTION_MS = 24 * 60 * 60_000;
 
 /** Escalating cooldown after authentication failures (qBittorrent bans an IP for 1h after 5) */
 const COOLDOWN_STEPS_MS = [5 * 60_000, 15 * 60_000, 60 * 60_000] as const;
 
 type CookieJar = Map<string, string>;
-
-interface Cooldown {
-  until: number;
-  message: string;
-  failures: number;
-}
 
 interface RawResponse {
   status: number;
@@ -35,14 +29,10 @@ interface QBittorrentCredentials {
 }
 
 /**
- * Module-level state. Providers are singletons that are connected/disconnected on every poll,
- * so sessions and cooldowns must outlive client instances. Keys are a SHA-256 of base URL,
- * username and secret, so different servers or credentials never share cookies and no plaintext
- * secret is used as a map key. Kept in memory only and never logged.
+ * Cache keys are a SHA-256 of base URL, username and secret, so different servers or credentials
+ * never share cookies and no plaintext secret is used as a map key. The caches themselves are
+ * bounded process-wide state, see qbittorrent.state.ts.
  */
-const sessionCache = new Map<string, CookieJar>();
-const cooldowns = new Map<string, Cooldown>();
-
 function hashKey(baseUrl: string, username: string, secret: string): string {
   return createHash('sha256').update(`${baseUrl}\u0000${username}\u0000${secret}`).digest('hex');
 }
@@ -241,11 +231,6 @@ export class QBittorrentClient {
     const failures = (previous?.failures ?? 0) + 1;
     const step = COOLDOWN_STEPS_MS[Math.min(failures, COOLDOWN_STEPS_MS.length) - 1] as number;
     const now = Date.now();
-    for (const [key, entry] of cooldowns) {
-      if (entry.until + COOLDOWN_RETENTION_MS < now) {
-        cooldowns.delete(key);
-      }
-    }
     cooldowns.set(this.key, { until: now + step, message, failures });
     return new Error(message);
   }

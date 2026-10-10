@@ -5,7 +5,6 @@ import { QBittorrentProvider } from './qbittorrent.provider.js';
 import { redactSecrets, trackerHost } from './qbittorrent.redact.js';
 
 const mockFetch = vi.fn();
-vi.stubGlobal('fetch', mockFetch);
 
 let counter = 0;
 function uniqueUrl(): string {
@@ -50,11 +49,13 @@ describe('redactSecrets / trackerHost', () => {
 
 describe('QBittorrentClient hardening', () => {
   beforeEach(() => {
+    vi.stubGlobal('fetch', mockFetch);
     mockFetch.mockReset();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-10-10T12:00:00Z'));
   });
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.useRealTimers();
   });
 
@@ -143,6 +144,7 @@ describe('QBittorrentProvider hardening', () => {
   let baseUrl: string;
 
   beforeEach(() => {
+    vi.stubGlobal('fetch', mockFetch);
     mockFetch.mockReset();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-10-10T12:00:00Z'));
@@ -150,6 +152,7 @@ describe('QBittorrentProvider hardening', () => {
     baseUrl = uniqueUrl();
   });
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.useRealTimers();
   });
 

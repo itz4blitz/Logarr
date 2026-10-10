@@ -26,6 +26,10 @@ export interface ProviderCapabilities {
   readonly supportsSessions: boolean;
   readonly supportsWebhooks: boolean;
   readonly supportsPlaybackHistory: boolean;
+  /** Authenticates with a username (stored in the server's username field) plus a password */
+  readonly supportsUsername?: boolean;
+  /** The API key / password may be empty (e.g. WebUI authentication bypass) */
+  readonly apiKeyOptional?: boolean;
 }
 
 /**

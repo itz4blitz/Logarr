@@ -557,6 +557,17 @@ function PlexIcon({ className }: { className?: string }) {
   );
 }
 
+// qBittorrent logo - Uses external CDN icon (dashboard-icons)
+function QBittorrentIcon({ className }: { className?: string }) {
+  return (
+    <img
+      src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/qbittorrent.svg"
+      alt="qBittorrent"
+      className={className}
+    />
+  );
+}
+
 // Emby logo - Uses external CDN icon
 function EmbyIcon({ className }: { className?: string }) {
   return (
@@ -618,6 +629,7 @@ const providerIcons: Record<string, React.ComponentType<{ className?: string }>>
   whisparr: WhisparrIcon,
   lidarr: LidarrIcon,
   readarr: ReadarrIcon,
+  qbittorrent: QBittorrentIcon,
   sqlite: SQLiteIcon,
   openai: OpenAIIcon,
   anthropic: AnthropicIcon,
@@ -645,6 +657,7 @@ export const providerMeta: Record<string, { name: string; color: string; bgColor
   whisparr: { name: 'Whisparr', color: '#FF69B4', bgColor: 'bg-pink-500/10' },
   lidarr: { name: 'Lidarr', color: '#00C853', bgColor: 'bg-green-500/10' },
   readarr: { name: 'Readarr', color: '#8B0000', bgColor: 'bg-red-500/10' },
+  qbittorrent: { name: 'qBittorrent', color: '#2F67BA', bgColor: 'bg-blue-600/10' },
   sqlite: { name: 'SQLite', color: '#003B57', bgColor: 'bg-slate-500/10' },
   openai: { name: 'OpenAI', color: '#10A37F', bgColor: 'bg-emerald-500/10' },
   anthropic: { name: 'Anthropic', color: '#D4A574', bgColor: 'bg-orange-500/10' },

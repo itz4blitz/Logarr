@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { QBittorrentProvider } from './qbittorrent.provider.js';
 
 const mockFetch = vi.fn();
-vi.stubGlobal('fetch', mockFetch);
 
 let counter = 0;
 function uniqueUrl(): string {
@@ -63,6 +62,7 @@ describe('QBittorrentProvider activity edge cases', () => {
   let baseUrl: string;
 
   beforeEach(() => {
+    vi.stubGlobal('fetch', mockFetch);
     mockFetch.mockReset();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-10-10T12:00:00Z'));
@@ -72,6 +72,7 @@ describe('QBittorrentProvider activity edge cases', () => {
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.useRealTimers();
     vi.restoreAllMocks();
   });
@@ -206,8 +207,8 @@ describe('QBittorrentProvider activity edge cases', () => {
 
       await expect(provider.getActivity()).resolves.toEqual([]);
       expect(console.error).toHaveBeenCalledWith(
-        '[qbittorrent] Failed to fetch log messages:',
-        expect.stringContaining('HTTP 500')
+        '[qbittorrent] Failed to get log messages:',
+        expect.objectContaining({ message: expect.stringContaining('HTTP 500') })
       );
 
       // next poll tries the plain cursor again and the resync again
@@ -368,10 +369,10 @@ describe('QBittorrentProvider activity edge cases', () => {
 
       const activities = await provider.getActivity();
 
-      expect(activities.map((a) => a.type)).toEqual(['TorrentError']);
+      expect(activities.map((a) => a.type)).toEqual(['torrent_error']);
       expect(console.error).toHaveBeenCalledWith(
-        '[qbittorrent] Failed to fetch log messages:',
-        expect.any(String)
+        '[qbittorrent] Failed to get log messages:',
+        expect.any(Error)
       );
     });
 
@@ -385,10 +386,10 @@ describe('QBittorrentProvider activity edge cases', () => {
 
       const activities = await provider.getActivity();
 
-      expect(activities.map((a) => a.type)).toEqual(['Log']);
+      expect(activities.map((a) => a.type)).toEqual(['log_warning']);
       expect(console.error).toHaveBeenCalledWith(
-        '[qbittorrent] Failed to fetch transfer info:',
-        'Unexpected response from qBittorrent'
+        '[qbittorrent] Failed to get connection status:',
+        expect.objectContaining({ message: 'Unexpected response from qBittorrent' })
       );
     });
 

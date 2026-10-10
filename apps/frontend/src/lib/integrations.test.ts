@@ -31,10 +31,13 @@ describe('Integrations Registry', () => {
       expect(byName['password']?.type).toBe('password');
     });
 
-    it('should not claim sessions, real-time logs or metrics', () => {
+    it('should declare credential capabilities and no sessions', () => {
       const caps = getIntegrationById('qbittorrent')?.capabilities;
       expect(caps?.sessions).toBe(false);
-      expect(caps?.realTimeLogs).toBe(false);
+      // log-file tailing, like the *arr entries
+      expect(caps?.realTimeLogs).toBe(true);
+      expect(caps?.supportsUsername).toBe(true);
+      expect(caps?.apiKeyOptional).toBe(true);
     });
 
     it('should be found by search', () => {

@@ -4,7 +4,6 @@ import { QBITTORRENT_LOG_FILE_CONFIG } from './qbittorrent.parser.js';
 import { QBittorrentProvider } from './qbittorrent.provider.js';
 
 const mockFetch = vi.fn();
-vi.stubGlobal('fetch', mockFetch);
 
 let counter = 0;
 function uniqueUrl(): string {
@@ -41,6 +40,7 @@ describe('QBittorrentProvider', () => {
   let baseUrl: string;
 
   beforeEach(() => {
+    vi.stubGlobal('fetch', mockFetch);
     mockFetch.mockReset();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-10-10T12:00:00Z'));
@@ -49,6 +49,7 @@ describe('QBittorrentProvider', () => {
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.useRealTimers();
     vi.restoreAllMocks();
   });
@@ -66,6 +67,8 @@ describe('QBittorrentProvider', () => {
         supportsSessions: false,
         supportsWebhooks: false,
         supportsPlaybackHistory: false,
+        supportsUsername: true,
+        apiKeyOptional: true,
       });
     });
 
@@ -144,7 +147,7 @@ describe('QBittorrentProvider', () => {
     });
 
     it('throws when used before connect', async () => {
-      await expect(provider.getServerInfo()).rejects.toThrow('not connected');
+      await expect(provider.getServerInfo()).rejects.toThrow('Not connected');
       await provider.disconnect();
     });
   });
@@ -180,7 +183,7 @@ describe('QBittorrentProvider', () => {
       ]);
       expect(activities.map((a) => a.severity)).toEqual(['warn', 'error']);
       expect(activities[0]?.timestamp).toEqual(new Date(1_790_000_002_000));
-      expect(activities[0]?.type).toBe('Log');
+      expect(activities.map((a) => a.type)).toEqual(['log_warning', 'log_critical']);
       expect(activities[1]?.overview).toBe('I/O error');
     });
 
@@ -329,7 +332,7 @@ describe('QBittorrentProvider', () => {
 
       const activities = await provider.getActivity();
 
-      expect(activities.map((a) => a.type)).toEqual(['TorrentError']);
+      expect(activities.map((a) => a.type)).toEqual(['torrent_error']);
       expect(errorSpy).toHaveBeenCalled();
     });
   });
@@ -372,7 +375,7 @@ describe('QBittorrentProvider', () => {
       ]);
       expect(second.map((a) => a.id)).toEqual(first.map((a) => a.id));
       expect(first[0]).toMatchObject({
-        type: 'TorrentError',
+        type: 'torrent_error',
         severity: 'error',
         itemId: 'abc',
         name: 'Torrent error: Some.Torrent',
@@ -397,7 +400,7 @@ describe('QBittorrentProvider', () => {
 
       expect(activity).toMatchObject({
         id: `qbittorrent-connection-${status}-2026-10-10`,
-        type: 'ConnectionStatus',
+        type: 'connection_status',
         severity,
         metadata: { connectionStatus: status, dhtNodes: 12 },
       });

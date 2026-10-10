@@ -1256,6 +1256,8 @@ describe('ServersService', () => {
 
     it('registers the qbittorrent provider without session support', () => {
       const qbit = service.getAvailableProviders().find((p) => p.id === 'qbittorrent');
+      expect(qbit?.capabilities.supportsUsername).toBe(true);
+      expect(qbit?.capabilities.apiKeyOptional).toBe(true);
 
       expect(qbit).toBeDefined();
       expect(qbit?.capabilities.supportsSessions).toBe(false);
@@ -1301,6 +1303,19 @@ describe('ServersService', () => {
       configureMockDb(mockDb, { insert: [qbitServer] });
       await service.create({ ...baseDto, apiKey: 'k', username: null } as any);
       expect(insertedValues()['username']).toBeNull();
+    });
+
+    it('derives the optional apiKey rule from the provider capability, not the provider id', async () => {
+      configureMockDb(mockDb, { insert: [mockServer] });
+      service['providers'].set('custom', {
+        id: 'custom',
+        name: 'Custom',
+        capabilities: { apiKeyOptional: true },
+      } as any);
+
+      await service.create({ name: 'c', providerId: 'custom', url: 'http://x' } as any);
+
+      expect(insertedValues()['apiKey']).toBe('');
     });
 
     it.each([undefined, ''])(

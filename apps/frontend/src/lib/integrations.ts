@@ -69,6 +69,10 @@ export interface Integration {
     sessions: boolean;
     webhooks: boolean;
     metrics: boolean;
+    /** Authenticates with a username plus password (stored as username + apiKey) */
+    supportsUsername?: boolean;
+    /** The API key / password may be empty (e.g. authentication bypass) */
+    apiKeyOptional?: boolean;
   };
   tags: string[]; // For search
 }
@@ -510,11 +514,13 @@ export const integrations: Integration[] = [
     ],
     docsUrl: 'https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)',
     capabilities: {
-      realTimeLogs: false,
+      realTimeLogs: true,
       activityLog: true,
       sessions: false,
       webhooks: false,
       metrics: false,
+      supportsUsername: true,
+      apiKeyOptional: true,
     },
     tags: ['torrent', 'download', 'p2p', 'bittorrent', 'open-source'],
   },

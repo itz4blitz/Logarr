@@ -103,7 +103,7 @@ export class ServersService {
       throw new Error(`Unknown provider: ${dto.providerId}`);
     }
 
-    if (dto.providerId !== 'qbittorrent' && (dto.apiKey ?? '') === '') {
+    if (provider.capabilities.apiKeyOptional !== true && (dto.apiKey ?? '') === '') {
       throw new BadRequestException('API key is required');
     }
 

@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { QBittorrentClient } from './qbittorrent.client.js';
 
 const mockFetch = vi.fn();
-vi.stubGlobal('fetch', mockFetch);
 
 let counter = 0;
 function uniqueUrl(): string {
@@ -51,10 +50,12 @@ async function loginAndGetCookie(
 
 describe('QBittorrentClient cookie handling', () => {
   beforeEach(() => {
+    vi.stubGlobal('fetch', mockFetch);
     mockFetch.mockReset();
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.useRealTimers();
   });
 

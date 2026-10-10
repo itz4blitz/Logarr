@@ -441,6 +441,16 @@ describe('ProxyService', () => {
         expect(mockHttpService.request).not.toHaveBeenCalled();
       });
 
+      it('should reject any server with a stored username regardless of provider', async () => {
+        configureMockDb(mockDb, {
+          select: [{ ...qbitServer, providerId: 'other', apiKey: 'pw', username: 'bob' }],
+        });
+
+        await expect(
+          service.proxyRequest('server-qbit', { endpoint: 'x', method: 'GET' })
+        ).rejects.toThrow(/cookie session/);
+      });
+
       it('should send X-Api-Key for API key setups without username', async () => {
         configureMockDb(mockDb, {
           select: [{ ...qbitServer, apiKey: 'qbt-key', username: null }],

@@ -50,7 +50,11 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useUpdateServer, useTestConnection } from '@/hooks/use-api';
-import { areCredentialsOptional, buildUpdateCredentials } from '@/lib/server-payload';
+import {
+  areCredentialsOptional,
+  buildUpdateCredentials,
+  supportsUsername,
+} from '@/lib/server-payload';
 import { cn } from '@/lib/utils';
 
 // qBittorrent allows an empty password / API key (authentication bypass)
@@ -86,7 +90,7 @@ export function EditServerDialog({ server, open, onOpenChange }: EditServerDialo
   const [isTesting, setIsTesting] = useState(false);
 
   const formSchema = useMemo(() => buildFormSchema(server.providerId), [server.providerId]);
-  const hasUsername = areCredentialsOptional(server.providerId);
+  const hasUsername = supportsUsername(server.providerId);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),

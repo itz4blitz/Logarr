@@ -1,10 +1,15 @@
+import { getIntegrationById } from '@/lib/integrations';
+
 import type { CreateServerDto } from '@/lib/api';
 
-/** Providers whose credentials (username / password / API key) are all optional */
-const OPTIONAL_CREDENTIAL_PROVIDERS = new Set(['qbittorrent']);
-
+/** The API key / password may be left empty (capability flag from the integration entry) */
 export function areCredentialsOptional(providerId: string): boolean {
-  return OPTIONAL_CREDENTIAL_PROVIDERS.has(providerId);
+  return getIntegrationById(providerId)?.capabilities.apiKeyOptional === true;
+}
+
+/** The provider authenticates with a username plus password (capability flag) */
+export function supportsUsername(providerId: string): boolean {
+  return getIntegrationById(providerId)?.capabilities.supportsUsername === true;
 }
 
 /**
@@ -37,6 +42,6 @@ export function buildUpdateCredentials(
 ): { apiKey: string; username?: string } {
   return {
     apiKey: data.apiKey,
-    ...(areCredentialsOptional(providerId) && { username: data.username?.trim() ?? '' }),
+    ...(supportsUsername(providerId) && { username: data.username?.trim() ?? '' }),
   };
 }

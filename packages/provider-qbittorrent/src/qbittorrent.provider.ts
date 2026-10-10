@@ -7,6 +7,7 @@ import {
   parseQBittorrentLogLineWithContext,
 } from './qbittorrent.parser.js';
 import { redactSecrets, trackerHost } from './qbittorrent.redact.js';
+import { connectionStates, logCursors } from './qbittorrent.state.js';
 import { QBITTORRENT_LOG_TYPE } from './qbittorrent.types.js';
 
 import type { QBittorrentLogEntry } from './qbittorrent.types.js';
@@ -31,24 +32,6 @@ import type {
 const INITIAL_LOG_LIMIT = 500;
 /** How often an empty log response triggers a full resync (detects qBittorrent restarts) */
 const LOG_RESYNC_INTERVAL_MS = 10 * 60_000;
-
-interface LogCursor {
-  lastId: number;
-  lastTs: number;
-  fullSyncAt: number;
-}
-
-/**
- * Log cursors per qBittorrent instance. Module-level because the provider is a singleton that
- * is disconnected after every poll.
- */
-const logCursors = new Map<string, LogCursor>();
-
-/**
- * Last seen connection status and the day it was last reported, per qBittorrent instance.
- * Used to only emit connection activities on change (plus once per day while unhealthy).
- */
-const connectionStates = new Map<string, { status: string; reportedDay: string | null }>();
 
 function truncate(value: string, max: number): string {
   return value.length > max ? `${value.slice(0, max - 1)}…` : value;
@@ -80,6 +63,8 @@ export class QBittorrentProvider implements MediaServerProvider {
     supportsSessions: false,
     supportsWebhooks: false,
     supportsPlaybackHistory: false,
+    supportsUsername: true,
+    apiKeyOptional: true,
   };
 
   private config: ProviderConfig | null = null;
@@ -117,7 +102,7 @@ export class QBittorrentProvider implements MediaServerProvider {
   }
 
   async getServerInfo(): Promise<ServerInfo> {
-    const client = this.requireClient();
+    const client = this.getClient();
     const version = (await client.getVersion()).trim();
     const webApi = (await client.getWebApiVersion()).trim();
     return {
@@ -172,30 +157,35 @@ export class QBittorrentProvider implements MediaServerProvider {
   }
 
   async getActivity(since?: Date): Promise<readonly NormalizedActivity[]> {
-    const client = this.requireClient();
+    const client = this.getClient();
     const activities: NormalizedActivity[] = [];
+    const errors: unknown[] = [];
+    let attempted = 0;
 
-    // (a) Warning/critical log messages. Skipped when the log file is tailed instead.
-    if ((this.config?.logPath?.trim() ?? '') === '') {
+    const collect = async (
+      source: string,
+      load: () => Promise<NormalizedActivity[]>
+    ): Promise<void> => {
+      attempted++;
       try {
-        activities.push(...(await this.fetchLogActivities(client, since)));
+        activities.push(...(await load()));
       } catch (error) {
-        console.error('[qbittorrent] Failed to fetch log messages:', this.describe(error));
+        errors.push(error);
+        console.error(`[${this.id}] Failed to get ${source}:`, error);
       }
-    }
+    };
 
-    // (b) Errored torrents
-    try {
-      activities.push(...(await this.fetchTorrentErrors(client)));
-    } catch (error) {
-      console.error('[qbittorrent] Failed to fetch errored torrents:', this.describe(error));
+    // Warning/critical log messages. Skipped when the log file is tailed instead.
+    if ((this.config?.logPath?.trim() ?? '') === '') {
+      await collect('log messages', () => this.fetchLogActivities(client, since));
     }
+    await collect('errored torrents', () => this.fetchTorrentErrors(client));
+    await collect('connection status', () => this.fetchConnectionStatus(client));
 
-    // (c) Connection status
-    try {
-      activities.push(...(await this.fetchConnectionStatus(client)));
-    } catch (error) {
-      console.error('[qbittorrent] Failed to fetch transfer info:', this.describe(error));
+    // Partial failures are tolerated; if every source failed, surface it so the server is
+    // marked unhealthy by the poll
+    if (errors.length === attempted) {
+      throw errors[0];
     }
 
     return activities.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
@@ -267,7 +257,7 @@ export class QBittorrentProvider implements MediaServerProvider {
     const message = redactSecrets(entry.message);
     return {
       id: `qbittorrent-log-${Math.floor(timestampMs / 1000)}-${entry.id}`,
-      type: 'Log',
+      type: entry.type === QBITTORRENT_LOG_TYPE.CRITICAL ? 'log_critical' : 'log_warning',
       name: truncate(message, 120),
       overview: message,
       severity: severityOf(entry.type),
@@ -285,7 +275,7 @@ export class QBittorrentProvider implements MediaServerProvider {
     return torrents.map((torrent) => ({
       // Day bucket: a persisting/recurring error is re-announced at most once per day
       id: `qbittorrent-torrent-error-${torrent.hash}-${torrent.state}-${day}`,
-      type: 'TorrentError',
+      type: 'torrent_error',
       name: `Torrent error: ${torrent.name}`,
       overview:
         `${torrent.name} is in state "${torrent.state}"` +
@@ -327,7 +317,7 @@ export class QBittorrentProvider implements MediaServerProvider {
     return [
       {
         id: `qbittorrent-connection-${status}-${day}`,
-        type: 'ConnectionStatus',
+        type: 'connection_status',
         name: `qBittorrent connection status: ${status}`,
         overview: `qBittorrent reports it is ${status} (check port forwarding / network binding)`,
         severity: status === 'disconnected' ? 'error' : 'warn',
@@ -340,14 +330,10 @@ export class QBittorrentProvider implements MediaServerProvider {
     ];
   }
 
-  private requireClient(): QBittorrentClient {
+  private getClient(): QBittorrentClient {
     if (!this.client) {
-      throw new Error('qBittorrent provider is not connected');
+      throw new Error('Not connected');
     }
     return this.client;
-  }
-
-  private describe(error: unknown): string {
-    return error instanceof Error ? error.message : 'Unknown error';
   }
 }

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 
 import {
   areCredentialsOptional,
+  supportsUsername,
   buildCreateServerPayload,
   buildUpdateCredentials,
 } from './server-payload';
@@ -67,9 +68,13 @@ describe('buildUpdateCredentials', () => {
   });
 });
 
-describe('areCredentialsOptional', () => {
-  it('is true only for qbittorrent', () => {
+describe('credential capability flags', () => {
+  it('are read from the integration entry', () => {
     expect(areCredentialsOptional('qbittorrent')).toBe(true);
+    expect(supportsUsername('qbittorrent')).toBe(true);
     expect(areCredentialsOptional('sonarr')).toBe(false);
+    expect(supportsUsername('sonarr')).toBe(false);
+    expect(areCredentialsOptional('unknown-provider')).toBe(false);
+    expect(supportsUsername('unknown-provider')).toBe(false);
   });
 });

@@ -96,10 +96,12 @@ export class ProxyService {
     // 1. Get server configuration
     const server = await this.findUserServer(serverId);
 
-    // qBittorrent username/password login uses cookie sessions, which the proxy does not support
-    if (server.providerId === 'qbittorrent' && server.username) {
+    // Servers with a stored username authenticate with a cookie session (username/password
+    // login), which the proxy cannot do. API-key servers work: qBittorrent >= 5.3 accepts the
+    // key in the X-API-Key header (and as Bearer token); auth-bypass servers need no header.
+    if (server.username) {
       throw new BadRequestException(
-        'The request proxy does not support qBittorrent username/password login. Use an API key (qBittorrent 5.3+) or authentication bypass.'
+        'The request proxy does not support username/password (cookie session) login. Remove the username and use an API key (qBittorrent 5.3+) or authentication bypass.'
       );
     }
 
