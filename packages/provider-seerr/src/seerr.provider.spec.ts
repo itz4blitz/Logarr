@@ -181,11 +181,11 @@ describe('SeerrProvider', () => {
         connected: false,
         error: 'Not initialized',
       });
-      await expect(p.getActivity()).rejects.toThrow('Not connected to Seerr server');
-      await expect(p.getServerInfo()).rejects.toThrow('Not connected to Seerr server');
+      await expect(p.getActivity()).rejects.toThrow(/^Not connected$/);
+      await expect(p.getServerInfo()).rejects.toThrow(/^Not connected$/);
       const c = await connected();
       await c.disconnect();
-      await expect(c.getActivity()).rejects.toThrow('Not connected to Seerr server');
+      await expect(c.getActivity()).rejects.toThrow(/^Not connected$/);
     });
 
     it('returns connected:false when the key stops working', async () => {
@@ -424,7 +424,7 @@ describe('SeerrProvider', () => {
       await vi.advanceTimersByTimeAsync(10000);
       const acts = await promise;
       expect(acts).toHaveLength(3);
-      expect(errorSpy).toHaveBeenCalled();
+      expect(errorSpy).toHaveBeenCalledWith('[seerr] Failed to get issues:', expect.any(Error));
     });
 
     it('rejects when every source fails', async () => {
@@ -451,8 +451,8 @@ describe('SeerrProvider', () => {
 
     it('throws when used before connect', async () => {
       const p = new SeerrProvider();
-      await expect(p.getActivity()).rejects.toThrow('Not connected to Seerr server');
-      await expect(p.getServerInfo()).rejects.toThrow('Not connected to Seerr server');
+      await expect(p.getActivity()).rejects.toThrow(/^Not connected$/);
+      await expect(p.getServerInfo()).rejects.toThrow(/^Not connected$/);
     });
 
     it('includes boundary items (timestamp === since)', async () => {
@@ -667,7 +667,7 @@ describe('SeerrProvider', () => {
       const promise = p.getActivity();
       await vi.advanceTimersByTimeAsync(10000);
       expect(await promise).toHaveLength(2);
-      expect(errorSpy.mock.calls[0]?.[0]).toContain('request');
+      expect(errorSpy.mock.calls[0]?.[0]).toBe('[seerr] Failed to get requests:');
     });
 
     it('reports testConnection failure as connected:false with the hint', async () => {

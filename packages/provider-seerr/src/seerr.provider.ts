@@ -197,7 +197,7 @@ export class SeerrProvider implements MediaServerProvider {
       } else {
         errors.push(result.reason);
         console.error(
-          `[${this.id}] Failed to fetch ${index === 0 ? 'request' : 'issue'} activity:`,
+          `[${this.id}] Failed to get ${index === 0 ? 'requests' : 'issues'}:`,
           result.reason
         );
       }
@@ -216,7 +216,7 @@ export class SeerrProvider implements MediaServerProvider {
 
   private getClient(): SeerrClient {
     if (this.client === null) {
-      throw new Error('Not connected to Seerr server');
+      throw new Error('Not connected');
     }
     return this.client;
   }
