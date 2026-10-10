@@ -4,6 +4,7 @@ import { LidarrProvider } from '@logarr/provider-lidarr';
 import { PlexProvider } from '@logarr/provider-plex';
 import { ProwlarrProvider } from '@logarr/provider-prowlarr';
 import { RadarrProvider } from '@logarr/provider-radarr';
+import { SeerrProvider } from '@logarr/provider-seerr';
 import { SonarrProvider } from '@logarr/provider-sonarr';
 import { WhisparrProvider } from '@logarr/provider-whisparr';
 import { Injectable, Inject, NotFoundException, forwardRef, Logger } from '@nestjs/common';
@@ -55,6 +56,8 @@ export class ServersService {
 
     const lidarrProvider = new LidarrProvider();
     this.providers.set(lidarrProvider.id, lidarrProvider);
+    const seerrProvider = new SeerrProvider();
+    this.providers.set(seerrProvider.id, seerrProvider);
   }
 
   async findAll() {

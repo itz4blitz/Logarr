@@ -88,6 +88,11 @@ WHISPARR_API_KEY={{ op://Development/Logarr-Dev/WHISPARR_API_KEY }}
 LIDARR_URL={{ op://Development/Logarr-Dev/LIDARR_URL }}
 LIDARR_API_KEY={{ op://Development/Logarr-Dev/LIDARR_API_KEY }}
 
+# Seerr (also Overseerr / Jellyseerr) - not in the vault yet; add the items, then
+# replace these with op:// references
+# SEERR_URL=
+# SEERR_API_KEY=
+
 # =============================================================================
 # SECURITY & AUTHENTICATION
 # =============================================================================
@@ -111,3 +116,4 @@ RADARR_LOGS_PATH={{ op://Development/Logarr-Dev/RADARR_LOGS_PATH }}
 PROWLARR_LOGS_PATH={{ op://Development/Logarr-Dev/PROWLARR_LOGS_PATH }}
 WHISPARR_LOGS_PATH={{ op://Development/Logarr-Dev/WHISPARR_LOGS_PATH }}
 LIDARR_LOGS_PATH={{ op://Development/Logarr-Dev/LIDARR_LOGS_PATH }}
+# SEERR_LOGS_PATH=

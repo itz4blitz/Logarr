@@ -77,6 +77,13 @@ const ENV_SERVER_CONFIGS: EnvServerConfig[] = [
     name: 'Lidarr',
     containerLogPath: '/lidarr-logs',
   },
+  {
+    urlEnvKey: 'SEERR_URL',
+    apiKeyEnvKey: 'SEERR_API_KEY',
+    providerId: 'seerr',
+    name: 'Seerr',
+    containerLogPath: '/seerr-logs',
+  },
 ];
 
 @Injectable()

@@ -160,6 +160,9 @@ function LogDetailModal({
       case 'lidarr':
         // *arr apps: system/events shows searchable event log
         return `${baseUrl}/system/events`;
+      case 'seerr':
+        // Seerr/Overseerr/Jellyseerr: Settings > Logs
+        return `${baseUrl}/settings/logs`;
       default:
         return null;
     }

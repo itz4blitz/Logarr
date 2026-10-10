@@ -144,6 +144,57 @@ describe('Integrations Registry', () => {
     });
   });
 
+  describe('Seerr integration', () => {
+    it('should be registered with correct metadata', () => {
+      const seerr = getIntegrationById('seerr');
+      expect(seerr).toBeDefined();
+      expect(seerr?.name).toBe('Seerr');
+      expect(seerr?.description).toContain('Overseerr');
+      expect(seerr?.description).toContain('Jellyseerr');
+      expect(seerr?.category).toBe('media_requests');
+      expect(seerr?.status).toBe('available');
+      expect(seerr?.connectionType).toBe('api');
+      expect(seerr?.defaultPort).toBe(5055);
+    });
+
+    it('should use a dashboard-icons slug', () => {
+      const seerr = getIntegrationById('seerr');
+      expect(seerr?.iconType).toBe('dashboard-icons');
+      expect(seerr?.icon).toBe('seerr');
+    });
+
+    it('should have name, url, admin apiKey and logPath fields', () => {
+      const seerr = getIntegrationById('seerr');
+      expect(seerr?.configFields.map((f) => f.name)).toEqual(['name', 'url', 'apiKey', 'logPath']);
+      expect(seerr?.configFields.find((f) => f.name === 'apiKey')?.label).toBe('Admin API Key');
+    });
+
+    it('should have correct capabilities', () => {
+      expect(getIntegrationById('seerr')?.capabilities).toEqual({
+        realTimeLogs: true,
+        activityLog: true,
+        sessions: false,
+        webhooks: false,
+        metrics: false,
+      });
+    });
+
+    it('should be available and replace the separate Overseerr/Jellyseerr entries', () => {
+      expect(getAvailableIntegrations().map((i) => i.id)).toContain('seerr');
+      expect(getIntegrationById('overseerr')).toBeUndefined();
+      expect(getIntegrationById('jellyseerr')).toBeUndefined();
+      const available = getIntegrationsByCategory('media_requests').filter(
+        (i) => i.status !== 'coming_soon'
+      );
+      expect(available.map((i) => i.id)).toEqual(['seerr']);
+    });
+
+    it('should be searchable by Overseerr and Jellyseerr', () => {
+      expect(searchIntegrations('overseerr').map((i) => i.id)).toContain('seerr');
+      expect(searchIntegrations('jellyseerr').map((i) => i.id)).toContain('seerr');
+    });
+  });
+
   describe('getIntegrationsByCategory', () => {
     it('should include Whisparr in arr_stack category', () => {
       const arrIntegrations = getIntegrationsByCategory('arr_stack');
