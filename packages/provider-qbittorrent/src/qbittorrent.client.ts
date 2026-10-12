@@ -193,17 +193,22 @@ export class QBittorrentClient {
       form: { username: this.username, password: this.secret },
     });
 
-    if (response.status === 200 && response.text.trim() === 'Ok.') {
+    const success = response.status >= 200 && response.status < 300;
+    const body = response.text.trim();
+
+    // qBittorrent < 5.2 answers 200 "Ok."; newer versions answer 204 No Content (empty body) with
+    // the session cookie. "Ok." without a cookie is auth bypass for our IP.
+    if (success && (body === 'Ok.' || (body === '' && this.jar.size > 0))) {
       cooldowns.delete(this.key);
       this.sessionReady = true;
       sessionCache.set(this.key, new Map(this.jar));
       return;
     }
 
-    if (response.status === 200 && response.text.trim() === 'Fails.') {
+    if (response.status === 200 && body === 'Fails.') {
       throw this.recordFailure('Invalid qBittorrent username or password');
     }
-    if (response.status === 200) {
+    if (success) {
       // Not counted as a credential failure: probably not qBittorrent (e.g. an auth proxy page)
       throw new Error(
         'Unexpected login response — is this a qBittorrent WebUI (or behind an auth proxy)?'
