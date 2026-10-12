@@ -93,6 +93,23 @@ describe('login response variants', () => {
     await expect(new QBittorrentClient(base, creds).getVersion()).resolves.toBe('v5.2.3');
   });
 
+  it('requires a fresh cookie: a stale jar entry plus an empty 204 is not a successful login', async () => {
+    const base = uniqueUrl();
+    const creds = { username: 'admin', secret: 'pw' };
+    const client = new QBittorrentClient(base, creds);
+    (client as unknown as { jar: Map<string, string> }).jar.set('QBT_SID_8080', 'stale');
+    mockFetch.mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+    await expect((client as unknown as { login: () => Promise<void> }).login()).rejects.toThrow(
+      'Unexpected login response'
+    );
+
+    // the stale cookie was not sent with the login request and no cooldown was recorded
+    expect(cookieOfCall(0)).toBeUndefined();
+    mockFetch.mockResolvedValueOnce(login204()).mockResolvedValueOnce(new Response('v5.2.3'));
+    await expect(new QBittorrentClient(base, creds).getVersion()).resolves.toBe('v5.2.3');
+  });
+
   it('still treats 200 "Fails." as bad credentials with cooldown escalation', async () => {
     const base = uniqueUrl();
     const creds = { username: 'admin', secret: 'wrong' };

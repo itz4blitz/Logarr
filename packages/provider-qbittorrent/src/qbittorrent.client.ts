@@ -189,6 +189,10 @@ export class QBittorrentClient {
       throw new Error(`${cooldown.message} (retrying in ${seconds}s)`);
     }
 
+    // Success requires a cookie set by THIS response, so drop any stale session first
+    this.jar = new Map();
+    this.sessionReady = false;
+
     const response = await this.send('POST', '/auth/login', {
       form: { username: this.username, password: this.secret },
     });
