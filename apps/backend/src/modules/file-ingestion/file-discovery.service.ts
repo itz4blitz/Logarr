@@ -13,6 +13,7 @@ interface LogFileConfig {
     macos: readonly string[];
   };
   filePatterns: readonly string[];
+  excludePatterns?: readonly string[];
   encoding?: string;
   rotatesDaily?: boolean;
   datePattern?: RegExp;
@@ -58,8 +59,13 @@ export class FileDiscoveryService {
 
   /**
    * Discover log files in the given paths matching the patterns
+   * (files matching any exclude pattern are skipped)
    */
-  async discoverLogFiles(paths: string[], patterns: string[]): Promise<string[]> {
+  async discoverLogFiles(
+    paths: string[],
+    patterns: string[],
+    excludePatterns: string[] = []
+  ): Promise<string[]> {
     const discoveredFiles: string[] = [];
 
     for (const basePath of paths) {
@@ -75,11 +81,15 @@ export class FileDiscoveryService {
 
         if (stats.isDirectory()) {
           // Discover files in directory
-          const files = await this.discoverFilesInDirectory(expandedPath, patterns);
+          const files = await this.discoverFilesInDirectory(
+            expandedPath,
+            patterns,
+            excludePatterns
+          );
           discoveredFiles.push(...files);
         } else if (stats.isFile()) {
           // Direct file path
-          if (this.matchesPatterns(expandedPath, patterns)) {
+          if (this.isIncluded(expandedPath, patterns, excludePatterns)) {
             discoveredFiles.push(expandedPath);
           }
         }
@@ -96,7 +106,11 @@ export class FileDiscoveryService {
   /**
    * Discover files in a directory matching patterns
    */
-  private async discoverFilesInDirectory(dirPath: string, patterns: string[]): Promise<string[]> {
+  private async discoverFilesInDirectory(
+    dirPath: string,
+    patterns: string[],
+    excludePatterns: string[]
+  ): Promise<string[]> {
     const files: string[] = [];
 
     try {
@@ -106,7 +120,7 @@ export class FileDiscoveryService {
         const fullPath = join(dirPath, entry.name);
 
         if (entry.isFile()) {
-          if (this.matchesPatterns(entry.name, patterns)) {
+          if (this.isIncluded(entry.name, patterns, excludePatterns)) {
             files.push(fullPath);
           }
         } else if (entry.isDirectory()) {
@@ -119,6 +133,18 @@ export class FileDiscoveryService {
     }
 
     return files;
+  }
+
+  /**
+   * A file is included when it matches an include pattern and no exclude pattern.
+   * Patterns are matched against the base name (a direct file path is reduced to it).
+   */
+  private isIncluded(filename: string, patterns: string[], excludePatterns: string[]): boolean {
+    const baseName = filename.split(/[/\\]/).pop() ?? filename;
+    if (excludePatterns.length > 0 && this.matchesPatterns(baseName, excludePatterns)) {
+      return false;
+    }
+    return this.matchesPatterns(filename, patterns);
   }
 
   /**

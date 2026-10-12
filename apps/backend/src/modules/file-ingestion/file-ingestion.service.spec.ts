@@ -571,6 +571,94 @@ describe('FileIngestionService', () => {
     });
   });
 
+  describe('exclude pattern wiring', () => {
+    const logFileConfig = {
+      filePatterns: ['radarr.txt', 'radarr.*.txt'],
+      excludePatterns: ['*.debug.*', '*.trace.*'],
+    };
+    const providerFor = (): Map<string, unknown> =>
+      new Map([['arr', { getLogFileConfig: vi.fn().mockReturnValue(logFileConfig) }]]);
+
+    const baseServer = {
+      id: 'server-1',
+      name: 'Radarr',
+      providerId: 'arr',
+      logPaths: ['/logs'],
+      logFilePatterns: null as string[] | null,
+      fileIngestionEnabled: true,
+      initialSyncCompleted: false,
+    };
+
+    beforeEach(() => {
+      mockFileDiscoveryService.discoverLogFiles.mockResolvedValue([]);
+      mockFileDiscoveryService.validatePath.mockResolvedValue({ accessible: true });
+      mockSettingsService.getFileIngestionSettings.mockRejectedValue(new Error('use defaults'));
+      mockDb.update.mockReturnValue({
+        set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+      });
+    });
+
+    const mockSelectServer = (server: typeof baseServer): void => {
+      mockDb.select.mockReturnValue({
+        from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([server]) }),
+      });
+    };
+
+    describe('startServerFileIngestion', () => {
+      beforeEach(() => {
+        service.validateLogPaths = vi.fn().mockResolvedValue({ valid: true, results: [] });
+      });
+
+      it('passes the provider excludePatterns to discovery', async () => {
+        await service.startServerFileIngestion(baseServer as any, providerFor() as any);
+
+        expect(mockFileDiscoveryService.discoverLogFiles).toHaveBeenCalledWith(
+          ['/logs'],
+          ['radarr.txt', 'radarr.*.txt'],
+          ['*.debug.*', '*.trace.*']
+        );
+      });
+
+      it('passes no excludes when the server has custom logFilePatterns', async () => {
+        const server = { ...baseServer, logFilePatterns: ['*.txt'] };
+
+        await service.startServerFileIngestion(server as any, providerFor() as any);
+
+        expect(mockFileDiscoveryService.discoverLogFiles).toHaveBeenCalledWith(
+          ['/logs'],
+          ['*.txt'],
+          []
+        );
+      });
+    });
+
+    describe('backfillFromFiles', () => {
+      it('passes the provider excludePatterns to discovery', async () => {
+        mockSelectServer(baseServer);
+
+        await service.backfillFromFiles('server-1', providerFor() as any);
+
+        expect(mockFileDiscoveryService.discoverLogFiles).toHaveBeenCalledWith(
+          ['/logs'],
+          ['radarr.txt', 'radarr.*.txt'],
+          ['*.debug.*', '*.trace.*']
+        );
+      });
+
+      it('passes no excludes when the server has custom logFilePatterns', async () => {
+        mockSelectServer({ ...baseServer, logFilePatterns: ['*.txt'] });
+
+        await service.backfillFromFiles('server-1', providerFor() as any);
+
+        expect(mockFileDiscoveryService.discoverLogFiles).toHaveBeenCalledWith(
+          ['/logs'],
+          ['*.txt'],
+          []
+        );
+      });
+    });
+  });
+
   describe('error handling and edge cases', () => {
     it('should handle settings loading failure', async () => {
       mockSettingsService.getFileIngestionSettings.mockRejectedValue(new Error('Settings error'));

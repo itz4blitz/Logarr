@@ -101,6 +101,8 @@ export interface LogFileConfig {
   };
   /** File name patterns to match (glob patterns) */
   readonly filePatterns: readonly string[];
+  /** File name patterns (glob) to skip even if they match filePatterns */
+  readonly excludePatterns?: readonly string[] | undefined;
   /** File encoding (default: utf-8) */
   readonly encoding?: string | undefined;
   /** Whether log files rotate daily */

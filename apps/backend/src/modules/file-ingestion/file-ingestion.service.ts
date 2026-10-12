@@ -73,6 +73,7 @@ interface LogFileConfig {
     macos: readonly string[];
   };
   filePatterns: readonly string[];
+  excludePatterns?: readonly string[];
   encoding?: string;
   rotatesDaily?: boolean;
   datePattern?: RegExp;
@@ -404,6 +405,11 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
       server.logFilePatterns && server.logFilePatterns.length > 0
         ? [...server.logFilePatterns]
         : [...logFileConfig.filePatterns];
+    // Exclusions come from the provider config; explicit user patterns are taken as-is
+    const excludePatterns =
+      server.logFilePatterns && server.logFilePatterns.length > 0
+        ? []
+        : [...(logFileConfig.excludePatterns ?? [])];
 
     this.logger.log(`Starting file ingestion for ${server.name}`);
     this.logger.log(`  Paths: ${paths.join(', ')}`);
@@ -448,7 +454,11 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
     }
 
     // Discover log files
-    const allLogFiles = await this.fileDiscoveryService.discoverLogFiles(paths, patterns);
+    const allLogFiles = await this.fileDiscoveryService.discoverLogFiles(
+      paths,
+      patterns,
+      excludePatterns
+    );
 
     if (allLogFiles.length === 0) {
       this.logger.warn(
@@ -1258,11 +1268,16 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
       server.logFilePatterns !== null && server.logFilePatterns.length > 0
         ? [...server.logFilePatterns]
         : [...logFileConfig.filePatterns];
+    const excludePatterns =
+      server.logFilePatterns !== null && server.logFilePatterns.length > 0
+        ? []
+        : [...(logFileConfig.excludePatterns ?? [])];
 
     // Discover all log files
     const logFiles = await this.fileDiscoveryService.discoverLogFiles(
       [...server.logPaths],
-      patterns
+      patterns,
+      excludePatterns
     );
 
     if (logFiles.length === 0) {

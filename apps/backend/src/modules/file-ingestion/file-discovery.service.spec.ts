@@ -1,6 +1,15 @@
 import { existsSync, readdirSync, statSync } from 'fs';
 import { platform, homedir } from 'os';
 
+import {
+  ARR_LOG_FILE_CONFIG,
+  LIDARR_LOG_FILE_CONFIG,
+  PROWLARR_LOG_FILE_CONFIG,
+  RADARR_LOG_FILE_CONFIG,
+  READARR_LOG_FILE_CONFIG,
+  SONARR_LOG_FILE_CONFIG,
+  WHISPARR_LOG_FILE_CONFIG,
+} from '@logarr/provider-arr';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { FileDiscoveryService } from './file-discovery.service';
@@ -288,6 +297,79 @@ describe('FileDiscoveryService', () => {
   });
 
   describe('discoverLogFiles', () => {
+    describe('exclude patterns', () => {
+      const mockDir = (names: string[]): void => {
+        vi.mocked(existsSync).mockReturnValue(true);
+        vi.mocked(statSync).mockReturnValue({
+          isDirectory: () => true,
+          isFile: () => false,
+          mtimeMs: Date.now(),
+        } as ReturnType<typeof statSync>);
+        vi.mocked(readdirSync).mockReturnValue(
+          names.map((name) => ({
+            name,
+            isFile: () => true,
+            isDirectory: () => false,
+          })) as unknown as ReturnType<typeof readdirSync>
+        );
+      };
+
+      it('skips files matching an exclude pattern', async () => {
+        mockDir(['app.txt', 'app.debug.txt']);
+
+        const files = await service.discoverLogFiles(['/logs'], ['*.txt'], ['*.debug.*']);
+
+        expect(files).toEqual(['/logs/app.txt']);
+      });
+
+      it('does not exclude names that merely start with debug/trace', async () => {
+        mockDir(['foo.debugger.txt', 'foo.tracer.txt', 'foo.debug.txt']);
+
+        const files = await service.discoverLogFiles(
+          ['/logs'],
+          ['*.txt'],
+          ['*.debug.*', '*.trace.*']
+        );
+
+        expect(files.map((f) => f.replace('/logs/', '')).sort()).toEqual([
+          'foo.debugger.txt',
+          'foo.tracer.txt',
+        ]);
+      });
+
+      it.each([
+        ['sonarr', SONARR_LOG_FILE_CONFIG],
+        ['radarr', RADARR_LOG_FILE_CONFIG],
+        ['prowlarr', PROWLARR_LOG_FILE_CONFIG],
+        ['whisparr', WHISPARR_LOG_FILE_CONFIG],
+        ['lidarr', LIDARR_LOG_FILE_CONFIG],
+        ['readarr', READARR_LOG_FILE_CONFIG],
+        ['arr', ARR_LOG_FILE_CONFIG],
+      ])(
+        '%s config ingests main and rotated logs but not debug/trace logs',
+        async (app, config) => {
+          const name = app === 'arr' ? 'radarr' : app;
+          const wanted = [`${name}.txt`, `${name}.0.txt`, `${name}.1.txt`, `${name}.9.txt`];
+          const unwanted = [
+            `${name}.debug.txt`,
+            `${name}.debug.0.txt`,
+            `${name}.debug.49.txt`,
+            `${name}.trace.txt`,
+            `${name}.trace.3.txt`,
+          ];
+          mockDir([...wanted, ...unwanted]);
+
+          const files = await service.discoverLogFiles(
+            ['/logs'],
+            [...config.filePatterns],
+            [...(config.excludePatterns ?? [])]
+          );
+
+          expect(files.map((f) => f.replace('/logs/', '')).sort()).toEqual([...wanted].sort());
+        }
+      );
+    });
+
     it('should skip non-existent paths', async () => {
       vi.mocked(existsSync).mockReturnValue(false);
 

@@ -40,6 +40,7 @@ interface LogFileConfig {
     macos: readonly string[];
   };
   filePatterns: readonly string[];
+  excludePatterns?: readonly string[];
   encoding?: string;
   rotatesDaily?: boolean;
   datePattern?: RegExp;

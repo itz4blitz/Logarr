@@ -12,6 +12,7 @@ import {
   extractArrMetadata,
   getArrSeverityBoost,
   ARR_LOG_FILE_CONFIG,
+  ARR_LOG_EXCLUDE_PATTERNS,
   SONARR_LOG_FILE_CONFIG,
   RADARR_LOG_FILE_CONFIG,
   LIDARR_LOG_FILE_CONFIG,
@@ -363,6 +364,26 @@ describe('Arr Parser', () => {
     it('should not change info level', () => {
       expect(getArrSeverityBoost('Disk space check', 'info')).toBe('info');
     });
+  });
+});
+
+describe('ARR_LOG_EXCLUDE_PATTERNS', () => {
+  const configs = {
+    ARR_LOG_FILE_CONFIG,
+    SONARR_LOG_FILE_CONFIG,
+    RADARR_LOG_FILE_CONFIG,
+    LIDARR_LOG_FILE_CONFIG,
+    READARR_LOG_FILE_CONFIG,
+    PROWLARR_LOG_FILE_CONFIG,
+    WHISPARR_LOG_FILE_CONFIG,
+  };
+
+  it.each(Object.entries(configs))('%s excludes debug and trace logs', (_name, config) => {
+    expect(config.excludePatterns).toEqual(ARR_LOG_EXCLUDE_PATTERNS);
+  });
+
+  it('lists debug and trace patterns', () => {
+    expect(ARR_LOG_EXCLUDE_PATTERNS).toEqual(['*.debug.*', '*.trace.*']);
   });
 });
 

@@ -18,6 +18,7 @@ interface LogFileConfig {
     macos: readonly string[];
   };
   filePatterns: readonly string[];
+  excludePatterns?: readonly string[];
   encoding?: string;
   rotatesDaily?: boolean;
   datePattern?: RegExp;
@@ -37,6 +38,14 @@ interface LogParseResult {
 }
 
 /**
+ * *arr apps also write rolling debug/trace logs next to the main log
+ * (e.g. radarr.debug.txt, radarr.debug.0.txt ... radarr.trace.3.txt). These duplicate the
+ * main log at higher verbosity, so file ingestion must skip them. Only the main log
+ * (<app>.txt) and its numbered rotations (<app>.N.txt) are ingested.
+ */
+export const ARR_LOG_EXCLUDE_PATTERNS: readonly string[] = ['*.debug.*', '*.trace.*'];
+
+/**
  * Log file configuration for Sonarr
  */
 export const SONARR_LOG_FILE_CONFIG: LogFileConfig = {
@@ -51,6 +60,7 @@ export const SONARR_LOG_FILE_CONFIG: LogFileConfig = {
     macos: ['~/.config/Sonarr/logs', '~/Library/Application Support/Sonarr/logs'],
   },
   filePatterns: ['sonarr.txt', 'sonarr.*.txt', '*.log'],
+  excludePatterns: ARR_LOG_EXCLUDE_PATTERNS,
   encoding: 'utf-8',
   rotatesDaily: true,
   datePattern: /sonarr\.(\d{4}-\d{2}-\d{2})\.txt$/,
@@ -71,6 +81,7 @@ export const RADARR_LOG_FILE_CONFIG: LogFileConfig = {
     macos: ['~/.config/Radarr/logs', '~/Library/Application Support/Radarr/logs'],
   },
   filePatterns: ['radarr.txt', 'radarr.*.txt', '*.log'],
+  excludePatterns: ARR_LOG_EXCLUDE_PATTERNS,
   encoding: 'utf-8',
   rotatesDaily: true,
   datePattern: /radarr\.(\d{4}-\d{2}-\d{2})\.txt$/,
@@ -91,6 +102,7 @@ export const LIDARR_LOG_FILE_CONFIG: LogFileConfig = {
     macos: ['~/.config/Lidarr/logs', '~/Library/Application Support/Lidarr/logs'],
   },
   filePatterns: ['lidarr.txt', 'lidarr.*.txt', '*.log'],
+  excludePatterns: ARR_LOG_EXCLUDE_PATTERNS,
   encoding: 'utf-8',
   rotatesDaily: true,
   datePattern: /lidarr\.(\d{4}-\d{2}-\d{2})\.txt$/,
@@ -111,6 +123,7 @@ export const READARR_LOG_FILE_CONFIG: LogFileConfig = {
     macos: ['~/.config/Readarr/logs', '~/Library/Application Support/Readarr/logs'],
   },
   filePatterns: ['readarr.txt', 'readarr.*.txt', '*.log'],
+  excludePatterns: ARR_LOG_EXCLUDE_PATTERNS,
   encoding: 'utf-8',
   rotatesDaily: true,
   datePattern: /readarr\.(\d{4}-\d{2}-\d{2})\.txt$/,
@@ -131,6 +144,7 @@ export const PROWLARR_LOG_FILE_CONFIG: LogFileConfig = {
     macos: ['~/.config/Prowlarr/logs', '~/Library/Application Support/Prowlarr/logs'],
   },
   filePatterns: ['prowlarr.txt', 'prowlarr.*.txt', '*.log'],
+  excludePatterns: ARR_LOG_EXCLUDE_PATTERNS,
   encoding: 'utf-8',
   rotatesDaily: true,
   datePattern: /prowlarr\.(\d{4}-\d{2}-\d{2})\.txt$/,
@@ -151,6 +165,7 @@ export const WHISPARR_LOG_FILE_CONFIG: LogFileConfig = {
     macos: ['~/.config/Whisparr/logs', '~/Library/Application Support/Whisparr/logs'],
   },
   filePatterns: ['whisparr.txt', 'whisparr.*.txt', '*.log'],
+  excludePatterns: ARR_LOG_EXCLUDE_PATTERNS,
   encoding: 'utf-8',
   rotatesDaily: true,
   datePattern: /whisparr\.(\d{4}-\d{2}-\d{2})\.txt$/,
@@ -167,6 +182,7 @@ export const ARR_LOG_FILE_CONFIG: LogFileConfig = {
     macos: ['~/.config/*/logs'],
   },
   filePatterns: ['*.txt', '*.log'],
+  excludePatterns: ARR_LOG_EXCLUDE_PATTERNS,
   encoding: 'utf-8',
   rotatesDaily: true,
 };
