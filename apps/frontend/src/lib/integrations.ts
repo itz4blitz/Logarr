@@ -477,7 +477,7 @@ export const integrations: Integration[] = [
     id: 'qbittorrent',
     name: 'qBittorrent',
     description:
-      'Free and reliable P2P BitTorrent client (WebUI API v2). Supports username/password, authentication bypass and API keys (5.3+)',
+      'Free and reliable P2P BitTorrent client (WebUI API v2). Supports username/password, authentication bypass and API keys (5.2+)',
     category: 'download_clients',
     status: 'available',
     connectionType: 'api_basic',
@@ -502,7 +502,7 @@ export const integrations: Integration[] = [
         name: 'password',
         label: 'Password / API key',
         type: 'password',
-        placeholder: 'WebUI password, or API key (qBittorrent 5.3+)',
+        placeholder: 'WebUI password, or API key (qBittorrent 5.2+)',
         description:
           "With a username: the WebUI password. Without a username: an API key. Leave both empty if authentication is bypassed for Logarr's IP",
         required: false,

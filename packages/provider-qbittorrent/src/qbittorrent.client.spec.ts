@@ -384,7 +384,7 @@ describe('QBittorrentClient', () => {
       const client = new QBittorrentClient(uniqueUrl(), { secret: '' });
 
       await expect(client.getVersion()).rejects.toThrow(
-        'qBittorrent requires authentication; configure username/password (or an API key for >= 5.3)'
+        'qBittorrent requires authentication; configure username/password (or an API key for >= 5.2)'
       );
     });
   });
@@ -409,7 +409,7 @@ describe('QBittorrentClient', () => {
 
       const error = await client.getVersion().catch((e: unknown) => e as Error);
       expect((error as Error).message).toBe(
-        'API key rejected (API keys require qBittorrent >= 5.3)'
+        'API key rejected (API keys require qBittorrent >= 5.2)'
       );
       expect((error as Error).message).not.toContain('qbt_supersecret');
     });

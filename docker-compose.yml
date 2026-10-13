@@ -77,7 +77,7 @@ services:
       WHISPARR_API_KEY: ${WHISPARR_API_KEY:-}
       LIDARR_URL: ${LIDARR_URL:-}
       LIDARR_API_KEY: ${LIDARR_API_KEY:-}
-      # qBittorrent: username + password, or only a password/API key (5.3+), or neither (auth bypass)
+      # qBittorrent: username + password, or only a password/API key (5.2+), or neither (auth bypass)
       QBITTORRENT_URL: ${QBITTORRENT_URL:-}
       QBITTORRENT_USERNAME: ${QBITTORRENT_USERNAME:-}
       QBITTORRENT_PASSWORD: ${QBITTORRENT_PASSWORD:-}

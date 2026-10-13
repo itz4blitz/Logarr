@@ -39,7 +39,7 @@ export const QBITTORRENT_LOG_TYPE = {
 /**
  * How the client authenticates, derived from the stored credentials:
  * - login: username + password -> POST /auth/login and session cookie
- * - apiKey: no username, non-empty secret -> Authorization: Bearer (qBittorrent >= 5.3)
+ * - apiKey: no username, non-empty secret -> Authorization: Bearer (qBittorrent >= 5.2)
  * - none: no credentials (WebUI authentication bypass)
  */
 export type QBittorrentAuthMode = 'login' | 'apiKey' | 'none';

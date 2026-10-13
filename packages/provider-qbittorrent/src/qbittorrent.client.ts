@@ -160,10 +160,10 @@ export class QBittorrentClient {
           throw new Error('qBittorrent authentication failed after re-login');
         }
       } else if (this.authMode === 'apiKey') {
-        throw new Error('API key rejected (API keys require qBittorrent >= 5.3)');
+        throw new Error('API key rejected (API keys require qBittorrent >= 5.2)');
       } else {
         throw new Error(
-          'qBittorrent requires authentication; configure username/password (or an API key for >= 5.3)'
+          'qBittorrent requires authentication; configure username/password (or an API key for >= 5.2)'
         );
       }
     }

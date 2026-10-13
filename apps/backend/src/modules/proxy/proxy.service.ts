@@ -43,6 +43,12 @@ export class ProxyService {
     sabnzbd: '/api',
   };
 
+  // Per-provider API key auth headers (default: X-Api-Key). Released qBittorrent (>= 5.2) only
+  // accepts `Authorization: Bearer <key>`; X-API-Key exists on qBittorrent master only.
+  private readonly authHeaderMap: Record<string, (key: string) => Record<string, string>> = {
+    qbittorrent: (key) => ({ Authorization: `Bearer ${key}`, 'X-Api-Key': key }),
+  };
+
   constructor(
     @Inject(DATABASE_CONNECTION)
     private readonly db: PostgresJsDatabase<typeof schema>,
@@ -85,6 +91,15 @@ export class ProxyService {
     return server;
   }
 
+  private buildAuthHeaders(server: ServerWithConfig): Record<string, string> {
+    if (server.apiKey === '') {
+      return {};
+    }
+    return (this.authHeaderMap[server.providerId] ?? ((key) => ({ 'X-Api-Key': key })))(
+      server.apiKey
+    );
+  }
+
   /**
    * Proxy request to target service with enhanced features
    */
@@ -97,11 +112,11 @@ export class ProxyService {
     const server = await this.findUserServer(serverId);
 
     // Servers with a stored username authenticate with a cookie session (username/password
-    // login), which the proxy cannot do. API-key servers work: qBittorrent >= 5.3 accepts the
-    // key in the X-API-Key header (and as Bearer token); auth-bypass servers need no header.
+    // login), which the proxy cannot do. API-key servers work (qBittorrent >= 5.2 takes the key as
+    // a Bearer token, see authHeaderMap); auth-bypass servers need no header.
     if (server.username) {
       throw new BadRequestException(
-        'The request proxy does not support servers that use username/password login (cookie session). Use an API key (qBittorrent 5.3+) or authentication bypass instead.'
+        'The request proxy does not support servers that use username/password login (cookie session). Use an API key (qBittorrent 5.2+) or authentication bypass instead.'
       );
     }
 
@@ -113,7 +128,7 @@ export class ProxyService {
     // 3. Merge headers
     const headers: Record<string, string> = {
       // Providers without credentials (e.g. qBittorrent auth bypass) store an empty key
-      ...(server.apiKey !== '' && { 'X-Api-Key': server.apiKey }),
+      ...this.buildAuthHeaders(server),
       'Content-Type': 'application/json',
       ...dto.headers,
     };

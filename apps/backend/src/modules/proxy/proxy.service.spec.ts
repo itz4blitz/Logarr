@@ -451,7 +451,7 @@ describe('ProxyService', () => {
         ).rejects.toThrow(/cookie session/);
       });
 
-      it('should send X-Api-Key for API key setups without username', async () => {
+      it('should send Authorization: Bearer (and X-Api-Key) for API key setups without username', async () => {
         configureMockDb(mockDb, {
           select: [{ ...qbitServer, apiKey: 'qbt-key', username: null }],
         });
@@ -461,7 +461,10 @@ describe('ProxyService', () => {
 
         expect(mockHttpService.request).toHaveBeenCalledWith(
           expect.objectContaining({
-            headers: expect.objectContaining({ 'X-Api-Key': 'qbt-key' }),
+            headers: expect.objectContaining({
+              Authorization: 'Bearer qbt-key',
+              'X-Api-Key': 'qbt-key',
+            }),
           })
         );
       });
@@ -476,6 +479,7 @@ describe('ProxyService', () => {
           headers: Record<string, string>;
         };
         expect(call.headers).not.toHaveProperty('X-Api-Key');
+        expect(call.headers).not.toHaveProperty('Authorization');
       });
     });
 
