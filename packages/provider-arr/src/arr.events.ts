@@ -76,3 +76,19 @@ export function describeArrEvent(name: string, table: ArrEventTable): ArrEventDe
 
   return { label: humanize(name), severity: /fail/i.test(name) ? 'error' : 'info' };
 }
+
+/**
+ * Deterministic short hash (two independent 32-bit FNV-1a passes, 16 hex chars).
+ * Used to build stable activity ids from free-form text; not cryptographic.
+ */
+export function stableArrHash(...parts: readonly string[]): string {
+  const input = parts.join('\u0000');
+  let h1 = 0x811c9dc5;
+  let h2 = 0x01000193 ^ 0xdeadbeef;
+  for (let i = 0; i < input.length; i++) {
+    const code = input.charCodeAt(i);
+    h1 = Math.imul(h1 ^ code, 0x01000193) >>> 0;
+    h2 = Math.imul(h2 ^ code, 0x85ebca6b) >>> 0;
+  }
+  return h1.toString(16).padStart(8, '0') + h2.toString(16).padStart(8, '0');
+}

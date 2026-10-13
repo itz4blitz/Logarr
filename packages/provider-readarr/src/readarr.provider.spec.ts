@@ -615,6 +615,40 @@ describe('ReadarrProvider', () => {
       expect(queue?.overview).toBe('No files found');
     });
 
+    it('should keep standing health and queue warnings stable across polls', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-10-10T12:00:00Z'));
+      routeFetch(mockFetch, {
+        health: [{ source: 'MetadataCheck', type: 'error', message: 'BookInfo unreachable' }],
+        queue: {
+          records: [
+            {
+              id: 1,
+              title: 'Dune',
+              downloadId: 'ABC123',
+              trackedDownloadStatus: 'warning',
+              trackedDownloadState: 'importPending',
+              statusMessages: [{ title: 't', messages: ['No files found'] }],
+            },
+          ],
+        },
+      });
+      await provider.connect({ url: BASE_URL, apiKey: API_KEY });
+
+      const first = await provider.getActivity();
+      vi.setSystemTime(new Date('2026-10-10T12:00:30Z'));
+      const second = await provider.getActivity();
+      const standingIds = (list: typeof first): string[] =>
+        list
+          .filter((a) => a.type === 'health_error' || a.type === 'queue_warning')
+          .map((a) => a.id);
+
+      expect(standingIds(first)).toHaveLength(2);
+      expect(standingIds(second)).toEqual(standingIds(first));
+      expect(standingIds(first)[0]).toMatch(/^readarr-health-/);
+      expect(standingIds(first)[1]).toMatch(/^readarr-queue-1-warning-importPending-/);
+    });
+
     it('should still return history when the health request fails', async () => {
       mockFetch.mockImplementation((input: string) => {
         const pathname = new URL(input).pathname;
