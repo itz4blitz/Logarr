@@ -51,17 +51,21 @@ const ISSUE_TYPE_LABELS: Record<number, string> = {
   4: 'Other',
 };
 
+/**
+ * Display name for a Seerr user. Seerr fills `displayName` with the email address
+ * when an account has no username, so username fields are preferred and anything
+ * that looks like an email is never surfaced.
+ */
 function userName(user: SeerrUser | undefined): string | undefined {
   if (user === undefined) {
     return undefined;
   }
-  return (
-    user.displayName ??
-    user.username ??
-    user.plexUsername ??
-    user.jellyfinUsername ??
-    `user ${user.id}`
+  const candidates = [user.username, user.plexUsername, user.jellyfinUsername, user.displayName];
+  const name = candidates.find(
+    (candidate): candidate is string =>
+      candidate !== undefined && candidate.trim() !== '' && !candidate.includes('@')
   );
+  return name ?? `user ${user.id}`;
 }
 
 function mediaLabel(media: SeerrMediaInfo | undefined, fallback: string): string {
@@ -93,10 +97,6 @@ export class SeerrProvider implements MediaServerProvider {
 
   private client: SeerrClient | null = null;
   private config: ProviderConfig | null = null;
-
-  // ===========================================================================
-  // Connection Lifecycle
-  // ===========================================================================
 
   async connect(config: ProviderConfig): Promise<void> {
     this.config = config;
@@ -130,10 +130,6 @@ export class SeerrProvider implements MediaServerProvider {
     return this.fetchServerInfo(this.getClient());
   }
 
-  // ===========================================================================
-  // Log Files
-  // ===========================================================================
-
   getLogPaths(): Promise<readonly string[]> {
     if (this.config?.logPath !== undefined) {
       return Promise.resolve([this.config.logPath]);
@@ -161,10 +157,6 @@ export class SeerrProvider implements MediaServerProvider {
     return SEERR_CORRELATION_PATTERNS;
   }
 
-  // ===========================================================================
-  // Sessions / Users (not applicable)
-  // ===========================================================================
-
   getSessions(): Promise<readonly NormalizedSession[]> {
     return Promise.resolve([]);
   }
@@ -172,10 +164,6 @@ export class SeerrProvider implements MediaServerProvider {
   getUsers(): Promise<readonly NormalizedUser[]> {
     return Promise.resolve([]);
   }
-
-  // ===========================================================================
-  // Activity
-  // ===========================================================================
 
   /**
    * Requests and issues. One source failing does not hide the other; if both
@@ -210,10 +198,6 @@ export class SeerrProvider implements MediaServerProvider {
     return activities.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
   }
 
-  // ===========================================================================
-  // Private Helpers
-  // ===========================================================================
-
   private getClient(): SeerrClient {
     if (this.client === null) {
       throw new Error('Not connected');
@@ -230,9 +214,10 @@ export class SeerrProvider implements MediaServerProvider {
    * Page through a list (newest modification first) until an item older than
    * `since` is seen, a short page is returned or the page cap is reached.
    *
-   * Trade-off: the cap (3 pages = 150 items per poll) bounds the number of API
-   * calls (Seerr rate limits to 50 req/60 s). If more than 150 items changed since
-   * the last poll, the oldest ones are skipped; this is logged as a warning.
+   * Trade-off: the cap (3 pages = 150 items per source and poll) bounds the number
+   * of API calls and the amount of data handled in a single poll, e.g. after the
+   * server was unreachable for a long time. If more than 150 items changed since
+   * the last poll, the oldest ones are skipped and a warning is logged.
    */
   private async collect(
     client: SeerrClient,

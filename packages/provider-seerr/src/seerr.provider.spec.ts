@@ -579,6 +579,46 @@ describe('SeerrProvider', () => {
       expect(ids.some((id) => id.includes('undefined'))).toBe(false);
     });
 
+    it.each([
+      [
+        'prefers username over displayName',
+        { id: 3, username: 'carol', displayName: 'Carol C' },
+        'carol',
+      ],
+      [
+        'prefers plexUsername over displayName',
+        { id: 3, plexUsername: 'plexcarol', displayName: 'Carol C' },
+        'plexcarol',
+      ],
+      [
+        'prefers jellyfinUsername over displayName',
+        { id: 3, jellyfinUsername: 'jfcarol', displayName: 'Carol C' },
+        'jfcarol',
+      ],
+      ['uses displayName when no username exists', { id: 3, displayName: 'Carol C' }, 'Carol C'],
+      [
+        'skips an email displayName (Seerr default)',
+        { id: 3, displayName: 'carol@example.com' },
+        'user 3',
+      ],
+      [
+        'skips an email username but uses the next candidate',
+        { id: 3, username: 'c@example.com', jellyfinUsername: 'jfcarol' },
+        'jfcarol',
+      ],
+      ['skips blank names', { id: 3, username: '  ', displayName: '' }, 'user 3'],
+    ])('requester name: %s', async (_name, requestedBy, expected) => {
+      const p = await connected();
+      route({
+        '/request': () =>
+          ok(paged([{ id: 1, status: 2, updatedAt: '2026-10-10T12:00:00.000Z', requestedBy }])),
+        '/issue': () => ok(paged([])),
+      });
+      const [a] = await p.getActivity();
+      expect(a?.overview).toContain(`requested by ${expected})`);
+      expect(a?.overview).not.toContain('@');
+    });
+
     it('never puts email addresses into overviews', async () => {
       const p = await connected();
       route({

@@ -15,10 +15,6 @@ import type {
   ParsedLogEntry,
 } from '@logarr/core';
 
-// =============================================================================
-// Log File Configuration
-// =============================================================================
-
 /**
  * Configuration for Seerr log file ingestion.
  *
@@ -38,10 +34,6 @@ export const SEERR_LOG_FILE_CONFIG: LogFileConfig = {
   rotatesDaily: true,
   datePattern: /(?:over|jelly)?seerr-(\d{4}-\d{2}-\d{2})\.log$/,
 };
-
-// =============================================================================
-// Patterns
-// =============================================================================
 
 /**
  * Main log line pattern
@@ -66,10 +58,6 @@ export const SEERR_CORRELATION_PATTERNS: readonly CorrelationPattern[] = [
   { name: 'tmdbId', pattern: /\btmdb(?:Id)?["=:\s]+(\d+)/i },
   { name: 'userId', pattern: /\buser(?:Id)?["=:\s]+(\d+)/i },
 ];
-
-// =============================================================================
-// Helpers
-// =============================================================================
 
 function stripAnsi(text: string): string {
   return text.replace(ANSI_PATTERN, '');
@@ -123,10 +111,6 @@ function splitMetadata(rest: string): {
   }
   return { message: rest, metadata: undefined };
 }
-
-// =============================================================================
-// Main Parsing Functions
-// =============================================================================
 
 /**
  * Parse a single Seerr log line.
