@@ -278,6 +278,7 @@ export abstract class ArrBaseProvider implements MediaServerProvider {
         overview: check.message,
         severity: check.type === 'error' ? 'error' : ('warn' as const),
         timestamp: new Date(),
+        advancesSyncCursor: false,
       }));
   }
 
@@ -295,6 +296,7 @@ export abstract class ArrBaseProvider implements MediaServerProvider {
           item.errorMessage ?? item.statusMessages.map((m) => m.messages.join(', ')).join('; '),
         severity: 'warn' as const,
         timestamp: new Date(),
+        advancesSyncCursor: false,
       }));
   }
 
