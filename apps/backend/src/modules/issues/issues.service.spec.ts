@@ -968,7 +968,7 @@ describe('IssuesService', () => {
           [Symbol.toStringTag]: 'Promise',
         };
       });
-      configureMockDb(mockDb, { update: [], insert: [] });
+      configureMockDb(mockDb, { update: [], insert: [{ id: 'occ-1' }] });
 
       const result = await service.processLogEntry(mockLogEntry as any);
 
@@ -992,7 +992,7 @@ describe('IssuesService', () => {
       mockDb.insert = vi.fn().mockImplementation(() => ({
         values: vi.fn().mockReturnThis(),
         returning: vi.fn().mockResolvedValue([{ id: 'new-issue' }]),
-        onConflictDoNothing: vi.fn().mockResolvedValue([]),
+        onConflictDoNothing: vi.fn().mockReturnThis(),
       }));
 
       const result = await service.processLogEntry(mockLogEntry as any);
@@ -1017,7 +1017,7 @@ describe('IssuesService', () => {
       mockDb.insert = vi.fn().mockImplementation(() => ({
         values: vi.fn().mockReturnThis(),
         returning: vi.fn().mockResolvedValue([]), // Empty result
-        onConflictDoNothing: vi.fn().mockResolvedValue([]),
+        onConflictDoNothing: vi.fn().mockReturnThis(),
       }));
 
       const result = await service.processLogEntry(mockLogEntry as any);
@@ -1043,7 +1043,7 @@ describe('IssuesService', () => {
       mockDb.insert = vi.fn().mockImplementation(() => ({
         values: vi.fn().mockReturnThis(),
         returning: vi.fn().mockResolvedValue([{ id: 'new-issue' }]),
-        onConflictDoNothing: vi.fn().mockResolvedValue([]),
+        onConflictDoNothing: vi.fn().mockReturnThis(),
       }));
 
       const result = await service.processLogEntry(logWithoutUser as any);
@@ -1070,7 +1070,7 @@ describe('IssuesService', () => {
         mockDb.insert = vi.fn().mockImplementation(() => ({
           values: vi.fn().mockReturnThis(),
           returning: vi.fn().mockResolvedValue([{ id: 'new-issue' }]),
-          onConflictDoNothing: vi.fn().mockResolvedValue([]),
+          onConflictDoNothing: vi.fn().mockReturnThis(),
         }));
 
         const result = await service.processLogEntry(mockLogEntry as any);
