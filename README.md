@@ -309,6 +309,7 @@ qBittorrent is a standalone provider (WebUI API v2) and is detected from the sto
 
 Environment variables for auto-setup: `QBITTORRENT_URL`, `QBITTORRENT_USERNAME`, `QBITTORRENT_PASSWORD`.
 
+- Stored passwords and API keys are never returned by the API. When editing a source, leave the password / API key field empty to keep the stored value. The request proxy sends API keys to qBittorrent as `Authorization: Bearer` and does not support username/password sources.
 - qBittorrent bans an IP for 1 hour after 5 failed logins. After a failed login Logarr backs off (5, 15, then 60 minutes) instead of retrying every poll; fix the credentials and edit the source to retry immediately.
 - Behind a reverse proxy or with Host header validation enabled, qBittorrent may answer 401; allow Logarr's host name in "Server domains".
 - The API log feed only reports warnings and critical messages, and is skipped when a log path is configured (the `qbittorrent.log` file is tailed instead). Log file timestamps have no timezone: set the backend `TZ` to qBittorrent's timezone.

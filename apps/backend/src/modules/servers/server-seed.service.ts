@@ -92,6 +92,21 @@ const ENV_SERVER_CONFIGS: EnvServerConfig[] = [
   },
 ];
 
+/**
+ * Describe a seeding error without its message: Drizzle query errors include the bound
+ * parameters, which would put credentials (e.g. QBITTORRENT_PASSWORD) into the logs.
+ */
+export function describeSeedError(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return 'Unknown error';
+  }
+  const withCode = error as Error & { code?: unknown; cause?: { code?: unknown } };
+  const code = withCode.code ?? withCode.cause?.code;
+  return typeof code === 'string' || typeof code === 'number'
+    ? `${error.name} (code ${code})`
+    : error.name;
+}
+
 @Injectable()
 export class ServerSeedService implements OnModuleInit {
   private readonly logger = new Logger(ServerSeedService.name);
@@ -107,8 +122,11 @@ export class ServerSeedService implements OnModuleInit {
     try {
       await this.seedServersFromEnv();
     } catch (error) {
-      this.logger.error(`ServerSeedService failed: ${error}`);
-      throw error;
+      const description = describeSeedError(error);
+      this.logger.error(`ServerSeedService failed: ${description}`);
+      // Do not rethrow the original error: Drizzle errors embed the bound query parameters
+      // (including the stored credentials) in their message
+      throw new Error(`ServerSeedService failed: ${description}`);
     }
   }
 
@@ -186,7 +204,9 @@ export class ServerSeedService implements OnModuleInit {
           `Auto-configured server from env: ${config.name} (${config.providerId})${logStatus}`
         );
       } catch (error) {
-        this.logger.warn(`Failed to auto-configure server ${config.name}: ${error}`);
+        this.logger.warn(
+          `Failed to auto-configure server ${config.name}: ${describeSeedError(error)}`
+        );
       }
     }
 

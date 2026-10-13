@@ -1,8 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, type vi } from 'vitest';
+import { Logger } from '@nestjs/common';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createMockDb, configureMockDb, type MockDb } from '../../test/mock-db';
 
-import { ServerSeedService } from './server-seed.service';
+import { ServerSeedService, describeSeedError } from './server-seed.service';
 
 const SEEDED_ENV_KEYS = [
   'JELLYFIN_URL',
@@ -140,5 +141,56 @@ describe('ServerSeedService - qBittorrent', () => {
     await service.onModuleInit();
 
     expect(mockDb.insert).not.toHaveBeenCalled();
+  });
+
+  describe('failure logging', () => {
+    const failingInsert = (error: Error): void => {
+      mockDb.insert = vi.fn().mockImplementation(() => ({
+        values: () => Promise.reject(error),
+      }));
+    };
+
+    it('does not log the database error message (it contains bound parameters)', async () => {
+      process.env['QBITTORRENT_URL'] = 'http://qbit:8080';
+      process.env['QBITTORRENT_USERNAME'] = 'admin';
+      process.env['QBITTORRENT_PASSWORD'] = 'super-secret-pw';
+      failingInsert(
+        Object.assign(
+          new Error('Failed query: insert into "servers" ... params: admin,super-secret-pw'),
+          { name: 'DrizzleQueryError', cause: { code: '23505' } }
+        )
+      );
+      const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+      await service.onModuleInit();
+
+      const logged = JSON.stringify(warn.mock.calls);
+      expect(logged).not.toContain('super-secret-pw');
+      expect(logged).toContain('DrizzleQueryError (code 23505)');
+      warn.mockRestore();
+    });
+
+    it('rethrows a sanitized error when seeding itself fails', async () => {
+      process.env['JELLYFIN_URL'] = 'http://jf';
+      process.env['JELLYFIN_API_KEY'] = 'k';
+      mockDb.select = vi.fn().mockImplementation(() => {
+        throw new Error('select ... params: super-secret-pw');
+      });
+      const error = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+
+      const result = service.onModuleInit();
+
+      await expect(result).rejects.toThrow('ServerSeedService failed: Error');
+      await expect(result).rejects.not.toThrow(/super-secret-pw/);
+      expect(JSON.stringify(error.mock.calls)).not.toContain('super-secret-pw');
+      error.mockRestore();
+    });
+
+    it('describes non-errors and coded errors safely', () => {
+      expect(describeSeedError('boom super-secret-pw')).toBe('Unknown error');
+      expect(describeSeedError(Object.assign(new Error('x'), { code: 'ECONNREFUSED' }))).toBe(
+        'Error (code ECONNREFUSED)'
+      );
+    });
   });
 });
