@@ -114,7 +114,10 @@ export class ServersService {
       throw new Error(`Unknown provider: ${dto.providerId}`);
     }
 
-    if (provider.capabilities.apiKeyOptional !== true && (dto.apiKey ?? '') === '') {
+    // A pasted trailing newline/space would make the Authorization header invalid
+    const apiKey = dto.apiKey?.trim() ?? '';
+
+    if (provider.capabilities.apiKeyOptional !== true && apiKey === '') {
       throw new BadRequestException('API key is required');
     }
 
@@ -126,7 +129,7 @@ export class ServersService {
         url: dto.url,
         // apiKey may be empty only for providers with apiKeyOptional (e.g. qBittorrent auth bypass);
         // the column is NOT NULL
-        apiKey: dto.apiKey ?? '',
+        apiKey,
         // Only providers that authenticate with a username may store one
         username:
           provider.capabilities.supportsUsername === true
@@ -157,7 +160,8 @@ export class ServersService {
     const currentServer = await this.getServerRow(id);
 
     // An empty username clears it (stored as NULL)
-    const { username, apiKey, ...rest } = dto;
+    const { username, apiKey: rawApiKey, ...rest } = dto;
+    const apiKey = typeof rawApiKey === 'string' ? rawApiKey.trim() : rawApiKey;
     const provider = this.providers.get(currentServer.providerId);
 
     // An explicit null clears the stored secret, but only where credentials are optional

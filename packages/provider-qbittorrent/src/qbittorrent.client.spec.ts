@@ -562,4 +562,36 @@ describe('QBittorrentClient', () => {
       }
     });
   });
+  describe('network error redaction', () => {
+    it('never leaks the secret when fetch rejects an invalid header value', async () => {
+      const secret = 'super-secret-key\n';
+      mockFetch.mockRejectedValue(
+        new TypeError(`Headers.append: "Bearer ${secret}" is an invalid header value.`)
+      );
+      const client = new QBittorrentClient(uniqueUrl(), { secret });
+
+      const error = await client.getVersion().catch((e: Error) => e);
+
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).not.toContain('super-secret-key');
+      expect((error as Error).message).toBe(
+        'qBittorrent request failed: invalid credentials format'
+      );
+    });
+
+    it('hides ByteString errors and any message containing the secret', async () => {
+      mockFetch.mockRejectedValueOnce(
+        new TypeError('Cannot convert argument to a ByteString because of character 10')
+      );
+      const client = new QBittorrentClient(uniqueUrl(), { secret: 'abc123' });
+      const first = await client.getVersion().catch((e: Error) => e);
+      expect((first as Error).message).toBe(
+        'qBittorrent request failed: invalid credentials format'
+      );
+
+      mockFetch.mockRejectedValueOnce(new Error('weird failure for Authorization: Bearer abc123'));
+      const second = await client.getVersion().catch((e: Error) => e);
+      expect((second as Error).message).not.toContain('abc123');
+    });
+  });
 });

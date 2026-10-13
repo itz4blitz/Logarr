@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 
+import { redactSecrets } from './qbittorrent.redact.js';
 import { cooldowns, sessionCache } from './qbittorrent.state.js';
 
 import type {
@@ -315,7 +316,15 @@ export class QBittorrentClient {
     if (code === 'ECONNREFUSED' || code === 'ENOTFOUND' || code === 'EHOSTUNREACH') {
       return new Error(`Cannot reach qBittorrent at ${this.baseUrl}`);
     }
-    return new Error(`qBittorrent request failed: ${err.message ?? 'unknown error'}`);
+    const message = err.message ?? 'unknown error';
+    // fetch embeds the offending header value (the Bearer secret) in invalid-header errors
+    if (
+      /invalid header value|ByteString/i.test(message) ||
+      (this.secret !== '' && message.includes(this.secret))
+    ) {
+      return new Error('qBittorrent request failed: invalid credentials format');
+    }
+    return new Error(`qBittorrent request failed: ${redactSecrets(message)}`);
   }
 
   private storeCookies(headers: Headers): void {

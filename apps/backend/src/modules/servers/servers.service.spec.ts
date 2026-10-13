@@ -1286,6 +1286,49 @@ describe('ServersService', () => {
       expect(updatedValues()['name']).toBe('Renamed');
     });
 
+    it('trims whitespace and newlines from the API key on create', async () => {
+      configureMockDb(mockDb, { insert: [qbitServer] });
+
+      await service.create({ ...baseDto, apiKey: '  secret-key\n' });
+
+      expect(insertedValues()['apiKey']).toBe('secret-key');
+    });
+
+    it('rejects a whitespace-only API key on create when the provider requires one', async () => {
+      await expect(
+        service.create({
+          name: 'Sonarr',
+          providerId: 'sonarr',
+          url: 'http://localhost:8989',
+          apiKey: ' \n',
+        })
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('stores an empty key for whitespace-only input when the API key is optional', async () => {
+      configureMockDb(mockDb, { insert: [qbitServer] });
+
+      await service.create({ ...baseDto, apiKey: ' \n' });
+
+      expect(insertedValues()['apiKey']).toBe('');
+    });
+
+    it('trims the API key on update', async () => {
+      configureMockDb(mockDb, { select: [qbitServer], update: [qbitServer] });
+
+      await service.update('server-qbit', { apiKey: 'new-secret\r\n' });
+
+      expect(updatedValues()['apiKey']).toBe('new-secret');
+    });
+
+    it('keeps the stored API key when the update value is whitespace-only', async () => {
+      configureMockDb(mockDb, { select: [qbitServer], update: [qbitServer] });
+
+      await service.update('server-qbit', { apiKey: ' \n' });
+
+      expect(updatedValues()).not.toHaveProperty('apiKey');
+    });
+
     it('registers the qbittorrent provider without session support', () => {
       const qbit = service.getAvailableProviders().find((p) => p.id === 'qbittorrent');
       expect(qbit?.capabilities.supportsUsername).toBe(true);
