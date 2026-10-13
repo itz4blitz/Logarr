@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { QBittorrentClient } from './qbittorrent.client.js';
+import { parseQBittorrentLogLine } from './qbittorrent.parser.js';
 import { QBittorrentProvider } from './qbittorrent.provider.js';
 import { redactSecrets, trackerHost } from './qbittorrent.redact.js';
 
@@ -274,5 +275,72 @@ describe('QBittorrentProvider hardening', () => {
       .filter((url) => url.includes('/log/main'))
       .at(-1);
     expect(lastCall).toContain('last_known_id=4');
+  });
+});
+
+describe('redactSecrets - encoded keys and opaque tokens', () => {
+  it.each([
+    ['https://t/a?passkey%3Dsecret123&x=1', 'https://t/a?passkey%3D***&x=1'],
+    ['https://t/a%3Fpasskey%3Dsecret123%26x%3D1', 'https://t/a%3Fpasskey%3D***%26x%3D1'],
+    [
+      'url=https%3A%2F%2Ft%2Fa%3Fauthkey%3DSECRET%26z',
+      'url=https%3A%2F%2Ft%2Fa%3Fauthkey%3D***%26z',
+    ],
+    ['https://t/a?PassKey=Secret&b=2', 'https://t/a?PassKey=***&b=2'],
+    ['https://t/announce/ABCDEFGHIJKLMNOPQRSTUV', 'https://t/announce/***'],
+    ['https://t/ABCDEFGHIJKLMNOPQRSTUV/announce', 'https://t/***/announce'],
+    ['https://t/a1b2c3d4e5f6g7h8i9j0k1l2/scrape', 'https://t/***/scrape'],
+    ['https%3A%2F%2Ft%2Fannounce%2Fabcdefghij0123456789xyz', 'https%3A%2F%2Ft%2Fannounce/***'],
+    ['https://t/announce', 'https://t/announce'],
+    ['https://t/announce/short', 'https://t/announce/short'],
+    ['kpk=notakey and npk=x', 'kpk=notakey and npk=x'],
+  ])('masks %s', (input, expected) => {
+    expect(redactSecrets(input)).toBe(expected);
+  });
+
+  it('is applied to API log messages and file-parsed lines', () => {
+    const entry = parseQBittorrentLogLine(
+      '(W) 2026-10-10T12:00:00 - Tracker "https://t/announce/ABCDEFGHIJKLMNOPQRSTUV?passkey%3Dzzz" failed'
+    );
+    expect(entry?.message).not.toContain('ABCDEFGHIJ');
+    expect(entry?.message).not.toContain('zzz');
+    expect(entry?.raw).not.toContain('zzz');
+  });
+});
+
+describe('QBittorrentProvider sync cursor flags', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', mockFetch);
+    mockFetch.mockReset();
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('keeps synthetic rows out of the sync cursor but lets real log events advance it', async () => {
+    mockFetch.mockImplementation((url: unknown) => {
+      const path = new URL(String(url)).pathname.replace('/api/v2', '');
+      const bodies: Record<string, string> = {
+        '/app/version': 'v5.2.4',
+        '/app/webapiVersion': '2.15.1',
+        '/log/main': JSON.stringify([
+          { id: 1, message: 'real event', timestamp: 1_790_000_000, type: 4 },
+        ]),
+        '/torrents/info': JSON.stringify([{ hash: 'h', name: 'N', state: 'error' }]),
+        '/transfer/info': JSON.stringify({ connection_status: 'firewalled' }),
+      };
+      return Promise.resolve(
+        new Response(bodies[path] ?? 'nf', { status: bodies[path] ? 200 : 404 })
+      );
+    });
+    const provider = new QBittorrentProvider();
+    await provider.connect({ url: uniqueUrl(), apiKey: '' });
+
+    const activities = await provider.getActivity();
+
+    const byType = Object.fromEntries(activities.map((a) => [a.type, a.advancesSyncCursor]));
+    expect(byType['torrent_error']).toBe(false);
+    expect(byType['connection_status']).toBe(false);
+    expect(byType['log_warning']).toBeUndefined();
   });
 });

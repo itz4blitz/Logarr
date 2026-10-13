@@ -54,7 +54,7 @@ function severityOf(type: number): LogLevel {
 /**
  * qBittorrent download client provider.
  *
- * Supports username/password (cookie session), API keys (qBittorrent >= 5.3) and
+ * Supports username/password (cookie session), API keys (qBittorrent >= 5.2) and
  * authentication bypass. Credentials: `apiKey` holds the password (or the API key when no
  * username is configured).
  */
@@ -273,8 +273,8 @@ export class QBittorrentProvider implements MediaServerProvider {
 
   private async fetchTorrentErrors(client: QBittorrentClient): Promise<NormalizedActivity[]> {
     const torrents = await client.getErroredTorrents();
-    // Synthetic detection time. Note: it also advances lastActivitySync (accepted trade-off:
-    // the log feed re-reads from its own id cursor, so no log messages are lost).
+    // Synthetic detection time: these rows are flagged advancesSyncCursor: false so they never
+    // move lastActivitySync, which therefore only follows real log event times.
     const timestamp = new Date();
     const day = timestamp.toISOString().slice(0, 10);
     return torrents.map((torrent) => ({
@@ -290,6 +290,8 @@ export class QBittorrentProvider implements MediaServerProvider {
       severity: 'error' as const,
       itemId: torrent.hash,
       timestamp,
+      // Detection time, not an event time: must not move the lastActivitySync cursor
+      advancesSyncCursor: false,
       metadata: {
         hash: torrent.hash,
         state: torrent.state,
@@ -311,7 +313,7 @@ export class QBittorrentProvider implements MediaServerProvider {
       return [];
     }
 
-    // Synthetic detection time (see fetchTorrentErrors)
+    // Synthetic detection time (see fetchTorrentErrors), also advancesSyncCursor: false
     const timestamp = new Date();
     const day = timestamp.toISOString().slice(0, 10);
     if (previous?.status === status && previous.reportedDay === day) {
@@ -327,6 +329,7 @@ export class QBittorrentProvider implements MediaServerProvider {
         overview: `qBittorrent reports it is ${status} (check port forwarding / network binding)`,
         severity: status === 'disconnected' ? 'error' : 'warn',
         timestamp,
+        advancesSyncCursor: false,
         metadata: {
           connectionStatus: status,
           dhtNodes: info.dht_nodes,
