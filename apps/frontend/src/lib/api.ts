@@ -43,7 +43,8 @@ export interface CreateServerDto {
 export interface UpdateServerDto {
   name?: string;
   url?: string;
-  apiKey?: string;
+  /** Omit or send '' to keep the stored secret; null clears it (providers with optional credentials) */
+  apiKey?: string | null;
   username?: string;
   logPath?: string;
   fileIngestionEnabled?: boolean;

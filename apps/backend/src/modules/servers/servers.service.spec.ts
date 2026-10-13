@@ -1423,6 +1423,24 @@ describe('ServersService', () => {
         expect(updatedValues()).not.toHaveProperty('apiKey');
       });
 
+      it('clears the stored secret when apiKey is null (credentials optional)', async () => {
+        await service.update('server-qbit', { apiKey: null });
+
+        expect(updatedValues()['apiKey']).toBe('');
+      });
+
+      it('rejects clearing the secret for providers that require one', async () => {
+        configureMockDb(mockDb, {
+          select: [{ ...mockServer, providerId: 'sonarr', apiKey: 'k' }],
+          update: [mockServer],
+        });
+
+        await expect(service.update('server-1', { apiKey: null })).rejects.toThrow(
+          BadRequestException
+        );
+        expect(mockDb.update).not.toHaveBeenCalled();
+      });
+
       it('replaces the stored secret when a new apiKey is sent', async () => {
         await service.update('server-qbit', { apiKey: 'new-secret' });
 

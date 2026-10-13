@@ -104,11 +104,89 @@ describe('EditServerDialog credential validation', () => {
       expect(mutateAsync.mock.calls[0]![0].data.apiKey).toBe('new-password');
     });
 
+    it('offers to clear the stored password and sends apiKey: null when chosen', async () => {
+      const user = userEvent.setup();
+      renderDialog(qbit);
+
+      await user.click(screen.getByRole('button', { name: /clear stored password/i }));
+      expect(screen.getByText(/will be removed when you save/i)).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+      await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
+      expect(mutateAsync.mock.calls[0]![0].data.apiKey).toBeNull();
+    });
+
+    it('lets the user undo the clear action', async () => {
+      const user = userEvent.setup();
+      renderDialog(qbit);
+
+      await user.click(screen.getByRole('button', { name: /clear stored password/i }));
+      await user.click(screen.getByRole('button', { name: /keep stored password/i }));
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+      await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
+      expect(mutateAsync.mock.calls[0]![0].data).not.toHaveProperty('apiKey');
+    });
+
+    it('does not offer clearing when no secret is stored', () => {
+      renderDialog(makeServer({ providerId: 'qbittorrent', hasApiKey: false, username: null }));
+
+      expect(screen.queryByRole('button', { name: /clear stored password/i })).toBeNull();
+    });
+
+    it('requires a choice when the username is removed while a secret is stored', async () => {
+      const user = userEvent.setup();
+      renderDialog(qbit);
+
+      await user.clear(screen.getByPlaceholderText('admin'));
+      expect(screen.getByText(/would be used as an API key/i)).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+      expect(mutateAsync).not.toHaveBeenCalled();
+    });
+
+    it('keeps the secret as an API key when that choice is made', async () => {
+      const user = userEvent.setup();
+      renderDialog(qbit);
+
+      await user.clear(screen.getByPlaceholderText('admin'));
+      await user.click(screen.getByRole('button', { name: /keep it as an api key/i }));
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+      await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
+      const data = mutateAsync.mock.calls[0]![0].data;
+      expect(data.username).toBe('');
+      expect(data).not.toHaveProperty('apiKey');
+    });
+
+    it('clears the secret when that choice is made', async () => {
+      const user = userEvent.setup();
+      renderDialog(qbit);
+
+      await user.clear(screen.getByPlaceholderText('admin'));
+      await user.click(screen.getByRole('button', { name: /clear it/i }));
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+      await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
+      expect(mutateAsync.mock.calls[0]![0].data).toMatchObject({ username: '', apiKey: null });
+    });
+
+    it('does not ask when a new password is typed along with removing the username', async () => {
+      const user = userEvent.setup();
+      renderDialog(qbit);
+
+      await user.clear(screen.getByPlaceholderText('admin'));
+      await user.type(secretInput(), 'api-key-123');
+
+      expect(screen.queryByText(/would be used as an API key/i)).toBeNull();
+    });
+
     it('sends an empty username to clear it when the field is emptied', async () => {
       const user = userEvent.setup();
       renderDialog(qbit);
 
       await user.clear(screen.getByPlaceholderText('admin'));
+      await user.click(screen.getByRole('button', { name: /keep it as an api key/i }));
       await user.click(screen.getByRole('button', { name: /save changes/i }));
 
       await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
@@ -183,6 +261,12 @@ describe('EditServerDialog credential validation', () => {
       });
     }
   );
+
+  it('does not offer clearing the stored key for providers that require one', () => {
+    renderDialog(makeServer({ providerId: 'sonarr' }));
+
+    expect(screen.queryByRole('button', { name: /clear stored/i })).toBeNull();
+  });
 
   it('keeps the stored sonarr key when the field is empty and sends no username', async () => {
     const user = userEvent.setup();

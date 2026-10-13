@@ -62,6 +62,13 @@ describe('buildUpdateCredentials', () => {
     expect(buildUpdateCredentials('sonarr', { apiKey: '   ' })).toEqual({});
   });
 
+  it('sends apiKey: null to clear the stored secret and ignores a typed value', () => {
+    expect(buildUpdateCredentials('qbittorrent', { apiKey: 'typed' }, true)).toEqual({
+      apiKey: null,
+      username: '',
+    });
+  });
+
   it('never sends a username for other providers', () => {
     expect(buildUpdateCredentials('sonarr', { apiKey: 'k', username: 'x' })).toEqual({
       apiKey: 'k',

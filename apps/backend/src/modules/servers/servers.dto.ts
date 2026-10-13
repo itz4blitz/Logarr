@@ -46,9 +46,11 @@ export class UpdateServerDto {
 
   @ApiPropertyOptional({
     description:
-      'API key / token / password for authentication. Omit or leave empty to keep the stored value.',
+      'API key / token / password for authentication. Omit or send an empty string to keep the stored value. Send null to clear it (only for providers whose credentials are optional, e.g. qBittorrent with authentication bypass).',
+    type: String,
+    nullable: true,
   })
-  apiKey?: string;
+  apiKey?: string | null;
 
   @ApiPropertyOptional({
     description: 'Login username (qBittorrent). An empty string clears it.',

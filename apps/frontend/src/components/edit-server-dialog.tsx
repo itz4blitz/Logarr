@@ -95,6 +95,11 @@ export function EditServerDialog({ server, open, onOpenChange }: EditServerDialo
     [server.providerId, server.hasApiKey]
   );
   const hasUsername = supportsUsername(server.providerId);
+  // Deliberate removal of the stored secret (only offered where credentials are optional)
+  const canClearSecret = server.hasApiKey && areCredentialsOptional(server.providerId);
+  const [clearSecret, setClearSecret] = useState(false);
+  // What to do with the stored secret when the username is removed: no silent mode change
+  const [usernameChoice, setUsernameChoice] = useState<'keep' | 'clear' | null>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -111,9 +116,20 @@ export function EditServerDialog({ server, open, onOpenChange }: EditServerDialo
   });
 
   const fileIngestionEnabled = form.watch('fileIngestionEnabled');
+  const watchedUsername = form.watch('username') ?? '';
+  const watchedSecret = form.watch('apiKey');
+  const usernameRemoved =
+    hasUsername &&
+    (server.username ?? '') !== '' &&
+    watchedUsername.trim() === '' &&
+    server.hasApiKey &&
+    watchedSecret.trim() === '' &&
+    !clearSecret;
 
   useEffect(() => {
     if (open) {
+      setClearSecret(false);
+      setUsernameChoice(null);
       form.reset({
         name: server.name,
         url: server.url,
@@ -155,6 +171,10 @@ export function EditServerDialog({ server, open, onOpenChange }: EditServerDialo
   }
 
   async function onSubmit(data: FormData) {
+    if (usernameRemoved && usernameChoice === null) {
+      toast.error('Choose what happens to the stored password / API key before saving');
+      return;
+    }
     try {
       const logPaths = data.logPaths
         ? data.logPaths
@@ -179,7 +199,11 @@ export function EditServerDialog({ server, open, onOpenChange }: EditServerDialo
         data: {
           name: data.name,
           url: data.url,
-          ...buildUpdateCredentials(server.providerId, data),
+          ...buildUpdateCredentials(
+            server.providerId,
+            data,
+            clearSecret || (usernameRemoved && usernameChoice === 'clear')
+          ),
           logPath: data.logPath || undefined,
           fileIngestionEnabled: data.fileIngestionEnabled,
           logPaths: logPaths?.length ? logPaths : undefined,
@@ -387,6 +411,56 @@ export function EditServerDialog({ server, open, onOpenChange }: EditServerDialo
                     </FormItem>
                   )}
                 />
+              )}
+
+              {canClearSecret && (
+                <div className="flex items-center gap-3 text-sm">
+                  <Button
+                    type="button"
+                    variant={clearSecret ? 'secondary' : 'outline'}
+                    size="sm"
+                    onClick={() => setClearSecret((value) => !value)}
+                  >
+                    {clearSecret
+                      ? 'Keep stored password / API key'
+                      : 'Clear stored password / API key'}
+                  </Button>
+                  {clearSecret && (
+                    <span className="text-muted-foreground">
+                      The stored value will be removed when you save.
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {usernameRemoved && (
+                <Alert variant="default" className="border-amber-500/50 bg-amber-500/5">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  <AlertDescription className="space-y-2 text-amber-600 dark:text-amber-400">
+                    <p>
+                      Without a username, the stored password would be used as an API key. Choose
+                      what to do with it:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={usernameChoice === 'keep' ? 'secondary' : 'outline'}
+                        onClick={() => setUsernameChoice('keep')}
+                      >
+                        Keep it as an API key
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={usernameChoice === 'clear' ? 'secondary' : 'outline'}
+                        onClick={() => setUsernameChoice('clear')}
+                      >
+                        Clear it (no authentication)
+                      </Button>
+                    </div>
+                  </AlertDescription>
+                </Alert>
               )}
             </div>
 

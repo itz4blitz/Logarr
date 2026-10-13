@@ -158,18 +158,24 @@ export class ServersService {
 
     // An empty username clears it (stored as NULL)
     const { username, apiKey, ...rest } = dto;
+    const provider = this.providers.get(currentServer.providerId);
+
+    // An explicit null clears the stored secret, but only where credentials are optional
+    if (apiKey === null && provider?.capabilities.apiKeyOptional !== true) {
+      throw new BadRequestException('API key is required and cannot be cleared');
+    }
     // Ignored for providers that do not authenticate with a username
     const normalizedUsername =
-      this.providers.get(currentServer.providerId)?.capabilities.supportsUsername === true
-        ? normalizeUsername(username)
-        : undefined;
+      provider?.capabilities.supportsUsername === true ? normalizeUsername(username) : undefined;
 
     const result = await this.db
       .update(schema.servers)
       .set({
         ...rest,
-        // An omitted or empty secret keeps the stored value (the API never returns it)
+        // An omitted or empty secret keeps the stored value (the API never returns it);
+        // null clears it
         ...(typeof apiKey === 'string' && apiKey !== '' && { apiKey }),
+        ...(apiKey === null && { apiKey: '' }),
         ...(normalizedUsername !== undefined && { username: normalizedUsername }),
         updatedAt: new Date(),
       })
