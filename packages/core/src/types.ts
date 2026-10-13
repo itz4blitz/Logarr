@@ -101,6 +101,8 @@ export interface LogFileConfig {
   };
   /** File name patterns to match (glob patterns) */
   readonly filePatterns: readonly string[];
+  /** File name patterns (glob) to skip even if they match filePatterns */
+  readonly excludePatterns?: readonly string[] | undefined;
   /** File encoding (default: utf-8) */
   readonly encoding?: string | undefined;
   /** Whether log files rotate daily */
@@ -337,6 +339,13 @@ export interface MediaServerProvider {
    * (e.g., stack trace lines, wrapped messages)
    */
   isLogContinuation?(line: string): boolean;
+
+  /**
+   * Enrich an assembled multi-line entry (e.g. extract exception details from
+   * its continuation lines). The caller attaches the stack trace/raw text itself.
+   * Only called when the entry has at least one continuation line.
+   */
+  finalizeLogEntry?(entry: ParsedLogEntry, continuationLines: readonly string[]): ParsedLogEntry;
 }
 
 /**

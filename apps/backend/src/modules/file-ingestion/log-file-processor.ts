@@ -24,6 +24,13 @@ function hasContextParsing(provider: MediaServerProvider): provider is ContextAw
   return typeof (provider as ContextAwareProvider).parseLogLineWithContext === 'function';
 }
 
+type FinalizingProvider = MediaServerProvider &
+  Required<Pick<MediaServerProvider, 'finalizeLogEntry'>>;
+
+function hasFinalizeLogEntry(provider: MediaServerProvider): provider is FinalizingProvider {
+  return typeof provider.finalizeLogEntry === 'function';
+}
+
 function hasLogContinuation(provider: MediaServerProvider): provider is ContextAwareProvider {
   return typeof (provider as ContextAwareProvider).isLogContinuation === 'function';
 }
@@ -175,7 +182,10 @@ export class LogFileProcessor {
       return null;
     }
 
-    const entry = this.pendingEntry;
+    let entry = this.pendingEntry;
+    if (hasFinalizeLogEntry(this.provider) && this.continuationLines.length > 0) {
+      entry = this.provider.finalizeLogEntry(entry, this.continuationLines);
+    }
     // Clear pending entry after finalizing
     this.pendingEntry = null;
 

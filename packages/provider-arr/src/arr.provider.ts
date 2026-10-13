@@ -7,6 +7,7 @@ import { ArrClient } from './arr.client.js';
 import {
   parseArrLogLine,
   parseArrLogLineWithContext,
+  finalizeArrLogEntry,
   isArrLogContinuation,
   ARR_LOG_FILE_CONFIG,
 } from './arr.parser.js';
@@ -39,6 +40,7 @@ interface LogFileConfig {
     macos: readonly string[];
   };
   filePatterns: readonly string[];
+  excludePatterns?: readonly string[];
   encoding?: string;
   rotatesDaily?: boolean;
   datePattern?: RegExp;
@@ -145,6 +147,14 @@ export abstract class ArrBaseProvider implements MediaServerProvider {
    */
   parseLogLineWithContext(line: string, context: LogParseContext): LogParseResult {
     return parseArrLogLineWithContext(line, context);
+  }
+
+  /**
+   * Enrich an assembled multi-line entry with exception details.
+   * Optional hook: only called by the file processor when the entry has continuation lines.
+   */
+  finalizeLogEntry(entry: ParsedLogEntry, continuationLines: readonly string[]): ParsedLogEntry {
+    return finalizeArrLogEntry(entry, continuationLines);
   }
 
   /**

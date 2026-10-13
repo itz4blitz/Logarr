@@ -2,14 +2,20 @@
 export { ArrBaseProvider } from './arr.provider.js';
 export { ArrClient } from './arr.client.js';
 
+// Shared event name resolution and display helpers
+export { resolveArrEventName, describeArrEvent, toArrItemId } from './arr.events.js';
+export type { ArrEventSeverity, ArrEventDescriptor, ArrEventTable } from './arr.events.js';
+
 // Parser utilities for file-based log ingestion
 export {
   parseArrLogLine,
   parseArrLogLineWithContext,
+  finalizeArrLogEntry,
   isArrLogContinuation,
   extractArrMetadata,
   getArrSeverityBoost,
   ARR_LOG_FILE_CONFIG,
+  ARR_LOG_EXCLUDE_PATTERNS,
   SONARR_LOG_FILE_CONFIG,
   RADARR_LOG_FILE_CONFIG,
   LIDARR_LOG_FILE_CONFIG,
