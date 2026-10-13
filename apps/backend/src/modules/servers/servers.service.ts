@@ -1,5 +1,6 @@
 import { EmbyProvider } from '@logarr/provider-emby';
 import { JellyfinProvider } from '@logarr/provider-jellyfin';
+import { LidarrProvider } from '@logarr/provider-lidarr';
 import { PlexProvider } from '@logarr/provider-plex';
 import { ProwlarrProvider } from '@logarr/provider-prowlarr';
 import { RadarrProvider } from '@logarr/provider-radarr';
@@ -51,6 +52,9 @@ export class ServersService {
 
     const whisparrProvider = new WhisparrProvider();
     this.providers.set(whisparrProvider.id, whisparrProvider);
+
+    const lidarrProvider = new LidarrProvider();
+    this.providers.set(lidarrProvider.id, lidarrProvider);
   }
 
   async findAll() {

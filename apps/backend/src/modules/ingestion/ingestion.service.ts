@@ -2,6 +2,7 @@ import { setImmediate } from 'timers';
 
 import { EmbyProvider, EmbyClient } from '@logarr/provider-emby';
 import { JellyfinProvider, JellyfinClient } from '@logarr/provider-jellyfin';
+import { LidarrProvider } from '@logarr/provider-lidarr';
 import { PlexProvider, PlexClient } from '@logarr/provider-plex';
 import { ProwlarrProvider } from '@logarr/provider-prowlarr';
 import { RadarrProvider } from '@logarr/provider-radarr';
@@ -81,6 +82,9 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
 
     const whisparrProvider = new WhisparrProvider();
     this.providers.set(whisparrProvider.id, whisparrProvider);
+
+    const lidarrProvider = new LidarrProvider();
+    this.providers.set(lidarrProvider.id, lidarrProvider);
   }
 
   async onModuleInit() {
