@@ -26,7 +26,7 @@ import {
 
 import { FileDiscoveryService } from './file-discovery.service';
 import { FileStateService } from './file-state.service';
-import { dedupeAndSortBatch } from './log-batch';
+import { chunkRows, dedupeAndSortBatch, maxRowsPerStatement } from './log-batch';
 import { LogFileProcessor } from './log-file-processor';
 import { LogFileTailer } from './log-file-tailer';
 
@@ -150,6 +150,8 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
   private readonly inFlightFlushes = new Set<Promise<void>>();
   /** Maximum concurrent flushes; further flushes wait so pending work stays bounded */
   private readonly MAX_IN_FLIGHT_FLUSHES = 4;
+  /** Maximum entries taken from the buffer per flush; a larger backlog is drained in several flushes */
+  private readonly MAX_ENTRIES_PER_FLUSH = 500;
 
   constructor(
     @Inject(DATABASE_CONNECTION)
@@ -992,9 +994,16 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
     }
 
     // Get and clear buffer
-    const entries = this.batchBuffer.splice(0, this.batchBuffer.length);
+    const entries = this.batchBuffer.splice(0, this.MAX_ENTRIES_PER_FLUSH);
     if (entries.length === 0) {
       return;
+    }
+
+    // Anything left over still needs a flush trigger
+    if (this.batchBuffer.length > 0 && this.batchFlushTimer === null) {
+      this.batchFlushTimer = setTimeout(() => {
+        void this.flushBatchBuffer();
+      }, this.BATCH_TIMEOUT_MS);
     }
 
     const run = this.flushEntries(entries);
@@ -1007,8 +1016,8 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
       await run;
     } finally {
       this.inFlightFlushes.delete(tracked);
-      // Entries may have accumulated while all slots were busy
-      if (
+      // Keep draining a backlog as bounded batches while slots are free
+      while (
         this.batchBuffer.length >= this.BATCH_SIZE &&
         this.inFlightFlushes.size < this.MAX_IN_FLIGHT_FLUSHES
       ) {
@@ -1116,9 +1125,24 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
   private insertBatch(
     rows: Array<typeof schema.logEntries.$inferInsert>
   ): Promise<Array<typeof schema.logEntries.$inferSelect>> {
-    const run = this.batchInsertChain.then(() => this.insertBatchWithRetry(rows));
+    const run = this.batchInsertChain.then(() => this.insertChunked(rows));
     this.batchInsertChain = run.catch(() => undefined);
     return run;
+  }
+
+  /**
+   * Insert rows (already sorted) in statements bounded by the Postgres parameter limit.
+   * Chunks are consecutive slices of the sorted rows, so lock order stays consistent.
+   */
+  private async insertChunked(
+    rows: Array<typeof schema.logEntries.$inferInsert>
+  ): Promise<Array<typeof schema.logEntries.$inferSelect>> {
+    const columns = rows.reduce((max, r) => Math.max(max, Object.keys(r).length), 0);
+    const result: Array<typeof schema.logEntries.$inferSelect> = [];
+    for (const chunk of chunkRows(rows, maxRowsPerStatement(columns))) {
+      result.push(...(await this.insertBatchWithRetry(chunk)));
+    }
+    return result;
   }
 
   private async insertBatchWithRetry(

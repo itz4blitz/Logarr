@@ -32,3 +32,24 @@ export function dedupeAndSortBatch<T extends { serverId: string; deduplicationKe
     return 0;
   });
 }
+
+/** Postgres wire protocol limit on bind parameters per statement (16-bit count). */
+export const PG_MAX_PARAMETERS = 65534;
+
+/**
+ * Maximum rows for one multi-row INSERT so it stays under the parameter limit, with a 10%
+ * safety margin. `columnCount` is the number of columns (bound values) per row.
+ */
+export function maxRowsPerStatement(columnCount: number): number {
+  const cols = Math.max(1, Math.ceil(columnCount));
+  return Math.max(1, Math.floor((PG_MAX_PARAMETERS * 0.9) / cols));
+}
+
+/** Split rows into consecutive chunks of at most `size`, preserving order. */
+export function chunkRows<T>(rows: readonly T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < rows.length; i += size) {
+    chunks.push(rows.slice(i, i + size));
+  }
+  return chunks;
+}

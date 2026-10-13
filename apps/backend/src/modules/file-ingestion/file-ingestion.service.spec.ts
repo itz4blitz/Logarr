@@ -11,6 +11,7 @@ import { SettingsService } from '../settings/settings.service';
 import { FileDiscoveryService } from './file-discovery.service';
 import { FileIngestionService } from './file-ingestion.service';
 import { FileStateService } from './file-state.service';
+import { maxRowsPerStatement } from './log-batch';
 
 import type { TestingModule } from '@nestjs/testing';
 
@@ -966,6 +967,84 @@ describe('FileIngestionService', () => {
       expect(peak).toBeLessThanOrEqual(max);
       expect(service['batchBuffer']).toHaveLength(0);
       expect(flushed.reduce((a, b) => a + b, 0)).toBe(batch * (max + 3));
+    });
+
+    it('drains a 60,000 entry backlog as bounded batches without falling back', async () => {
+      const slots = service['MAX_IN_FLIGHT_FLUSHES'] as number;
+      const batch = service['BATCH_SIZE'] as number;
+      const perStatementCap = maxRowsPerStatement(18);
+      const errorSpy = vi.spyOn(service['logger'], 'error');
+
+      let release!: () => void;
+      const gate = new Promise<void>((r) => (release = r));
+      const sizes: number[] = [];
+      const keys = new Set<string>();
+      let totalRows = 0;
+      const returning = vi.fn().mockImplementation(async () => {
+        await gate;
+        return [];
+      });
+      mockDb.insert.mockReturnValue({
+        values: vi.fn().mockImplementation((rows: Array<{ deduplicationKey: string }>) => {
+          sizes.push(rows.length);
+          totalRows += rows.length;
+          rows.forEach((r) => keys.add(r.deduplicationKey));
+          return { onConflictDoNothing: vi.fn().mockReturnValue({ returning }) };
+        }),
+      });
+
+      let n = 0;
+      const queue = (count: number) => {
+        for (let i = 0; i < count; i++, n++) {
+          service['queueEntryForBatch']('s1', makeEntry(`msg-${n}`, n % 60), '/f');
+        }
+      };
+      // occupy every flush slot
+      for (let i = 0; i < slots; i++) {
+        queue(batch);
+        await Promise.resolve();
+      }
+      expect(service['inFlightFlushes'].size).toBe(slots);
+
+      // now buffer a huge backlog while all slots are busy
+      queue(60_000);
+      expect(service['batchBuffer'].length).toBe(60_000);
+
+      release();
+      for (let i = 0; i < 2000; i++) {
+        if (service['batchBuffer'].length === 0 && service['inFlightFlushes'].size === 0) break;
+        await new Promise((r) => setTimeout(r, 0));
+      }
+      if (service['batchFlushTimer'] !== null) clearTimeout(service['batchFlushTimer']);
+
+      const expected = slots * batch + 60_000;
+      expect(totalRows).toBe(expected);
+      expect(keys.size).toBe(expected); // every entry inserted exactly once
+      expect(Math.max(...sizes)).toBeLessThanOrEqual(perStatementCap);
+      expect(Math.max(...sizes)).toBeLessThanOrEqual(service['MAX_ENTRIES_PER_FLUSH'] as number);
+      expect(errorSpy).not.toHaveBeenCalled();
+    }, 60_000);
+
+    it('chunks an oversized insert so no statement exceeds the parameter limit', async () => {
+      const sizes: number[] = [];
+      const returning = vi.fn().mockResolvedValue([]);
+      mockDb.insert.mockReturnValue({
+        values: vi.fn().mockImplementation((rows: unknown[]) => {
+          sizes.push(rows.length);
+          return { onConflictDoNothing: vi.fn().mockReturnValue({ returning }) };
+        }),
+      });
+      const rows = Array.from({ length: 10_000 }, (_, i) => ({
+        serverId: 's1',
+        deduplicationKey: `k${String(i).padStart(5, '0')}`,
+        ...Object.fromEntries(Array.from({ length: 16 }, (_, c) => [`c${c}`, c])),
+      }));
+
+      await service['insertBatch'](rows as any);
+
+      expect(sizes.reduce((a, b) => a + b, 0)).toBe(10_000);
+      expect(sizes.length).toBeGreaterThan(1);
+      for (const size of sizes) expect(size * 18).toBeLessThanOrEqual(65534);
     });
 
     it('never runs two batch inserts at the same time', async () => {
