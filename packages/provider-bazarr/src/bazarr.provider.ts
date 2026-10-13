@@ -1,4 +1,5 @@
 import { BazarrClient } from './bazarr.client.js';
+import { readHistory } from './bazarr.history.js';
 import {
   BAZARR_CORRELATION_PATTERNS,
   BAZARR_LOG_FILE_CONFIG,
@@ -9,6 +10,7 @@ import {
 import { BazarrHistoryActions } from './bazarr.types.js';
 import { inferSlashDateOrder, parseBazarrTimestamp, stableHash } from './bazarr.utils.js';
 
+import type { HistoryRead } from './bazarr.history.js';
 import type {
   BazarrEpisodeHistory,
   BazarrHealthIssue,
@@ -33,13 +35,6 @@ import type {
   ServerInfo,
 } from '@logarr/core';
 
-/** History page size requested from Bazarr */
-const HISTORY_PAGE_SIZE = 50;
-/**
- * Safety cap on history pages per endpoint per poll (40 x 50 = 2000 rows). Paging normally
- * ends earlier, at a short page or the first row older than the cutoff.
- */
-const HISTORY_MAX_PAGES = 40;
 /** How far back the first poll (no `since`) reads history, matching file-ingestion's default backfill */
 const HISTORY_INITIAL_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 /** Upper bound for remembered per-server slash-date orders */
@@ -60,7 +55,29 @@ interface SourceResult {
   items: readonly NormalizedActivity[];
   /** Set when history paging was capped: rows newer than this must not advance the cursor */
   cursorCeiling?: Date;
+  error?: unknown;
 }
+
+/** Raw history rows seen during one poll, shared by both history sources */
+class HistoryPoll {
+  readonly records: BazarrHistoryBase[] = [];
+  private cachedLength = -1;
+  private cachedOrder: SlashDateOrder | undefined;
+
+  constructor(private readonly learned: SlashDateOrder | undefined) {}
+
+  /** Slash-date order inferred from every row seen so far, else the one learned earlier */
+  order(): SlashDateOrder | undefined {
+    if (this.cachedLength !== this.records.length) {
+      this.cachedOrder = inferSlashDateOrder(this.records);
+      this.cachedLength = this.records.length;
+    }
+    return this.cachedOrder ?? this.learned;
+  }
+}
+
+/** A timestamp string that carries a calendar date (not "2 hours ago") */
+const ABSOLUTE_TIMESTAMP = /\d{4}[/.-]\d{1,2}[/.-]\d{1,2}|\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}/;
 
 /** Lowercase kebab id fragment (stable, no spaces or punctuation) */
 function idPart(value: string | number): string {
@@ -193,55 +210,87 @@ export class BazarrProvider implements MediaServerProvider {
 
   async getActivity(since?: Date): Promise<readonly NormalizedActivity[]> {
     const client = this.getClient();
+    const poll = new HistoryPoll(this.slashOrders.get(this.config?.url ?? ''));
+    const cutoffMs =
+      since !== undefined
+        ? since.getTime() - HISTORY_SINCE_MARGIN_MS
+        : Date.now() - HISTORY_INITIAL_WINDOW_MS;
 
-    const sections = await Promise.all([
-      this.safely('episode history', () =>
-        this.collectHistory(
+    const [episodeRead, movieRead, health, jobs] = await Promise.all([
+      this.attempt('episode history', () =>
+        this.readSource<BazarrEpisodeHistory>(
+          'episode',
           (length, start) => client.getEpisodeHistory(length, start),
-          (rec, parsed) => this.normalizeEpisodeHistory(rec, parsed),
+          (rec) => [rec.sonarrSeriesId, rec.sonarrEpisodeId],
+          poll,
+          cutoffMs,
           since
         )
       ),
-      this.safely('movie history', () =>
-        this.collectHistory(
+      this.attempt('movie history', () =>
+        this.readSource<BazarrMovieHistory>(
+          'movie',
           (length, start) => client.getMovieHistory(length, start),
-          (rec, parsed) => this.normalizeMovieHistory(rec, parsed),
+          (rec) => [rec.radarrId],
+          poll,
+          cutoffMs,
           since
         )
       ),
       this.safely('health', async () => ({
         items: (await client.getHealth()).map((issue) => this.normalizeHealthIssue(issue)),
       })),
-      this.safely('jobs', async () => {
-        const cutoff = since !== undefined ? since.getTime() - HISTORY_SINCE_MARGIN_MS : undefined;
-        return {
-          items: (await client.getJobs('failed'))
-            .map((job) => this.normalizeFailedJob(job))
-            .filter((activity) => cutoff === undefined || activity.timestamp.getTime() >= cutoff),
-        };
-      }),
+      this.safely('jobs', async () => ({
+        items: (await client.getJobs('failed'))
+          .map((job) => this.normalizeFailedJob(job))
+          .filter((activity) => activity.timestamp.getTime() >= cutoffMs || since === undefined),
+      })),
     ]);
 
     // Partial failure is tolerated; if every source failed, surface the first error so the
     // poll marks the server unhealthy instead of reporting "connected, no activity".
-    const failures = sections.filter((section) => section.error !== undefined);
-    if (failures.length === sections.length) {
-      throw failures[0]?.error;
+    const errors = [episodeRead.error, movieRead.error, health.error, jobs.error].filter(
+      (error) => error !== undefined
+    );
+    if (errors.length === 4) {
+      throw errors[0];
     }
 
-    // If paging was capped, only rows at or before the oldest fetched history row may move
-    // the sync cursor, so the next poll still reaches the events that were not fetched.
-    const ceilings = sections.flatMap((section) =>
-      section.cursorCeiling !== undefined ? [section.cursorCeiling.getTime()] : []
+    const order = this.rememberSlashOrder(poll);
+    const episodes =
+      episodeRead.value !== undefined
+        ? this.finishHistory(
+            episodeRead.value,
+            (rec, parsed) => this.normalizeEpisodeHistory(rec, parsed),
+            order,
+            cutoffMs,
+            since
+          )
+        : undefined;
+    const movies =
+      movieRead.value !== undefined
+        ? this.finishHistory(
+            movieRead.value,
+            (rec, parsed) => this.normalizeMovieHistory(rec, parsed),
+            order,
+            cutoffMs,
+            since
+          )
+        : undefined;
+
+    // If either history source failed, its rows are missing: the other source must not move the
+    // cursor past that gap. If paging was capped, only rows at or before the oldest ceiling may.
+    const historyFailed = episodeRead.error !== undefined || movieRead.error !== undefined;
+    const ceilings = [episodes?.cursorCeiling, movies?.cursorCeiling].flatMap((c) =>
+      c !== undefined ? [c.getTime()] : []
     );
     const ceiling = ceilings.length > 0 ? Math.min(...ceilings) : undefined;
 
-    return sections
-      .flatMap((section) => section.items)
+    return [episodes, movies, health, jobs]
+      .flatMap((section) => section?.items ?? [])
       .map((activity) =>
-        ceiling !== undefined &&
         activity.advancesSyncCursor !== false &&
-        activity.timestamp.getTime() > ceiling
+        (historyFailed || (ceiling !== undefined && activity.timestamp.getTime() > ceiling))
           ? { ...activity, advancesSyncCursor: false }
           : activity
       )
@@ -255,23 +304,31 @@ export class BazarrProvider implements MediaServerProvider {
     return this.client;
   }
 
-  /** Run one activity source; a failing endpoint must not drop the others */
-  private async safely(
+  /** Run one source; a failing endpoint must not drop the others */
+  private async attempt<R>(
     source: string,
-    run: () => Promise<SourceResult>
-  ): Promise<SourceResult & { error?: unknown }> {
+    run: () => Promise<R>
+  ): Promise<{ value?: R; error?: unknown }> {
     try {
-      return await run();
+      return { value: await run() };
     } catch (error) {
       console.error(`[${this.id}] Failed to get ${source}:`, error);
-      return { items: [], error };
+      return { error };
     }
   }
 
-  /** Slash-date order for one response: inferred from its rows, else the one learned earlier */
-  private resolveSlashOrder(records: readonly BazarrHistoryBase[]): SlashDateOrder | undefined {
+  private async safely(
+    source: string,
+    run: () => Promise<{ items: readonly NormalizedActivity[] }>
+  ): Promise<SourceResult> {
+    const result = await this.attempt(source, run);
+    return result.value ?? { items: [], error: result.error };
+  }
+
+  /** Slash-date order of the whole poll (every row of both sources); learned per server */
+  private rememberSlashOrder(poll: HistoryPoll): SlashDateOrder | undefined {
     const key = this.config?.url ?? '';
-    const inferred = inferSlashDateOrder(records);
+    const inferred = inferSlashDateOrder(poll.records);
 
     if (inferred !== undefined) {
       if (!this.slashOrders.has(key) && this.slashOrders.size >= MAX_REMEMBERED_ORDERS) {
@@ -285,93 +342,83 @@ export class BazarrProvider implements MediaServerProvider {
     return this.slashOrders.get(key);
   }
 
-  /**
-   * Page through newest-first history until the oldest parseable row on a page is older
-   * than the cutoff (`since` minus a timezone margin, or 7 days back on the first poll), a
-   * page is short, or the safety cap is hit.
-   *
-   * Rows whose time could not be parsed fall back to "now" and never move the sync cursor or
-   * the paging cutoff. If the cap is hit first, `cursorCeiling` is the oldest fetched
-   * history time: rows newer than it must not advance the cursor.
-   */
-  private async collectHistory<T extends BazarrHistoryBase>(
+  private readSource<T extends BazarrHistoryBase>(
+    kind: 'episode' | 'movie',
     fetchPage: (length: number, start: number) => Promise<readonly T[]>,
-    normalize: (record: T, parsed: Date | undefined) => NormalizedActivity,
+    refOf: (record: T) => unknown,
+    poll: HistoryPoll,
+    cutoffMs: number,
     since: Date | undefined
-  ): Promise<SourceResult> {
-    const cutoff =
-      since !== undefined
-        ? since.getTime() - HISTORY_SINCE_MARGIN_MS
-        : Date.now() - HISTORY_INITIAL_WINDOW_MS;
-    const items: NormalizedActivity[] = [];
-    let oldestFetched: number | undefined;
-    let reachedEnd = false;
-
-    for (let page = 0; page < HISTORY_MAX_PAGES; page++) {
-      const records = await fetchPage(HISTORY_PAGE_SIZE, page * HISTORY_PAGE_SIZE);
-      const order = this.resolveSlashOrder(records);
-
-      let oldestOnPage: number | undefined;
-      for (const record of records) {
-        const parsed = parseBazarrTimestamp(record, order);
-        if (parsed !== undefined) {
-          const time = parsed.getTime();
-          oldestOnPage = oldestOnPage === undefined ? time : Math.min(oldestOnPage, time);
-          oldestFetched = oldestFetched === undefined ? time : Math.min(oldestFetched, time);
-        }
-        // Unparseable rows are kept (stable ids dedupe them) but are not trusted for the cutoff
-        if (parsed === undefined || parsed.getTime() >= cutoff) {
-          items.push(normalize(record, parsed));
-        }
-      }
-
-      if (records.length < HISTORY_PAGE_SIZE) {
-        reachedEnd = true;
-        break;
-      }
-      if (oldestOnPage === undefined) {
-        // Nothing on this page has a usable time, so the cutoff can never be proven
-        console.warn(`[${this.id}] Could not parse any history timestamp; stopped paging`);
-        reachedEnd = true;
-        break;
-      }
-      if (oldestOnPage < cutoff) {
-        reachedEnd = true;
-        break;
-      }
-    }
-
-    if (reachedEnd) {
-      return { items };
-    }
-
-    console.warn(
-      `[${this.id}] History paging stopped after ${HISTORY_MAX_PAGES} pages; older events are picked up on later polls`
-    );
-    return oldestFetched !== undefined
-      ? { items, cursorCeiling: new Date(oldestFetched) }
-      : { items };
+  ): Promise<HistoryRead<T>> {
+    return readHistory<T>({
+      fetchPage: async (length, start) => {
+        const rows = await fetchPage(length, start);
+        poll.records.push(...rows);
+        return rows;
+      },
+      keyOf: (record) => this.historyId(kind, record, refOf(record)),
+      timeOf: (record) => parseBazarrTimestamp(record, poll.order()),
+      cutoffMs,
+      sinceMs: since?.getTime(),
+      warn: (message) => console.warn(`[${this.id}] ${message}`),
+    });
   }
 
-  private historyId(
-    kind: 'episode' | 'movie',
-    record: BazarrHistoryBase,
-    parsed: Date | undefined,
-    ref: unknown
-  ): string {
+  /**
+   * Turn raw rows into activities using the final slash-date order of the poll.
+   * Only rows with a readable time may advance the cursor, never backwards past `since`, and in
+   * a capped read never past its newest certain row. Unsafe reads never move the cursor.
+   */
+  private finishHistory<T extends BazarrHistoryBase>(
+    read: HistoryRead<T>,
+    normalize: (record: T, parsed: Date | undefined) => NormalizedActivity,
+    order: SlashDateOrder | undefined,
+    cutoffMs: number,
+    since: Date | undefined
+  ): SourceResult {
+    const ceiling =
+      read.mode === 'capped' && read.edge !== undefined
+        ? parseBazarrTimestamp(read.edge, order)
+        : undefined;
+    const trusted = read.mode === 'complete' || (read.mode === 'capped' && ceiling !== undefined);
+    const items: NormalizedActivity[] = [];
+
+    for (const record of read.rows) {
+      const parsed = parseBazarrTimestamp(record, order);
+      if (parsed !== undefined && parsed.getTime() < cutoffMs) continue;
+
+      const advances =
+        trusted &&
+        parsed !== undefined &&
+        (since === undefined || parsed.getTime() >= since.getTime()) &&
+        (ceiling === undefined || parsed.getTime() <= ceiling.getTime());
+      items.push({ ...normalize(record, parsed), advancesSyncCursor: advances });
+    }
+
+    return ceiling !== undefined ? { items, cursorCeiling: ceiling } : { items };
+  }
+
+  /**
+   * Stable id of a history row. It hashes the RAW timestamp text, never an interpreted Date, so
+   * the same row always gets the same id whatever date order was inferred or learned.
+   * The humanised `timestamp` ("2 hours ago") changes over time and is only used if it looks absolute.
+   */
+  private historyId(kind: 'episode' | 'movie', record: BazarrHistoryBase, ref: unknown): string {
     const prefix = `bazarr-${kind}-history-`;
     if (typeof record.id === 'number') {
       return `${prefix}${record.id}`;
     }
 
-    // Bazarr's API model omits the row id: derive a stable one from the record content.
-    // The humanised `timestamp` changes over time, so only an absolute time is used.
-    const when = parsed?.toISOString() ?? null;
+    const stamp =
+      record.parsed_timestamp ??
+      (record.timestamp !== undefined && ABSOLUTE_TIMESTAMP.test(record.timestamp)
+        ? record.timestamp
+        : null);
     return `${prefix}${stableHash(
       JSON.stringify([
         ref,
         record.action ?? null,
-        when,
+        stamp,
         record.description ?? null,
         record.subtitles_path ?? null,
         record.subs_id ?? null,
@@ -411,17 +458,13 @@ export class BazarrProvider implements MediaServerProvider {
         : 'Unknown';
 
     return {
-      id: this.historyId('episode', record, parsed, [
-        record.sonarrSeriesId,
-        record.sonarrEpisodeId,
-      ]),
+      id: this.historyId('episode', record, [record.sonarrSeriesId, record.sonarrEpisodeId]),
       type: this.historyType(record.action),
       name,
       overview: record.description,
       severity: record.blacklisted === true ? 'warn' : 'info',
       itemId: record.sonarrEpisodeId !== undefined ? String(record.sonarrEpisodeId) : undefined,
       timestamp: parsed ?? new Date(),
-      advancesSyncCursor: parsed !== undefined,
       metadata: {
         kind: 'episode',
         ...this.commonHistoryMetadata(record),
@@ -437,14 +480,13 @@ export class BazarrProvider implements MediaServerProvider {
     parsed: Date | undefined
   ): NormalizedActivity {
     return {
-      id: this.historyId('movie', record, parsed, [record.radarrId]),
+      id: this.historyId('movie', record, [record.radarrId]),
       type: this.historyType(record.action),
       name: record.title ?? 'Unknown',
       overview: record.description,
       severity: record.blacklisted === true ? 'warn' : 'info',
       itemId: record.radarrId !== undefined ? String(record.radarrId) : undefined,
       timestamp: parsed ?? new Date(),
-      advancesSyncCursor: parsed !== undefined,
       metadata: {
         kind: 'movie',
         ...this.commonHistoryMetadata(record),

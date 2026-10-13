@@ -18,6 +18,9 @@ export function stableHash(input: string): string {
 }
 
 const ISO_LIKE = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/;
+/** Year-first locale dates such as `2026/10/05 08:00:00` (ja/zh/ko `%x`): always Y/M/D */
+const YMD_LIKE =
+  /^(\d{4})[/.-](\d{1,2})[/.-](\d{1,2})[ ,T]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i;
 const LOCALE_LIKE =
   /^(\d{1,2})([/.-])(\d{1,2})[/.-](\d{2,4})[ ,T]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i;
 
@@ -59,7 +62,8 @@ function rowOrder(first: number, second: number): SlashDateOrder | undefined {
  * Parse a timestamp string as emitted by Bazarr (naive local time).
  * Supports ISO-like values and Python's locale `%x %X` output. Ambiguous slash dates
  * (both numbers <= 12) are only parsed when `order` says how to read them; dotted dates
- * are always day-first.
+ * are always day-first; a four-digit year first (`2026/10/05`) is always Y/M/D. A two-digit
+ * year first (`26/10/05`) is deliberately not special-cased: it follows the ambiguity rules above.
  */
 function parseDateString(value: string, order: SlashDateOrder | undefined): Date | undefined {
   const text = value.trim();
@@ -73,6 +77,22 @@ function parseDateString(value: string, order: SlashDateOrder | undefined): Date
       Number(iso[4]),
       Number(iso[5]),
       Number(iso[6] ?? '0')
+    );
+  }
+
+  const ymd = YMD_LIKE.exec(text);
+  if (ymd !== null) {
+    let hour = Number(ymd[4]);
+    const meridiem = ymd[7]?.toUpperCase();
+    if (meridiem === 'PM' && hour < 12) hour += 12;
+    if (meridiem === 'AM' && hour === 12) hour = 0;
+    return build(
+      Number(ymd[1]),
+      Number(ymd[2]),
+      Number(ymd[3]),
+      hour,
+      Number(ymd[5]),
+      Number(ymd[6] ?? '0')
     );
   }
 

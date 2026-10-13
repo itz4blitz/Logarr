@@ -443,25 +443,6 @@ describe('BazarrProvider.getActivity', () => {
     }
   });
 
-  it('warns when history paging is capped before reaching the cutoff', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    route({
-      episodes: () =>
-        ok({
-          data: Array.from({ length: 50 }, (_, i) => ({
-            id: i + 1,
-            parsed_timestamp: '2026-10-10 12:00:00',
-          })),
-        }),
-    });
-    const provider = await connected();
-    await provider.getActivity(new Date(2026, 9, 10, 11, 0, 0));
-
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('[bazarr] History paging stopped')
-    );
-  });
-
   it('filters history older than since (with a timezone safety margin)', async () => {
     const old: BazarrEpisodeHistory = {
       ...episode,
@@ -491,32 +472,48 @@ describe('BazarrProvider.getActivity', () => {
   });
 
   describe('history paging', () => {
-    const HOUR = 60 * 60 * 1000;
+    const MINUTE = 60 * 1000;
+    const HOUR = 60 * MINUTE;
     const NOW = new Date(2026, 9, 10, 13, 0, 0).getTime();
 
-    /** Pad a number for `YYYY-MM-DD HH:mm:ss` */
     function stamp(ms: number): string {
       const d = new Date(ms);
       const p = (n: number): string => String(n).padStart(2, '0');
       return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
     }
 
-    /** Newest-first server-side history: row i happened `i * stepMs` before `from` */
-    function history(total: number, stepMs: number, from = NOW): BazarrEpisodeHistory[] {
-      return Array.from({ length: total }, (_, i) => ({
-        ...episode,
-        id: i + 1,
-        parsed_timestamp: stamp(from - i * stepMs),
-      }));
+    /** Event `seq` happened at BASE + seq minutes; rows are listed newest first */
+    const BASE = NOW - 5000 * MINUTE;
+    function row(seq: number): BazarrEpisodeHistory {
+      return { ...episode, id: seq, parsed_timestamp: stamp(BASE + seq * MINUTE) };
     }
 
-    /** Serve `rows` honouring start/length like Bazarr */
-    function serve(rows: readonly BazarrEpisodeHistory[]): (url: URL) => unknown {
-      return (url: URL) => {
-        const start = Number(url.searchParams.get('start'));
-        const length = Number(url.searchParams.get('length'));
-        return ok({ data: rows.slice(start, start + length), total: rows.length });
-      };
+    interface FakeBazarr {
+      rows: BazarrEpisodeHistory[];
+      requests: number;
+      onRequest?: (count: number) => void;
+    }
+
+    /** A fake Bazarr history endpoint serving `rows` (mutable) with start/length paging */
+    function fakeBazarr(newestSeq: number, oldestSeq = 1): FakeBazarr {
+      const rows: BazarrEpisodeHistory[] = [];
+      for (let seq = newestSeq; seq >= oldestSeq; seq--) rows.push(row(seq));
+      const server: FakeBazarr = { rows, requests: 0 };
+      route({
+        episodes: (url: URL) => {
+          server.requests++;
+          server.onRequest?.(server.requests);
+          const start = Number(url.searchParams.get('start'));
+          const length = Number(url.searchParams.get('length'));
+          return ok({ data: server.rows.slice(start, start + length), total: server.rows.length });
+        },
+      });
+      return server;
+    }
+
+    function prepend(server: FakeBazarr, count: number): void {
+      const newest = server.rows[0]?.id ?? 0;
+      for (let i = 1; i <= count; i++) server.rows.unshift(row(newest + i));
     }
 
     function historyCalls(): URL[] {
@@ -529,136 +526,213 @@ describe('BazarrProvider.getActivity', () => {
       return activity.filter((a) => a.type === 'subtitle_download').length;
     }
 
-    it('pages back over a 7 day window on the first poll', async () => {
-      route({ episodes: serve(history(120, HOUR)) });
-      const provider = await connected();
-      const activity = await provider.getActivity();
+    /** What IngestionService does: dedupe by id, cursor = max time of rows that may advance it */
+    async function runPolls(
+      provider: BazarrProvider,
+      server: FakeBazarr,
+      options: { maxPolls: number; between?: (poll: number) => void }
+    ): Promise<{
+      ingested: Set<string>;
+      polls: { starts: string[]; newIds: number; cursor: Date | undefined }[];
+    }> {
+      const ingested = new Set<string>();
+      const polls: { starts: string[]; newIds: number; cursor: Date | undefined }[] = [];
+      let cursor: Date | undefined;
 
-      expect(historyCalls().map((u) => u.searchParams.get('start'))).toEqual(['0', '50', '100']);
-      expect(downloads(activity)).toBe(120);
+      for (let poll = 0; poll < options.maxPolls; poll++) {
+        const callsBefore = historyCalls().length;
+        const activity = await provider.getActivity(cursor);
+        const starts = historyCalls()
+          .slice(callsBefore)
+          .map((u) => `${u.searchParams.get('start')}+${u.searchParams.get('length')}`);
+
+        const sizeBefore = ingested.size;
+        for (const a of activity) ingested.add(a.id);
+        const advancing = activity.filter((a) => a.advancesSyncCursor !== false);
+        if (advancing.length > 0) {
+          const next = new Date(Math.max(...advancing.map((a) => a.timestamp.getTime())));
+          if (cursor !== undefined) expect(next.getTime()).toBeGreaterThanOrEqual(cursor.getTime());
+          cursor = next;
+        }
+        polls.push({ starts, newIds: ingested.size - sizeBefore, cursor });
+
+        const newest = server.rows[0];
+        const caughtUp =
+          newest !== undefined &&
+          cursor?.getTime() === BASE + (newest.id ?? 0) * MINUTE &&
+          ingested.has(`bazarr-episode-history-${newest.id}`) &&
+          polls[polls.length - 1]?.newIds === 0;
+        if (caughtUp) break;
+        options.between?.(poll);
+      }
+
+      return { ingested, polls };
+    }
+
+    function allIds(server: FakeBazarr): Set<string> {
+      return new Set(server.rows.map((r) => `bazarr-episode-history-${r.id}`));
+    }
+
+    it('reads a small history with a single request', async () => {
+      fakeBazarr(5000, 4971);
+      const provider = await connected();
+      const activity = await provider.getActivity(new Date(NOW - HOUR));
+
+      expect(historyCalls()).toHaveLength(1);
+      expect(downloads(activity)).toBe(30);
     });
 
-    it('stops the first poll at the 7 day window', async () => {
-      route({ episodes: serve(history(400, HOUR)) });
-      const provider = await connected();
-      const activity = await provider.getActivity();
-
-      // 168h = row 168 is exactly at the cutoff (kept); page 4 (rows 150-199) holds it
-      expect(historyCalls()).toHaveLength(4);
-      expect(downloads(activity)).toBe(169);
-    });
-
-    it('keeps paging with since until a row is older than the cutoff', async () => {
-      const since = new Date(NOW - 30 * HOUR);
-      route({ episodes: serve(history(500, 10 * 60 * 1000)) });
-      const provider = await connected();
-      const activity = await provider.getActivity(since);
-
-      // cutoff = since - 24h = 54h back = 324 rows at 10 minute spacing -> 7 pages
-      expect(historyCalls()).toHaveLength(7);
-      expect(downloads(activity)).toBe(325);
-    });
-
-    it('stops on a short page', async () => {
-      route({ episodes: serve(history(60, HOUR)) });
-      const provider = await connected();
-      await provider.getActivity(new Date(NOW - 100 * HOUR));
-
-      expect(historyCalls()).toHaveLength(2);
-    });
-
-    it('stops once the oldest record is older than the cutoff', async () => {
-      route({ episodes: ok({ data: history(50, 24 * HOUR) }) });
+    it('stops at the head page when its oldest row is already older than the cutoff', async () => {
+      const server = fakeBazarr(5000);
+      server.rows = Array.from({ length: 80 }, (_, i) => ({
+        ...episode,
+        id: 80 - i,
+        parsed_timestamp: stamp(NOW - i * HOUR),
+      }));
       const provider = await connected();
       await provider.getActivity(new Date(NOW - HOUR));
 
       expect(historyCalls()).toHaveLength(1);
     });
 
-    it('stops after the first page when no row on it has a parseable time', async () => {
-      vi.spyOn(console, 'warn').mockImplementation(() => {});
+    it('locates the cutoff by probing and reads exactly the rows after it', async () => {
+      fakeBazarr(5000);
+      const provider = await connected();
+      // cutoff = since - 24h = NOW - 30h => rows within 30h = 1800 minutes, i.e. 1801 rows
+      const activity = await provider.getActivity(new Date(NOW - 6 * HOUR));
+
+      expect(downloads(activity)).toBe(1801);
+      expect(activity.every((a) => a.advancesSyncCursor === true)).toBe(
+        activity.every((a) => a.timestamp.getTime() >= NOW - 6 * HOUR)
+      );
+      // probes use single-row requests; the bulk is read as pages
+      const probes = historyCalls().filter((u) => u.searchParams.get('length') === '1');
+      expect(probes.length).toBeGreaterThan(0);
+      expect(probes.length).toBeLessThan(40);
+    });
+
+    it('pages back over a 7 day window on the first poll', async () => {
+      fakeBazarr(120);
+      const provider = await connected();
+      const activity = await provider.getActivity();
+
+      expect(downloads(activity)).toBe(120);
+      expect(activity.every((a) => a.advancesSyncCursor === true)).toBe(true);
+    });
+
+    it('does not read rows older than the first-poll window', async () => {
+      const server = fakeBazarr(1000);
+      // 1000 rows at 1 hour spacing => 41 days of history
+      server.rows = Array.from({ length: 1000 }, (_, i) => ({
+        ...episode,
+        id: 1000 - i,
+        parsed_timestamp: stamp(NOW - i * HOUR),
+      }));
+      const provider = await connected();
+      const activity = await provider.getActivity();
+
+      expect(downloads(activity)).toBe(169);
+    });
+
+    it('never lets rows older than the cursor move it backwards', async () => {
+      fakeBazarr(5000, 4991);
+      const provider = await connected();
+      const activity = await provider.getActivity(new Date(NOW + HOUR));
+
+      expect(activity.length).toBeGreaterThan(0);
+      expect(activity.every((a) => a.advancesSyncCursor === false)).toBe(true);
+    });
+
+    it('falls back to the latest pages when no timestamp can be read, off the cursor', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       route({
-        episodes: ok({
-          data: Array.from({ length: 50 }, (_, i) => ({ id: i + 1, timestamp: 'recently' })),
-        }),
+        episodes: (url: URL) => {
+          const start = Number(url.searchParams.get('start'));
+          return ok({
+            data: Array.from({ length: Number(url.searchParams.get('length')) }, (_, i) => ({
+              id: start + i + 1,
+              timestamp: 'recently',
+            })),
+          });
+        },
       });
       const provider = await connected();
       const activity = await provider.getActivity(new Date(NOW - HOUR));
 
-      expect(historyCalls()).toHaveLength(1);
-      expect(downloads(activity)).toBe(0);
-      expect(activity.filter((a) => a.type === 'subtitle_event')).toHaveLength(50);
+      expect(historyCalls().map((u) => u.searchParams.get('start'))).toEqual(['0', '50', '100']);
+      expect(activity).toHaveLength(150);
+      expect(activity.every((a) => a.advancesSyncCursor === false)).toBe(true);
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('[bazarr] Could not read any'));
     });
 
-    describe('when the safety cap is hit', () => {
-      it('caps at 40 pages, warns and keeps rows newer than the oldest fetched row off the cursor', async () => {
-        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-        const rows = history(3000, 60 * 1000);
-        route({
-          episodes: serve(rows),
-          health: ok({ data: [{ object: '/tv', issue: 'Path does not exist' }] }),
-        });
-        const provider = await connected();
-        const activity = await provider.getActivity(new Date(NOW - 10 * 24 * HOUR));
-
-        expect(historyCalls()).toHaveLength(40);
-        expect(warnSpy).toHaveBeenCalledWith(
-          expect.stringContaining('[bazarr] History paging stopped')
-        );
-
-        const oldestFetched = NOW - 1999 * 60 * 1000;
-        const advancing = activity.filter((a) => a.advancesSyncCursor !== false);
-        expect(advancing).toHaveLength(1);
-        expect(advancing[0]?.timestamp.getTime()).toBe(oldestFetched);
-        expect(activity.filter((a) => a.advancesSyncCursor === false)).toHaveLength(
-          activity.length - 1
-        );
-      });
-
-      it('applies the lowest ceiling of any capped source to rows from the other sources', async () => {
+    describe('catching up on a backlog larger than one poll', () => {
+      it('advances through the backlog poll by poll and ingests every row exactly once', async () => {
         vi.spyOn(console, 'warn').mockImplementation(() => {});
-        route({
-          episodes: serve(history(3000, 60 * 1000)),
-          movies: ok({ data: [{ ...movie, parsed_timestamp: stamp(NOW - 1000) }] }),
-        });
+        const server = fakeBazarr(5000);
         const provider = await connected();
-        const activity = await provider.getActivity(new Date(NOW - 10 * 24 * HOUR));
-        const film = activity.find((a) => a.id === 'bazarr-movie-history-3');
 
-        expect(film?.advancesSyncCursor).toBe(false);
+        const { ingested, polls } = await runPolls(provider, server, {
+          maxPolls: 14,
+          between: (poll) => {
+            if (poll < 5) prepend(server, 40);
+          },
+        });
+
+        // every event that ever existed was ingested, none skipped
+        const missing = [...allIds(server)].filter((id) => !ingested.has(id));
+        expect(missing).toEqual([]);
+        expect(ingested.size).toBe(5200);
+
+        // the first polls were capped and each read a different, progressing range
+        const first = polls[0]?.starts.join(',');
+        const second = polls[1]?.starts.join(',');
+        expect(first).not.toBe(second);
+        expect(polls[0]?.newIds).toBeGreaterThan(0);
+        expect(polls[1]?.newIds).toBeGreaterThan(0);
+        expect(polls.length).toBeLessThanOrEqual(12);
+
+        // cursor strictly progresses while the backlog is being worked off
+        const cursors = polls.map((p) => p.cursor?.getTime() ?? 0);
+        for (let i = 1; i < 4; i++) expect(cursors[i]!).toBeGreaterThan(cursors[i - 1]!);
+
+        // request budget per poll stays sane
+        for (const poll of polls) expect(poll.starts.length).toBeLessThan(130);
+      });
+
+      it('misses nothing when rows are inserted at the head while a poll is reading', async () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const server = fakeBazarr(5000);
+        server.onRequest = (count) => {
+          if (count === 25 || count === 40 || count === 55) prepend(server, 7);
+        };
+        const provider = await connected();
+
+        const { ingested } = await runPolls(provider, server, { maxPolls: 14 });
+
+        const missing = [...allIds(server)].filter((id) => !ingested.has(id));
+        expect(missing).toEqual([]);
       });
     });
 
-    it('lets every parsed history row advance the cursor when paging completes', async () => {
-      route({ episodes: ok({ data: history(5, HOUR) }) });
+    it('keeps the cursor off the rows of a history source when the other one failed', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      route({
+        episodes: ok({ data: [row(10), row(9)] }),
+        movies: fail(404, 'Not Found'),
+      });
+      const provider = await connected();
+      const activity = await provider.getActivity();
+
+      expect(activity.map((a) => a.type)).toEqual(['subtitle_download', 'subtitle_download']);
+      expect(activity.every((a) => a.advancesSyncCursor === false)).toBe(true);
+    });
+
+    it('still advances the cursor when both history sources work', async () => {
+      route({ episodes: ok({ data: [row(10), row(9)] }), movies: ok({ data: [] }) });
       const provider = await connected();
       const activity = await provider.getActivity();
 
       expect(activity.every((a) => a.advancesSyncCursor === true)).toBe(true);
-    });
-
-    it('never lets health, failed-job or unparsed rows advance the cursor', async () => {
-      route({
-        episodes: ok({
-          data: [
-            { ...episode, id: 1, parsed_timestamp: stamp(NOW - HOUR) },
-            { id: 2, timestamp: 'recently' },
-          ],
-        }),
-        health: ok({ data: [{ object: '/tv', issue: 'Path does not exist' }] }),
-        jobs: ok({
-          data: [{ job_id: 1, job_name: 'x', status: 'failed', last_run_time: stamp(NOW - HOUR) }],
-        }),
-      });
-      const provider = await connected();
-      const activity = await provider.getActivity();
-      const flag = (id: string): boolean | undefined =>
-        activity.find((a) => a.id.startsWith(id))?.advancesSyncCursor;
-
-      expect(flag('bazarr-episode-history-1')).toBe(true);
-      expect(flag('bazarr-episode-history-2')).toBe(false);
-      expect(flag('bazarr-health-')).toBe(false);
-      expect(flag('bazarr-job-1-')).toBe(false);
     });
   });
 
@@ -713,6 +787,42 @@ describe('BazarrProvider.getActivity', () => {
 
       expect(later?.timestamp).toEqual(new Date(2026, 9, 6, 9, 0, 0));
       expect(later?.advancesSyncCursor).toBe(true);
+    });
+
+    it('gives a row the same id whatever order was inferred or learned (restart safe)', async () => {
+      const ambiguous = [{ ...episode, parsed_timestamp: '05/10/26 08:00:00' }].map(
+        ({ id: _id, ...rest }) => rest
+      );
+      const disambiguating = { ...ambiguous[0], parsed_timestamp: '30/09/26 10:00:00' };
+
+      // "restart": a fresh provider that knows nothing sees only the ambiguous row
+      route({ episodes: ok({ data: ambiguous }) });
+      const fresh = await connected();
+      const [unparsed] = await fresh.getActivity(new Date(2026, 8, 1));
+      expect(unparsed?.advancesSyncCursor).toBe(false);
+
+      // a provider that learned day-first from another response parses the same row...
+      route({ episodes: ok({ data: [disambiguating, ...ambiguous] }) });
+      const learned = await connected();
+      await learned.getActivity(new Date(2026, 8, 1));
+      route({ episodes: ok({ data: ambiguous }) });
+      const [parsed] = await learned.getActivity(new Date(2026, 8, 1));
+
+      // ...but the id never depended on how the timestamp was interpreted
+      expect(parsed?.advancesSyncCursor).toBe(true);
+      expect(parsed?.id).toBe(unparsed?.id);
+    });
+
+    it('infers the order from rows of both sources before normalizing', async () => {
+      const ambiguousEpisode = { ...episode, id: 1, parsed_timestamp: '05/10/26 08:00:00' };
+      const provingMovie = { ...movie, id: 2, parsed_timestamp: '30/09/26 10:00:00' };
+      route({ episodes: ok({ data: [ambiguousEpisode] }), movies: ok({ data: [provingMovie] }) });
+      const provider = await connected();
+      const activity = await provider.getActivity(new Date(2026, 8, 1));
+      const ep = activity.find((a) => a.id === 'bazarr-episode-history-1');
+
+      expect(ep?.timestamp).toEqual(new Date(2026, 9, 5, 8, 0, 0));
+      expect(ep?.advancesSyncCursor).toBe(true);
     });
 
     it('does not apply an order learned from another server', async () => {
@@ -978,21 +1088,6 @@ describe('BazarrProvider.getActivity robustness', () => {
 
       expect(first[0]?.id).toBe(second[0]?.id);
       expect(first[0]?.id).toMatch(/^bazarr-episode-history-[0-9a-f]{16}$/);
-    });
-
-    it('stops after the first page when no row on it has a parseable time', async () => {
-      const page = Array.from({ length: 50 }, (_, i) => ({ id: i + 1, timestamp: 'recently' }));
-      const starts: string[] = [];
-      route({
-        episodes: (url: URL) => {
-          starts.push(url.searchParams.get('start') ?? '');
-          return ok({ data: page });
-        },
-      });
-      const provider = await connected();
-      await provider.getActivity(new Date());
-
-      expect(starts).toEqual(['0']);
     });
 
     it('includes the score in the content-hash id', async () => {

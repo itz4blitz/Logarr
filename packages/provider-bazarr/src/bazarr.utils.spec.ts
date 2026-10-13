@@ -190,3 +190,25 @@ describe('slash date order', () => {
     });
   });
 });
+
+describe('year-first dates', () => {
+  it('reads a four-digit year first as Y/M/D', () => {
+    expect(parseBazarrTimestamp({ parsed_timestamp: '2026/10/05 08:00:00' })).toEqual(
+      new Date(2026, 9, 5, 8, 0, 0)
+    );
+    expect(parseBazarrTimestamp({ parsed_timestamp: '2026.10.05 08:00:00' })).toEqual(
+      new Date(2026, 9, 5, 8, 0, 0)
+    );
+  });
+
+  it('is not evidence for the day/month order of other rows', () => {
+    expect(inferSlashDateOrder([{ parsed_timestamp: '2026/10/25 08:00:00' }])).toBeUndefined();
+  });
+
+  it('leaves a two-digit year first ambiguous by the usual rules', () => {
+    // 26/10/05: first number > 12, so it is read day-first (26 October 2005), not Y/M/D
+    expect(parseBazarrTimestamp({ parsed_timestamp: '26/10/05 08:00:00' })).toEqual(
+      new Date(2005, 9, 26, 8, 0, 0)
+    );
+  });
+});
