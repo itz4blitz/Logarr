@@ -243,6 +243,13 @@ export function parseArrLogLine(line: string): ParsedLogEntry | null {
 }
 
 /**
+ * A .NET exception line: a namespace-qualified type name ending in `Exception`, then `:`.
+ * Requires at least one dot and no whitespace in the type, so it matches `System.Exception`,
+ * `Npgsql.PostgresException` or `Polly.Timeout.TimeoutRejectedException` but not ordinary prose.
+ */
+const EXCEPTION_LINE_REGEX = /^((?:\w+\.)+\w*Exception):\s*(.*)$/;
+
+/**
  * Check if a line is a continuation of a previous log entry
  *
  * Continuation lines in .NET applications include:
@@ -259,7 +266,7 @@ export function isArrLogContinuation(line: string): boolean {
   if (/^\s{2,}at\s+/.test(line)) return true;
 
   // .NET exception types
-  if (/^(System|Microsoft|NLog|NzbDrone)\.\w+(\.\w+)*Exception:/i.test(trimmed)) return true;
+  if (EXCEPTION_LINE_REGEX.test(trimmed)) return true;
 
   // Inner exception marker
   if (/^--->\s+/.test(trimmed)) return true;
@@ -279,13 +286,8 @@ export function isArrLogContinuation(line: string): boolean {
 }
 
 /**
- * Parse a log line with context for multi-line entry support.
- *
- * Follows the `MediaServerProvider.parseLogLineWithContext` contract: `entry` is the
- * entry parsed from THIS line (not the previous one), continuation lines are flagged with
- * `isContinuation` so the caller can buffer them, and `previousComplete` tells the caller
- * the previously pending entry is finished. Attaching continuation lines is the caller's
- * job; use `finalizeArrLogEntry` to enrich the assembled entry with exception details.
+ * Parse a log line with context for multi-line entry support (`entry` is the entry for
+ * THIS line). Use `finalizeArrLogEntry` to enrich the assembled entry with exception details.
  */
 export function parseArrLogLineWithContext(line: string, context: LogParseContext): LogParseResult {
   // Blank lines carry no information. NLog emits one between the header and the
@@ -322,7 +324,7 @@ export function finalizeArrLogEntry(
   const match = first
     ?.trim()
     .replace(/^\[v[\d.]+\]\s*/, '')
-    .match(/^((?:System|Microsoft|NLog|NzbDrone)\.\w+(?:\.\w+)*Exception):\s*(.*)$/i);
+    .match(EXCEPTION_LINE_REGEX);
   if (!match) return entry;
 
   const [, exception, exceptionMessage] = match;
