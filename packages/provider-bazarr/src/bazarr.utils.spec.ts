@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseBazarrTimestamp, stableHash } from './bazarr.utils.js';
+import { inferSlashDateOrder, parseBazarrTimestamp, stableHash } from './bazarr.utils.js';
 
 describe('parseBazarrTimestamp', () => {
   it('parses ISO-like strings', () => {
@@ -13,16 +13,16 @@ describe('parseBazarrTimestamp', () => {
   });
 
   it('parses the C/en_US %x %X format (month first, 2-digit year)', () => {
-    expect(parseBazarrTimestamp({ parsed_timestamp: '10/09/26 12:00:01' })).toEqual(
+    expect(parseBazarrTimestamp({ parsed_timestamp: '10/09/26 12:00:01' }, 'mdy')).toEqual(
       new Date(2026, 9, 9, 12, 0, 1)
     );
   });
 
   it('parses 4-digit year and 12-hour clock', () => {
-    expect(parseBazarrTimestamp({ parsed_timestamp: '10/09/2026 12:00:01 AM' })).toEqual(
+    expect(parseBazarrTimestamp({ parsed_timestamp: '10/09/2026 12:00:01 AM' }, 'mdy')).toEqual(
       new Date(2026, 9, 9, 0, 0, 1)
     );
-    expect(parseBazarrTimestamp({ parsed_timestamp: '10/09/2026 1:30:00 PM' })).toEqual(
+    expect(parseBazarrTimestamp({ parsed_timestamp: '10/09/2026 1:30:00 PM' }, 'mdy')).toEqual(
       new Date(2026, 9, 9, 13, 30, 0)
     );
   });
@@ -82,10 +82,10 @@ describe('parseBazarrTimestamp edge cases', () => {
   });
 
   it('handles 12 AM and 12 PM on the 12-hour clock', () => {
-    expect(parseBazarrTimestamp({ parsed_timestamp: '10/09/2026 12:30:00 AM' })).toEqual(
+    expect(parseBazarrTimestamp({ parsed_timestamp: '10/09/2026 12:30:00 AM' }, 'mdy')).toEqual(
       new Date(2026, 9, 9, 0, 30, 0)
     );
-    expect(parseBazarrTimestamp({ parsed_timestamp: '10/09/2026 12:30:00 PM' })).toEqual(
+    expect(parseBazarrTimestamp({ parsed_timestamp: '10/09/2026 12:30:00 PM' }, 'mdy')).toEqual(
       new Date(2026, 9, 9, 12, 30, 0)
     );
   });
@@ -102,5 +102,91 @@ describe('stableHash edge cases', () => {
 
   it('is sensitive to the field separator', () => {
     expect(stableHash('a|b')).not.toBe(stableHash('ab'));
+  });
+});
+
+describe('slash date order', () => {
+  it('reads an ambiguous date as 5 October when the response is day-first', () => {
+    expect(parseBazarrTimestamp({ parsed_timestamp: '05/10/26 08:00:00' }, 'dmy')).toEqual(
+      new Date(2026, 9, 5, 8, 0, 0)
+    );
+  });
+
+  it('reads the same ambiguous date as 10 May when the response is month-first', () => {
+    expect(parseBazarrTimestamp({ parsed_timestamp: '05/10/26 08:00:00' }, 'mdy')).toEqual(
+      new Date(2026, 4, 10, 8, 0, 0)
+    );
+  });
+
+  it('refuses to guess an ambiguous date without a known order', () => {
+    expect(parseBazarrTimestamp({ parsed_timestamp: '05/10/26 08:00:00' })).toBeUndefined();
+  });
+
+  it('parses dates that are the same in both orders without a known order', () => {
+    expect(parseBazarrTimestamp({ parsed_timestamp: '10/10/26 08:00:00' })).toEqual(
+      new Date(2026, 9, 10, 8, 0, 0)
+    );
+  });
+
+  it('lets an unambiguous row override the supplied order', () => {
+    expect(parseBazarrTimestamp({ parsed_timestamp: '25/10/26 08:00:00' }, 'mdy')).toEqual(
+      new Date(2026, 9, 25, 8, 0, 0)
+    );
+  });
+
+  it('keeps dotted dates day-first regardless of order', () => {
+    expect(parseBazarrTimestamp({ parsed_timestamp: '05.10.2026 08:00:00' }, 'mdy')).toEqual(
+      new Date(2026, 9, 5, 8, 0, 0)
+    );
+  });
+
+  describe('inferSlashDateOrder', () => {
+    it('infers day-first from a first number above 12', () => {
+      expect(
+        inferSlashDateOrder([
+          { parsed_timestamp: '05/10/26 08:00:00' },
+          { parsed_timestamp: '25/09/26 08:00:00' },
+        ])
+      ).toBe('dmy');
+    });
+
+    it('infers month-first from a second number above 12', () => {
+      expect(
+        inferSlashDateOrder([
+          { parsed_timestamp: '05/10/26 08:00:00' },
+          { parsed_timestamp: '09/25/26 08:00:00' },
+        ])
+      ).toBe('mdy');
+    });
+
+    it('returns undefined when every row is ambiguous', () => {
+      expect(
+        inferSlashDateOrder([
+          { parsed_timestamp: '05/10/26 08:00:00' },
+          { parsed_timestamp: '04/10/26 08:00:00' },
+          { parsed_timestamp: '10/10/26 08:00:00' },
+        ])
+      ).toBeUndefined();
+    });
+
+    it('returns undefined on conflicting evidence', () => {
+      expect(
+        inferSlashDateOrder([
+          { parsed_timestamp: '25/09/26 08:00:00' },
+          { parsed_timestamp: '09/25/26 08:00:00' },
+        ])
+      ).toBeUndefined();
+    });
+
+    it('ignores ISO, dotted, humanised and missing values', () => {
+      expect(
+        inferSlashDateOrder([
+          { parsed_timestamp: '2026-10-05 08:00:00' },
+          { parsed_timestamp: '25.09.2026 08:00:00' },
+          { timestamp: '2 hours ago' },
+          {},
+        ])
+      ).toBeUndefined();
+    });
   });
 });

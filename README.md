@@ -280,7 +280,7 @@ LIDARR_LOGS_PATH=/path/to/lidarr/config/logs
 BAZARR_LOGS_PATH=/path/to/bazarr/config/log
 ```
 
-> **Bazarr notes:** Bazarr writes naive local timestamps (no timezone), so run Logarr in the same timezone as Bazarr (e.g. set `TZ` on both containers). Bazarr health issues are recorded once per distinct issue, not on every poll.
+> **Bazarr notes:** Bazarr writes naive local timestamps (no timezone), so run Logarr in the same timezone as Bazarr (e.g. set `TZ` on both containers). Bazarr health issues are recorded once per distinct issue, not on every poll. Bazarr reports history dates in its host's locale format; Logarr infers whether it is day-first or month-first from the data and skips timestamps it cannot read unambiguously.
 
 2. **Restart Logarr** — The docker-compose mounts these paths automatically.
 

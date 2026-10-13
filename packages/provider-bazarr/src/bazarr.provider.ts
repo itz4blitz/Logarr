@@ -7,7 +7,7 @@ import {
   parseBazarrLogLineWithContext,
 } from './bazarr.parser.js';
 import { BazarrHistoryActions } from './bazarr.types.js';
-import { parseBazarrTimestamp, stableHash } from './bazarr.utils.js';
+import { inferSlashDateOrder, parseBazarrTimestamp, stableHash } from './bazarr.utils.js';
 
 import type {
   BazarrEpisodeHistory,
@@ -16,6 +16,7 @@ import type {
   BazarrJob,
   BazarrMovieHistory,
 } from './bazarr.types.js';
+import type { SlashDateOrder } from './bazarr.utils.js';
 import type {
   ConnectionStatus,
   CorrelationPattern,
@@ -34,8 +35,15 @@ import type {
 
 /** History page size requested from Bazarr */
 const HISTORY_PAGE_SIZE = 50;
-/** Maximum history pages fetched per endpoint per poll (when a `since` cutoff exists) */
-const HISTORY_MAX_PAGES_WITH_SINCE = 3;
+/**
+ * Safety cap on history pages per endpoint per poll (40 x 50 = 2000 rows). Paging normally
+ * ends earlier, at a short page or the first row older than the cutoff.
+ */
+const HISTORY_MAX_PAGES = 40;
+/** How far back the first poll (no `since`) reads history, matching file-ingestion's default backfill */
+const HISTORY_INITIAL_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+/** Upper bound for remembered per-server slash-date orders */
+const MAX_REMEMBERED_ORDERS = 32;
 /**
  * History timestamps are naive local time of the Bazarr host, so the `since` cutoff is
  * widened by this margin to absorb timezone differences. Re-read rows are deduplicated
@@ -46,6 +54,13 @@ const HISTORY_SINCE_MARGIN_MS = 24 * 60 * 60 * 1000;
 /** Anything with an explicit UTC offset can be parsed natively */
 const ISO_WITH_TIMEZONE =
   /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})$/i;
+
+/** Result of fetching one activity source */
+interface SourceResult {
+  items: readonly NormalizedActivity[];
+  /** Set when history paging was capped: rows newer than this must not advance the cursor */
+  cursorCeiling?: Date;
+}
 
 /** Lowercase kebab id fragment (stable, no spaces or punctuation) */
 function idPart(value: string | number): string {
@@ -85,6 +100,8 @@ export class BazarrProvider implements MediaServerProvider {
 
   private client: BazarrClient | null = null;
   private config: ProviderConfig | null = null;
+  /** Slash-date order learned per Bazarr URL, used when a response is all-ambiguous */
+  private readonly slashOrders = new Map<string, SlashDateOrder>();
 
   async connect(config: ProviderConfig): Promise<void> {
     this.config = config;
@@ -181,25 +198,28 @@ export class BazarrProvider implements MediaServerProvider {
       this.safely('episode history', () =>
         this.collectHistory(
           (length, start) => client.getEpisodeHistory(length, start),
-          (rec) => this.normalizeEpisodeHistory(rec),
+          (rec, parsed) => this.normalizeEpisodeHistory(rec, parsed),
           since
         )
       ),
       this.safely('movie history', () =>
         this.collectHistory(
           (length, start) => client.getMovieHistory(length, start),
-          (rec) => this.normalizeMovieHistory(rec),
+          (rec, parsed) => this.normalizeMovieHistory(rec, parsed),
           since
         )
       ),
-      this.safely('health', async () =>
-        (await client.getHealth()).map((issue) => this.normalizeHealthIssue(issue))
-      ),
-      this.safely('jobs', async () =>
-        (await client.getJobs('failed'))
-          .map((job) => this.normalizeFailedJob(job))
-          .filter((activity) => since === undefined || activity.timestamp >= since)
-      ),
+      this.safely('health', async () => ({
+        items: (await client.getHealth()).map((issue) => this.normalizeHealthIssue(issue)),
+      })),
+      this.safely('jobs', async () => {
+        const cutoff = since !== undefined ? since.getTime() - HISTORY_SINCE_MARGIN_MS : undefined;
+        return {
+          items: (await client.getJobs('failed'))
+            .map((job) => this.normalizeFailedJob(job))
+            .filter((activity) => cutoff === undefined || activity.timestamp.getTime() >= cutoff),
+        };
+      }),
     ]);
 
     // Partial failure is tolerated; if every source failed, surface the first error so the
@@ -209,8 +229,22 @@ export class BazarrProvider implements MediaServerProvider {
       throw failures[0]?.error;
     }
 
+    // If paging was capped, only rows at or before the oldest fetched history row may move
+    // the sync cursor, so the next poll still reaches the events that were not fetched.
+    const ceilings = sections.flatMap((section) =>
+      section.cursorCeiling !== undefined ? [section.cursorCeiling.getTime()] : []
+    );
+    const ceiling = ceilings.length > 0 ? Math.min(...ceilings) : undefined;
+
     return sections
       .flatMap((section) => section.items)
+      .map((activity) =>
+        ceiling !== undefined &&
+        activity.advancesSyncCursor !== false &&
+        activity.timestamp.getTime() > ceiling
+          ? { ...activity, advancesSyncCursor: false }
+          : activity
+      )
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
   }
 
@@ -224,66 +258,107 @@ export class BazarrProvider implements MediaServerProvider {
   /** Run one activity source; a failing endpoint must not drop the others */
   private async safely(
     source: string,
-    run: () => Promise<readonly NormalizedActivity[]>
-  ): Promise<{ items: readonly NormalizedActivity[]; error?: unknown }> {
+    run: () => Promise<SourceResult>
+  ): Promise<SourceResult & { error?: unknown }> {
     try {
-      return { items: await run() };
+      return await run();
     } catch (error) {
       console.error(`[${this.id}] Failed to get ${source}:`, error);
       return { items: [], error };
     }
   }
 
+  /** Slash-date order for one response: inferred from its rows, else the one learned earlier */
+  private resolveSlashOrder(records: readonly BazarrHistoryBase[]): SlashDateOrder | undefined {
+    const key = this.config?.url ?? '';
+    const inferred = inferSlashDateOrder(records);
+
+    if (inferred !== undefined) {
+      if (!this.slashOrders.has(key) && this.slashOrders.size >= MAX_REMEMBERED_ORDERS) {
+        const oldest = this.slashOrders.keys().next();
+        if (oldest.done !== true) this.slashOrders.delete(oldest.value);
+      }
+      this.slashOrders.set(key, inferred);
+      return inferred;
+    }
+
+    return this.slashOrders.get(key);
+  }
+
   /**
-   * Page through newest-first history. Without `since` only the latest page is read;
-   * with `since`, pages are followed (max 3) until a short page or records older than the cutoff.
+   * Page through newest-first history until the oldest parseable row on a page is older
+   * than the cutoff (`since` minus a timezone margin, or 7 days back on the first poll), a
+   * page is short, or the safety cap is hit.
+   *
+   * Rows whose time could not be parsed fall back to "now" and never move the sync cursor or
+   * the paging cutoff. If the cap is hit first, `cursorCeiling` is the oldest fetched
+   * history time: rows newer than it must not advance the cursor.
    */
   private async collectHistory<T extends BazarrHistoryBase>(
     fetchPage: (length: number, start: number) => Promise<readonly T[]>,
-    normalize: (record: T) => NormalizedActivity,
+    normalize: (record: T, parsed: Date | undefined) => NormalizedActivity,
     since: Date | undefined
-  ): Promise<NormalizedActivity[]> {
-    const cutoff = since !== undefined ? since.getTime() - HISTORY_SINCE_MARGIN_MS : undefined;
-    const maxPages = cutoff !== undefined ? HISTORY_MAX_PAGES_WITH_SINCE : 1;
-    const result: NormalizedActivity[] = [];
+  ): Promise<SourceResult> {
+    const cutoff =
+      since !== undefined
+        ? since.getTime() - HISTORY_SINCE_MARGIN_MS
+        : Date.now() - HISTORY_INITIAL_WINDOW_MS;
+    const items: NormalizedActivity[] = [];
+    let oldestFetched: number | undefined;
     let reachedEnd = false;
 
-    for (let page = 0; page < maxPages; page++) {
+    for (let page = 0; page < HISTORY_MAX_PAGES; page++) {
       const records = await fetchPage(HISTORY_PAGE_SIZE, page * HISTORY_PAGE_SIZE);
+      const order = this.resolveSlashOrder(records);
 
-      let anyParsed = false;
+      let oldestOnPage: number | undefined;
       for (const record of records) {
-        const parsed = parseBazarrTimestamp(record);
-        anyParsed ||= parsed !== undefined;
-        // Unparseable timestamps are kept; dedupe by stable id makes that safe
-        if (cutoff === undefined || parsed === undefined || parsed.getTime() >= cutoff) {
-          result.push(normalize(record));
+        const parsed = parseBazarrTimestamp(record, order);
+        if (parsed !== undefined) {
+          const time = parsed.getTime();
+          oldestOnPage = oldestOnPage === undefined ? time : Math.min(oldestOnPage, time);
+          oldestFetched = oldestFetched === undefined ? time : Math.min(oldestFetched, time);
+        }
+        // Unparseable rows are kept (stable ids dedupe them) but are not trusted for the cutoff
+        if (parsed === undefined || parsed.getTime() >= cutoff) {
+          items.push(normalize(record, parsed));
         }
       }
 
-      const oldest = records[records.length - 1];
-      const oldestTime = oldest !== undefined ? parseBazarrTimestamp(oldest) : undefined;
-      if (
-        records.length < HISTORY_PAGE_SIZE ||
-        // Nothing on this page has a usable time, so the cutoff can never be reached
-        (cutoff !== undefined && !anyParsed) ||
-        (cutoff !== undefined && oldestTime !== undefined && oldestTime.getTime() < cutoff)
-      ) {
+      if (records.length < HISTORY_PAGE_SIZE) {
+        reachedEnd = true;
+        break;
+      }
+      if (oldestOnPage === undefined) {
+        // Nothing on this page has a usable time, so the cutoff can never be proven
+        console.warn(`[${this.id}] Could not parse any history timestamp; stopped paging`);
+        reachedEnd = true;
+        break;
+      }
+      if (oldestOnPage < cutoff) {
         reachedEnd = true;
         break;
       }
     }
 
-    if (cutoff !== undefined && !reachedEnd) {
-      console.warn(
-        `[${this.id}] History paging stopped after ${maxPages} pages; older events may have been skipped`
-      );
+    if (reachedEnd) {
+      return { items };
     }
 
-    return result;
+    console.warn(
+      `[${this.id}] History paging stopped after ${HISTORY_MAX_PAGES} pages; older events are picked up on later polls`
+    );
+    return oldestFetched !== undefined
+      ? { items, cursorCeiling: new Date(oldestFetched) }
+      : { items };
   }
 
-  private historyId(kind: 'episode' | 'movie', record: BazarrHistoryBase, ref: unknown): string {
+  private historyId(
+    kind: 'episode' | 'movie',
+    record: BazarrHistoryBase,
+    parsed: Date | undefined,
+    ref: unknown
+  ): string {
     const prefix = `bazarr-${kind}-history-`;
     if (typeof record.id === 'number') {
       return `${prefix}${record.id}`;
@@ -291,7 +366,7 @@ export class BazarrProvider implements MediaServerProvider {
 
     // Bazarr's API model omits the row id: derive a stable one from the record content.
     // The humanised `timestamp` changes over time, so only an absolute time is used.
-    const when = parseBazarrTimestamp(record)?.toISOString() ?? null;
+    const when = parsed?.toISOString() ?? null;
     return `${prefix}${stableHash(
       JSON.stringify([
         ref,
@@ -326,20 +401,27 @@ export class BazarrProvider implements MediaServerProvider {
     };
   }
 
-  private normalizeEpisodeHistory(record: BazarrEpisodeHistory): NormalizedActivity {
+  private normalizeEpisodeHistory(
+    record: BazarrEpisodeHistory,
+    parsed: Date | undefined
+  ): NormalizedActivity {
     const name =
       record.seriesTitle !== undefined
         ? `${record.seriesTitle} ${record.episode_number ?? ''}`.trim()
         : 'Unknown';
 
     return {
-      id: this.historyId('episode', record, [record.sonarrSeriesId, record.sonarrEpisodeId]),
+      id: this.historyId('episode', record, parsed, [
+        record.sonarrSeriesId,
+        record.sonarrEpisodeId,
+      ]),
       type: this.historyType(record.action),
       name,
       overview: record.description,
       severity: record.blacklisted === true ? 'warn' : 'info',
       itemId: record.sonarrEpisodeId !== undefined ? String(record.sonarrEpisodeId) : undefined,
-      timestamp: parseBazarrTimestamp(record) ?? new Date(),
+      timestamp: parsed ?? new Date(),
+      advancesSyncCursor: parsed !== undefined,
       metadata: {
         kind: 'episode',
         ...this.commonHistoryMetadata(record),
@@ -350,15 +432,19 @@ export class BazarrProvider implements MediaServerProvider {
     };
   }
 
-  private normalizeMovieHistory(record: BazarrMovieHistory): NormalizedActivity {
+  private normalizeMovieHistory(
+    record: BazarrMovieHistory,
+    parsed: Date | undefined
+  ): NormalizedActivity {
     return {
-      id: this.historyId('movie', record, [record.radarrId]),
+      id: this.historyId('movie', record, parsed, [record.radarrId]),
       type: this.historyType(record.action),
       name: record.title ?? 'Unknown',
       overview: record.description,
       severity: record.blacklisted === true ? 'warn' : 'info',
       itemId: record.radarrId !== undefined ? String(record.radarrId) : undefined,
-      timestamp: parseBazarrTimestamp(record) ?? new Date(),
+      timestamp: parsed ?? new Date(),
+      advancesSyncCursor: parsed !== undefined,
       metadata: {
         kind: 'movie',
         ...this.commonHistoryMetadata(record),
@@ -376,6 +462,8 @@ export class BazarrProvider implements MediaServerProvider {
       overview: issue.issue,
       severity: 'warn',
       timestamp: new Date(),
+      // Stamped with the detection time, so it must not move the sync cursor
+      advancesSyncCursor: false,
       metadata: { object: issue.object, issue: issue.issue },
     };
   }
@@ -388,6 +476,8 @@ export class BazarrProvider implements MediaServerProvider {
       overview: job.progress_message ?? 'Background job failed',
       severity: 'error',
       timestamp: parseJobTime(job.last_run_time) ?? new Date(),
+      // Failed jobs are state (the queue keeps them), not a history stream: never move the cursor
+      advancesSyncCursor: false,
       metadata: {
         jobId: job.job_id,
         jobName: job.job_name,

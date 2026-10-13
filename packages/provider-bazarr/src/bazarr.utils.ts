@@ -21,6 +21,12 @@ const ISO_LIKE = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/;
 const LOCALE_LIKE =
   /^(\d{1,2})([/.-])(\d{1,2})[/.-](\d{2,4})[ ,T]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i;
 
+/**
+ * Field order of a numeric slash date. Bazarr's `parsed_timestamp` is Python's locale
+ * `%x %X`, so `05/10/26` is 10 May (`mdy`) or 5 October (`dmy`) depending on the host locale.
+ */
+export type SlashDateOrder = 'mdy' | 'dmy';
+
 function build(
   year: number,
   month: number,
@@ -39,11 +45,23 @@ function build(
 }
 
 /**
- * Parse a timestamp string as emitted by Bazarr (naive local time).
- * Supports ISO-like values and Python's locale `%x %X` output
- * (e.g. "10/09/26 12:00:01", "10/09/2026 1:30:00 PM", "09.10.2026 08:00:00").
+ * Resolve the order of one slash date: `undefined` when it cannot be known from the
+ * numbers alone (both <= 12 and different).
  */
-function parseDateString(value: string): Date | undefined {
+function rowOrder(first: number, second: number): SlashDateOrder | undefined {
+  if (first === second) return 'mdy'; // identical either way
+  if (first > 12) return 'dmy';
+  if (second > 12) return 'mdy';
+  return undefined;
+}
+
+/**
+ * Parse a timestamp string as emitted by Bazarr (naive local time).
+ * Supports ISO-like values and Python's locale `%x %X` output. Ambiguous slash dates
+ * (both numbers <= 12) are only parsed when `order` says how to read them; dotted dates
+ * are always day-first.
+ */
+function parseDateString(value: string, order: SlashDateOrder | undefined): Date | undefined {
   const text = value.trim();
 
   const iso = ISO_LIKE.exec(text);
@@ -70,10 +88,12 @@ function parseDateString(value: string): Date | undefined {
     year += 2000;
   }
 
-  // Month first (C / en_US) unless the separator is a dot or the first number cannot be a month
-  const dayFirst = m[2] === '.' || first > 12;
-  const month = dayFirst ? second : first;
-  const day = dayFirst ? first : second;
+  const resolved = m[2] === '.' ? 'dmy' : (rowOrder(first, second) ?? order);
+  if (resolved === undefined) {
+    return undefined;
+  }
+  const month = resolved === 'dmy' ? second : first;
+  const day = resolved === 'dmy' ? first : second;
 
   let hour = Number(m[5]);
   const meridiem = m[8]?.toUpperCase();
@@ -83,17 +103,48 @@ function parseDateString(value: string): Date | undefined {
   return build(year, month, day, hour, Number(m[6]), Number(m[7] ?? '0'));
 }
 
+type TimestampFields = Pick<BazarrHistoryBase, 'parsed_timestamp' | 'timestamp'>;
+
+/**
+ * Infer the slash-date order of a whole response: any date whose first number is > 12
+ * proves day-first, any whose second number is > 12 proves month-first. Returns undefined
+ * when there is no evidence or the evidence conflicts.
+ */
+export function inferSlashDateOrder(
+  records: readonly TimestampFields[]
+): SlashDateOrder | undefined {
+  let dmy = false;
+  let mdy = false;
+
+  for (const record of records) {
+    for (const candidate of [record.parsed_timestamp, record.timestamp]) {
+      if (typeof candidate !== 'string') continue;
+      const m = LOCALE_LIKE.exec(candidate.trim());
+      if (m === null || m[2] === '.') continue;
+      if (Number(m[1]) === Number(m[3])) continue;
+      const found = rowOrder(Number(m[1]), Number(m[3]));
+      if (found === 'dmy') dmy = true;
+      if (found === 'mdy') mdy = true;
+    }
+  }
+
+  if (dmy === mdy) return undefined;
+  return dmy ? 'dmy' : 'mdy';
+}
+
 /**
  * Best-effort absolute timestamp of a history record.
  * Bazarr's `timestamp` is humanised ("2 hours ago"); `parsed_timestamp` is locale
- * formatted. Returns undefined when nothing parses so callers can decide on a fallback.
+ * formatted and contains the only absolute time. Returns undefined when nothing parses so
+ * callers can decide on a fallback.
  */
 export function parseBazarrTimestamp(
-  record: Pick<BazarrHistoryBase, 'parsed_timestamp' | 'timestamp'>
+  record: TimestampFields,
+  order?: SlashDateOrder
 ): Date | undefined {
   for (const candidate of [record.parsed_timestamp, record.timestamp]) {
     if (typeof candidate === 'string' && candidate !== '') {
-      const date = parseDateString(candidate);
+      const date = parseDateString(candidate, order);
       if (date !== undefined) {
         return date;
       }
