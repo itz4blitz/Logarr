@@ -33,15 +33,16 @@ export function buildCreateServerPayload(
 }
 
 /**
- * Credential fields for the update payload. For providers using usernames the username is
- * always sent ('' clears it on the backend).
+ * Credential fields for the update payload. The stored secret is never sent back to the client,
+ * so an empty apiKey field means "keep the stored value" and is omitted. For providers using
+ * usernames the username is always sent ('' clears it on the backend).
  */
 export function buildUpdateCredentials(
   providerId: string,
   data: { apiKey: string; username?: string | undefined }
-): { apiKey: string; username?: string } {
+): { apiKey?: string; username?: string } {
   return {
-    apiKey: data.apiKey,
+    ...(data.apiKey.trim() !== '' && { apiKey: data.apiKey }),
     ...(supportsUsername(providerId) && { username: data.username?.trim() ?? '' }),
   };
 }

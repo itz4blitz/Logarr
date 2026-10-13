@@ -11,6 +11,12 @@ import { ServersService } from './servers.service';
 
 import type { TestingModule } from '@nestjs/testing';
 
+/** Expected API shape: the stored secret is replaced by hasApiKey */
+const withoutSecret = <T extends { apiKey: string }>(row: T) => {
+  const { apiKey, ...rest } = row;
+  return { ...rest, hasApiKey: apiKey !== '' };
+};
+
 describe('ServersService', () => {
   let service: ServersService;
   let mockDb: MockDb;
@@ -66,7 +72,7 @@ describe('ServersService', () => {
 
       const result = await service.findAll();
 
-      expect(result).toEqual(servers);
+      expect(result).toEqual(servers.map(withoutSecret));
     });
 
     it('should return empty array when no servers', async () => {
@@ -84,7 +90,7 @@ describe('ServersService', () => {
 
       const result = await service.findOne('server-1');
 
-      expect(result).toEqual(mockServer);
+      expect(result).toEqual(withoutSecret(mockServer));
     });
 
     it('should throw NotFoundException when server not found', async () => {
@@ -107,7 +113,7 @@ describe('ServersService', () => {
 
       const result = await service.create(dto);
 
-      expect(result).toEqual(mockServer);
+      expect(result).toEqual(withoutSecret(mockServer));
       expect(mockDb.insert).toHaveBeenCalled();
     });
 
@@ -139,7 +145,7 @@ describe('ServersService', () => {
         apiKey: 'test-key',
       });
 
-      expect(result).toEqual(lidarrServer);
+      expect(result).toEqual(withoutSecret(lidarrServer));
     });
 
     it('should start file ingestion if enabled', async () => {
@@ -194,7 +200,7 @@ describe('ServersService', () => {
       const result = await service.create(dto);
 
       // Should successfully create the second Radarr instance
-      expect(result).toEqual(newRadarr);
+      expect(result).toEqual(withoutSecret(newRadarr));
       expect(mockDb.insert).toHaveBeenCalled();
     });
 
@@ -1411,10 +1417,16 @@ describe('ServersService', () => {
         expect(updatedValues()).not.toHaveProperty('username');
       });
 
-      it('keeps an empty apiKey as is', async () => {
+      it('keeps the stored secret when apiKey is empty or omitted', async () => {
         await service.update('server-qbit', { apiKey: '' });
 
-        expect(updatedValues()['apiKey']).toBe('');
+        expect(updatedValues()).not.toHaveProperty('apiKey');
+      });
+
+      it('replaces the stored secret when a new apiKey is sent', async () => {
+        await service.update('server-qbit', { apiKey: 'new-secret' });
+
+        expect(updatedValues()['apiKey']).toBe('new-secret');
       });
     });
 
@@ -1457,6 +1469,71 @@ describe('ServersService', () => {
           expect.objectContaining({ username: undefined })
         );
       });
+    });
+  });
+
+  describe('secret is never returned', () => {
+    const secretServer = { ...mockServer, apiKey: 'super-secret-token' };
+
+    it('findAll / findOne strip apiKey and expose hasApiKey', async () => {
+      configureMockDb(mockDb, { select: [secretServer] });
+
+      const [listed] = await service.findAll();
+      const single = await service.findOne('server-1');
+
+      for (const server of [listed, single]) {
+        expect(server).not.toHaveProperty('apiKey');
+        expect(server?.hasApiKey).toBe(true);
+        expect(JSON.stringify(server)).not.toContain('super-secret-token');
+      }
+    });
+
+    it('hasApiKey is false for an empty stored secret', async () => {
+      configureMockDb(mockDb, { select: [{ ...secretServer, apiKey: '' }] });
+
+      expect((await service.findOne('server-1')).hasApiKey).toBe(false);
+    });
+
+    it('create strips apiKey from the returned server', async () => {
+      configureMockDb(mockDb, { insert: [secretServer] });
+
+      const created = await service.create({
+        name: 'n',
+        providerId: 'jellyfin',
+        url: 'http://x',
+        apiKey: 'super-secret-token',
+      });
+
+      expect(created).not.toHaveProperty('apiKey');
+      expect(created?.hasApiKey).toBe(true);
+    });
+
+    it('update strips apiKey from the returned server', async () => {
+      configureMockDb(mockDb, { select: [secretServer], update: [secretServer] });
+
+      const updated = await service.update('server-1', { name: 'Renamed' });
+
+      expect(updated).not.toHaveProperty('apiKey');
+      expect(JSON.stringify(updated)).not.toContain('super-secret-token');
+    });
+
+    it('testConnection reads the secret from the database, not from the caller', async () => {
+      const connect = vi.fn().mockResolvedValue(undefined);
+      service['providers'].set('jellyfin', {
+        id: 'jellyfin',
+        name: 'Jellyfin',
+        connect,
+        disconnect: vi.fn().mockResolvedValue(undefined),
+        testConnection: vi.fn().mockResolvedValue({ connected: true }),
+        capabilities: {},
+      } as any);
+      configureMockDb(mockDb, { select: [secretServer], update: [secretServer] });
+
+      await service.testConnection('server-1');
+
+      expect(connect).toHaveBeenCalledWith(
+        expect.objectContaining({ apiKey: 'super-secret-token' })
+      );
     });
   });
 });

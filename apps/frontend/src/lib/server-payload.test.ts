@@ -55,10 +55,11 @@ describe('buildUpdateCredentials', () => {
       apiKey: 'pw',
       username: 'bob',
     });
+    // an empty secret means "keep the stored value" and is not sent
     expect(buildUpdateCredentials('qbittorrent', { apiKey: '', username: undefined })).toEqual({
-      apiKey: '',
       username: '',
     });
+    expect(buildUpdateCredentials('sonarr', { apiKey: '   ' })).toEqual({});
   });
 
   it('never sends a username for other providers', () => {

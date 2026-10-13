@@ -44,7 +44,10 @@ export class UpdateServerDto {
   @ApiPropertyOptional({ description: 'Server URL' })
   url?: string;
 
-  @ApiPropertyOptional({ description: 'API key / token / password for authentication' })
+  @ApiPropertyOptional({
+    description:
+      'API key / token / password for authentication. Omit or leave empty to keep the stored value.',
+  })
   apiKey?: string;
 
   @ApiPropertyOptional({
@@ -86,6 +89,12 @@ export class ServerResponseDto {
 
   @ApiPropertyOptional({ description: 'Login username (qBittorrent)' })
   username?: string | null;
+
+  @ApiProperty({
+    description:
+      'Whether a secret (API key, token or password) is stored. The secret is never returned.',
+  })
+  hasApiKey: boolean;
 
   @ApiPropertyOptional()
   logPath?: string | null;

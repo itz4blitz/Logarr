@@ -8,7 +8,8 @@ export interface Server {
   name: string;
   providerId: string;
   url: string;
-  apiKey: string;
+  /** Whether a secret (API key / token / password) is stored. The value is never returned. */
+  hasApiKey: boolean;
   username: string | null;
   logPath: string | null;
   isConnected: boolean;

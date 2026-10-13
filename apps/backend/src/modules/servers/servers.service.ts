@@ -22,6 +22,9 @@ import * as schema from '../../database/schema';
 import { FileIngestionService } from '../file-ingestion/file-ingestion.service';
 import { IngestionService } from '../ingestion/ingestion.service';
 
+import { toServerResponse } from './server-response.mapper';
+
+import type { ServerResponse, ServerRow } from './server-response.mapper';
 import type { CreateServerDto, UpdateServerDto } from './servers.dto';
 import type { MediaServerProvider } from '@logarr/core';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
@@ -78,11 +81,19 @@ export class ServersService {
     this.providers.set(qbittorrentProvider.id, qbittorrentProvider);
   }
 
-  async findAll() {
-    return this.db.select().from(schema.servers).orderBy(schema.servers.createdAt);
+  /** All servers as returned by the API (without the stored secret) */
+  async findAll(): Promise<ServerResponse[]> {
+    const rows = await this.db.select().from(schema.servers).orderBy(schema.servers.createdAt);
+    return rows.map(toServerResponse);
   }
 
-  async findOne(id: string) {
+  /** One server as returned by the API (without the stored secret) */
+  async findOne(id: string): Promise<ServerResponse> {
+    return toServerResponse(await this.getServerRow(id));
+  }
+
+  /** Database row including the secret: for internal use only, never return it from the API */
+  private async getServerRow(id: string): Promise<ServerRow> {
     const result = await this.db
       .select()
       .from(schema.servers)
@@ -128,7 +139,8 @@ export class ServersService {
       })
       .returning();
 
-    const server = result[0];
+    const created = result[0];
+    const server = created ? toServerResponse(created) : undefined;
 
     // If file ingestion is enabled, start it immediately
     if (server && dto.fileIngestionEnabled && dto.logPaths?.length) {
@@ -142,10 +154,10 @@ export class ServersService {
 
   async update(id: string, dto: UpdateServerDto) {
     // Get the current server state to detect changes
-    const currentServer = await this.findOne(id);
+    const currentServer = await this.getServerRow(id);
 
     // An empty username clears it (stored as NULL)
-    const { username, ...rest } = dto;
+    const { username, apiKey, ...rest } = dto;
     // Ignored for providers that do not authenticate with a username
     const normalizedUsername =
       this.providers.get(currentServer.providerId)?.capabilities.supportsUsername === true
@@ -156,6 +168,8 @@ export class ServersService {
       .update(schema.servers)
       .set({
         ...rest,
+        // An omitted or empty secret keeps the stored value (the API never returns it)
+        ...(typeof apiKey === 'string' && apiKey !== '' && { apiKey }),
         ...(normalizedUsername !== undefined && { username: normalizedUsername }),
         updatedAt: new Date(),
       })
@@ -249,7 +263,7 @@ export class ServersService {
   }
 
   async testConnection(id: string) {
-    const server = await this.findOne(id);
+    const server = await this.getServerRow(id);
     const provider = this.providers.get(server.providerId);
 
     if (!provider) {
@@ -398,7 +412,7 @@ export class ServersService {
    * Start file ingestion for a specific server
    */
   private async startFileIngestionForServer(serverId: string) {
-    const server = await this.findOne(serverId);
+    const server = await this.getServerRow(serverId);
 
     if (!server.fileIngestionEnabled || !server.logPaths?.length) {
       return;
@@ -450,7 +464,7 @@ export class ServersService {
    * This clears all file states and restarts file ingestion
    */
   async resetFileIngestionState(id: string) {
-    const server = await this.findOne(id);
+    const server = await this.getServerRow(id);
 
     if (!server.fileIngestionEnabled) {
       return {

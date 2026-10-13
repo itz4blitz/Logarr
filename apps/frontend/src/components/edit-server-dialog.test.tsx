@@ -21,7 +21,7 @@ function makeServer(overrides: Partial<Server>): Server {
     name: 'My Server',
     providerId: 'sonarr',
     url: 'http://localhost:8989',
-    apiKey: 'secret-key',
+    hasApiKey: true,
     username: null,
     logPath: null,
     isConnected: true,
@@ -62,7 +62,7 @@ describe('EditServerDialog credential validation', () => {
     const qbit = makeServer({
       providerId: 'qbittorrent',
       url: 'http://localhost:8080',
-      apiKey: 'old-password',
+      hasApiKey: true,
       username: 'admin',
     });
 
@@ -73,19 +73,35 @@ describe('EditServerDialog credential validation', () => {
       expect(screen.getByText('Password / API key')).toBeInTheDocument();
     });
 
-    it('allows saving with an empty password and sends the empty apiKey', async () => {
+    it('never prefills the stored secret and shows that one is stored', () => {
+      renderDialog(qbit);
+
+      expect(secretInput()).toHaveValue('');
+      expect(secretInput().placeholder).toBe('Stored - leave empty to keep');
+    });
+
+    it('keeps the stored password when the field is left empty (apiKey is not sent)', async () => {
       const user = userEvent.setup();
       renderDialog(qbit);
 
-      await user.clear(secretInput());
       await user.click(screen.getByRole('button', { name: /save changes/i }));
 
       await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
       expect(screen.queryByText('API key is required')).not.toBeInTheDocument();
-      expect(mutateAsync.mock.calls[0]![0]).toMatchObject({
-        id: 'server-1',
-        data: { apiKey: '', username: 'admin' },
-      });
+      const payload = mutateAsync.mock.calls[0]![0];
+      expect(payload).toMatchObject({ id: 'server-1', data: { username: 'admin' } });
+      expect(payload.data).not.toHaveProperty('apiKey');
+    });
+
+    it('sends a newly typed password', async () => {
+      const user = userEvent.setup();
+      renderDialog(qbit);
+
+      await user.type(secretInput(), 'new-password');
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+      await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
+      expect(mutateAsync.mock.calls[0]![0].data.apiKey).toBe('new-password');
     });
 
     it('sends an empty username to clear it when the field is emptied', async () => {
@@ -125,7 +141,7 @@ describe('EditServerDialog credential validation', () => {
     });
 
     it('prefills an empty username as an empty string for auth-bypass servers', () => {
-      renderDialog(makeServer({ providerId: 'qbittorrent', apiKey: '', username: null }));
+      renderDialog(makeServer({ providerId: 'qbittorrent', hasApiKey: false, username: null }));
 
       expect(screen.getByPlaceholderText('admin')).toHaveValue('');
       expect(secretInput()).toHaveValue('');
@@ -135,7 +151,7 @@ describe('EditServerDialog credential validation', () => {
   describe.each(['sonarr', 'radarr', 'prowlarr', 'whisparr', 'jellyfin', 'emby', 'plex'])(
     '%s',
     (providerId) => {
-      const server = makeServer({ providerId });
+      const server = makeServer({ providerId, hasApiKey: false });
 
       it('has no username field', () => {
         renderDialog(server);
@@ -168,15 +184,27 @@ describe('EditServerDialog credential validation', () => {
     }
   );
 
-  it('saves a valid sonarr edit without sending a username', async () => {
+  it('keeps the stored sonarr key when the field is empty and sends no username', async () => {
     const user = userEvent.setup();
     renderDialog(makeServer({ providerId: 'sonarr' }));
 
+    expect(secretInput()).toHaveValue('');
     await user.click(screen.getByRole('button', { name: /save changes/i }));
 
     await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
     const data = mutateAsync.mock.calls[0]![0].data;
-    expect(data.apiKey).toBe('secret-key');
+    expect(data).not.toHaveProperty('apiKey');
     expect(data).not.toHaveProperty('username');
+  });
+
+  it('sends a replacement sonarr key when one is typed', async () => {
+    const user = userEvent.setup();
+    renderDialog(makeServer({ providerId: 'sonarr' }));
+
+    await user.type(secretInput(), 'new-key');
+    await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+    await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
+    expect(mutateAsync.mock.calls[0]![0].data.apiKey).toBe('new-key');
   });
 });

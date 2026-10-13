@@ -57,10 +57,11 @@ import {
 } from '@/lib/server-payload';
 import { cn } from '@/lib/utils';
 
-// qBittorrent allows an empty password / API key (authentication bypass)
-const buildFormSchema = (providerId: string) =>
+// The stored secret is never sent to the browser: an empty field keeps the stored value, so it is
+// only required when nothing is stored yet (providers with optional credentials never need one).
+const buildFormSchema = (providerId: string, hasStoredSecret: boolean) =>
   baseFormSchema.superRefine((data, ctx) => {
-    if (!areCredentialsOptional(providerId) && data.apiKey.trim() === '') {
+    if (!areCredentialsOptional(providerId) && !hasStoredSecret && data.apiKey.trim() === '') {
       ctx.addIssue({ code: 'custom', path: ['apiKey'], message: 'API key is required' });
     }
   });
@@ -89,7 +90,10 @@ export function EditServerDialog({ server, open, onOpenChange }: EditServerDialo
   const testConnection = useTestConnection();
   const [isTesting, setIsTesting] = useState(false);
 
-  const formSchema = useMemo(() => buildFormSchema(server.providerId), [server.providerId]);
+  const formSchema = useMemo(
+    () => buildFormSchema(server.providerId, server.hasApiKey),
+    [server.providerId, server.hasApiKey]
+  );
   const hasUsername = supportsUsername(server.providerId);
 
   const form = useForm<FormData>({
@@ -97,7 +101,7 @@ export function EditServerDialog({ server, open, onOpenChange }: EditServerDialo
     defaultValues: {
       name: server.name,
       url: server.url,
-      apiKey: server.apiKey,
+      apiKey: '',
       username: server.username ?? '',
       logPath: server.logPath || '',
       fileIngestionEnabled: server.fileIngestionEnabled || false,
@@ -113,7 +117,7 @@ export function EditServerDialog({ server, open, onOpenChange }: EditServerDialo
       form.reset({
         name: server.name,
         url: server.url,
-        apiKey: server.apiKey,
+        apiKey: '',
         username: server.username ?? '',
         logPath: server.logPath || '',
         fileIngestionEnabled: server.fileIngestionEnabled || false,
@@ -338,12 +342,18 @@ export function EditServerDialog({ server, open, onOpenChange }: EditServerDialo
                         <FormControl>
                           <Input
                             type="password"
-                            placeholder="WebUI password, or API key (5.3+)"
+                            autoComplete="new-password"
+                            placeholder={
+                              server.hasApiKey
+                                ? 'Stored - leave empty to keep'
+                                : 'WebUI password, or API key (5.2+)'
+                            }
                             {...field}
                           />
                         </FormControl>
                         <FormDescription>
-                          With a username: password. Without: API key. Empty if auth is bypassed
+                          With a username: password. Without: API key. Leave empty to keep the
+                          stored value
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -361,9 +371,18 @@ export function EditServerDialog({ server, open, onOpenChange }: EditServerDialo
                         API Key
                       </FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="Enter API key" {...field} />
+                        <Input
+                          type="password"
+                          autoComplete="new-password"
+                          placeholder={
+                            server.hasApiKey ? 'Stored - leave empty to keep' : 'Enter API key'
+                          }
+                          {...field}
+                        />
                       </FormControl>
-                      <FormDescription>Found in Dashboard → API Keys</FormDescription>
+                      <FormDescription>
+                        Found in Dashboard → API Keys. Leave empty to keep the stored key.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
