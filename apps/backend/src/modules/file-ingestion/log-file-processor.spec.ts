@@ -81,9 +81,9 @@ describe('LogFileProcessor with *arr multi-line errors', () => {
     expect(entries[0]?.stackTrace).toBeUndefined();
   });
 
-  it('does not attach or emit an unparseable non-continuation line between entries', () => {
-    // 8-digit fraction does not match the NLog format (known limitation) so it is a continuation
-    // of the pending entry; the surrounding entries must still be emitted intact.
+  it('keeps an unparseable line (8-digit fraction) as a continuation of the pending entry, not as its own entry', () => {
+    // An 8-digit fraction does not match the NLog format (known limitation), so the line is
+    // folded into the pending entry's stack trace; the surrounding entries are emitted intact.
     const entries = feed([
       '2026-10-10 12:00:05.4|Info|A|one',
       '2026-10-10 12:00:05.12345678|Info|B|weird',

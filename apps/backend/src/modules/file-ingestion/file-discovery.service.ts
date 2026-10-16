@@ -137,7 +137,8 @@ export class FileDiscoveryService {
 
   /**
    * A file is included when it matches an include pattern and no exclude pattern.
-   * Patterns are matched against the base name (a direct file path is reduced to it).
+   * Exclude patterns are matched against the base name; include patterns against `filename`
+   * as given (directory scans pass the base name, direct file paths pass the full path).
    */
   private isIncluded(filename: string, patterns: string[], excludePatterns: string[]): boolean {
     const baseName = filename.split(/[/\\]/).pop() ?? filename;

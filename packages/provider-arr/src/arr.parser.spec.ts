@@ -282,6 +282,32 @@ describe('Arr Parser', () => {
       expect(result.message).toBe('bad state happened');
     });
 
+    it.each([
+      'System.Exception',
+      'Npgsql.PostgresException',
+      'SQLite.SQLiteException',
+      'Polly.Timeout.TimeoutRejectedException',
+      'FluentValidation.ValidationException',
+    ])('recognises %s outside the old allowlist', (type) => {
+      const result = finalizeArrLogEntry(entry, [
+        `[v4.0.10.2544] ${type}: it broke`,
+        '   at Foo()',
+      ]);
+
+      expect(result.exception).toBe(type);
+      expect(result.message).toBe('Boom - it broke');
+      expect(isArrLogContinuation(`${type}: it broke`)).toBe(true);
+    });
+
+    it.each([
+      'Exception: it broke',
+      'Request failed. Exception: it broke',
+      'Something.Exceptional: it broke',
+      'Some.Type Exception: it broke',
+    ])('does not treat %j as an exception line', (line) => {
+      expect(finalizeArrLogEntry(entry, [line])).toBe(entry);
+    });
+
     it('returns the entry unchanged when there is no exception line', () => {
       expect(finalizeArrLogEntry(entry, ['   at Foo.Bar()'])).toBe(entry);
     });
