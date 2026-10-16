@@ -1,5 +1,6 @@
 import { setImmediate } from 'timers';
 
+import { BazarrProvider } from '@logarr/provider-bazarr';
 import { EmbyProvider, EmbyClient } from '@logarr/provider-emby';
 import { JellyfinProvider, JellyfinClient } from '@logarr/provider-jellyfin';
 import { LidarrProvider } from '@logarr/provider-lidarr';
@@ -95,6 +96,8 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
 
     const readarrProvider = new ReadarrProvider();
     this.providers.set(readarrProvider.id, readarrProvider);
+    const bazarrProvider = new BazarrProvider();
+    this.providers.set(bazarrProvider.id, bazarrProvider);
   }
 
   async onModuleInit() {

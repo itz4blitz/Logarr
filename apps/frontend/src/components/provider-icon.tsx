@@ -130,6 +130,19 @@ function WhisparrIcon({ className }: { className?: string }) {
   );
 }
 
+// Bazarr icon (purple rounded square with subtitle bars)
+function BazarrIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <rect width="100" height="100" rx="20" fill="#7B68EE" />
+      <rect x="18" y="30" width="64" height="40" rx="6" fill="none" stroke="#fff" strokeWidth="5" />
+      <rect x="27" y="45" width="22" height="5" rx="2.5" fill="#fff" />
+      <rect x="53" y="45" width="20" height="5" rx="2.5" fill="#fff" />
+      <rect x="27" y="56" width="30" height="5" rx="2.5" fill="#fff" />
+    </svg>
+  );
+}
+
 // Official Prowlarr logo (owl/lion face)
 function ProwlarrIcon({ className }: { className?: string }) {
   return (
@@ -630,6 +643,7 @@ const providerIcons: Record<string, React.ComponentType<{ className?: string }>>
   lidarr: LidarrIcon,
   readarr: ReadarrIcon,
   seerr: SeerrIcon,
+  bazarr: BazarrIcon,
   sqlite: SQLiteIcon,
   openai: OpenAIIcon,
   anthropic: AnthropicIcon,
@@ -658,6 +672,7 @@ export const providerMeta: Record<string, { name: string; color: string; bgColor
   lidarr: { name: 'Lidarr', color: '#00C853', bgColor: 'bg-green-500/10' },
   readarr: { name: 'Readarr', color: '#8B0000', bgColor: 'bg-red-500/10' },
   seerr: { name: 'Seerr', color: '#8B5CF6', bgColor: 'bg-violet-500/10' },
+  bazarr: { name: 'Bazarr', color: '#7B68EE', bgColor: 'bg-purple-500/10' },
   sqlite: { name: 'SQLite', color: '#003B57', bgColor: 'bg-slate-500/10' },
   openai: { name: 'OpenAI', color: '#10A37F', bgColor: 'bg-emerald-500/10' },
   anthropic: { name: 'Anthropic', color: '#D4A574', bgColor: 'bg-orange-500/10' },

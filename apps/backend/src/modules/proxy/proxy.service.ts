@@ -32,6 +32,7 @@ export class ProxyService {
     readarr: '/api/v1',
     whisparr: '/api/v1',
     seerr: '/api/v1',
+    bazarr: '/api',
     qbittorrent: '/api/v2',
     sabnzbd: '/api',
   };

@@ -11,7 +11,7 @@
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Unified logging, intelligent issue detection, and AI-powered analysis for Plex, Jellyfin, Emby, Sonarr, Radarr, Prowlarr, Whisparr, Lidarr, Readarr, Seerr, and more.
+Unified logging, intelligent issue detection, and AI-powered analysis for Plex, Jellyfin, Emby, Sonarr, Radarr, Prowlarr, Whisparr, Lidarr, Bazarr, Readarr, Seerr, and more.
 
 [Quick Start](#quick-start) · [Features](#features) · [Screenshots](#screenshots) · [Documentation](#documentation)
 
@@ -102,7 +102,7 @@ _Configure multiple AI providers for issue analysis (Anthropic, OpenAI, Google, 
 | **Radarr**   | ✅ Supported | **Whisparr** | ✅ Supported |
 | **Prowlarr** | ✅ Supported | **Lidarr**   | ✅ Supported |
 | **Seerr**    | ✅ Supported   | **Readarr**  | ⚠️ Supported\* |
-| **Kodi**     | 🚧 Planned     |              |                |
+| **Bazarr**   | ✅ Supported   | **Kodi**     | 🚧 Planned     |
 
 > **Seerr** also covers Overseerr and Jellyseerr (same API). Use the **admin** API key (Settings → General). Activity comes from media requests and user-reported issues; application logs come from file ingestion of `seerr-YYYY-MM-DD.log` (legacy `overseerr-`/`jellyseerr-` files are supported).
 
@@ -186,13 +186,14 @@ flowchart TB
         LI[Lidarr]
         SE[Seerr]
         RE[Readarr]
+        BA[Bazarr]
     end
 
     FE <--> API
     FE <--> WS
     API <--> PG
     API <--> RD
-    API <--> PX & JF & EM & SO & RA & PR & WH & LI & SE & RE
+    API <--> PX & JF & EM & SO & RA & PR & WH & LI & BA & SE & RE
 ```
 
 ### How It Works
@@ -281,11 +282,15 @@ RADARR_LOGS_PATH=/path/to/radarr/config/logs
 PROWLARR_LOGS_PATH=/path/to/prowlarr/config/logs
 WHISPARR_LOGS_PATH=/path/to/whisparr/config/logs
 LIDARR_LOGS_PATH=/path/to/lidarr/config/logs
+READARR_LOGS_PATH=/path/to/readarr/config/logs
+# Bazarr (note: the directory is `log`, singular, and contains bazarr.log)
+BAZARR_LOGS_PATH=/path/to/bazarr/config/log
 
 # Request Managers
 SEERR_LOGS_PATH=/path/to/seerr/config/logs
-READARR_LOGS_PATH=/path/to/readarr/config/logs
 ```
+
+> **Bazarr notes:** Bazarr writes naive local timestamps (no timezone), so run Logarr in the same timezone as Bazarr (e.g. set `TZ` on both containers). Bazarr health issues are recorded once per distinct issue, not on every poll. Bazarr reports history dates in its host's locale format; Logarr infers whether it is day-first or month-first from the data and skips timestamps it cannot read unambiguously.
 
 2. **Restart Logarr** — The docker-compose mounts these paths automatically.
 
@@ -303,6 +308,7 @@ READARR_LOGS_PATH=/path/to/readarr/config/logs
 | Lidarr   | `/lidarr-logs`   |
 | Seerr    | `/seerr-logs`    |
 | Readarr  | `/readarr-logs`  |
+| Bazarr   | `/bazarr-logs`   |
 
 #### Multiple Instances (e.g., Movies vs Shorts, 1080p vs 4K)
 
@@ -350,6 +356,7 @@ Simply add multiple servers in the UI using the same server type but different U
 | Lidarr   | `/config/logs`             | `~/.config/Lidarr/logs`             | `C:\ProgramData\Lidarr\logs`            |
 | Seerr    | `/app/config/logs`         | `~/.config/seerr/logs`              | `C:\ProgramData\seerr\logs`             |
 | Readarr  | `/config/logs`             | `~/.config/Readarr/logs`            | `C:\ProgramData\Readarr\logs`           |
+| Bazarr   | `/config/log`              | `~/.config/bazarr/log`              | `C:\ProgramData\Bazarr\log`             |
 
 ---
 
@@ -394,6 +401,7 @@ logarr/
 │   ├── provider-lidarr/    # Lidarr integration
 │   ├── provider-seerr/     # Seerr integration (Overseerr/Jellyseerr compatible)
 │   ├── provider-readarr/   # Readarr integration (retired upstream)
+│   ├── provider-bazarr/    # Bazarr integration
 │   └── provider-arr/       # Base *arr provider
 └── docker-compose.yml
 ```
@@ -509,6 +517,7 @@ pnpm test:e2e          # Run Playwright E2E tests
 | `@logarr/provider-whisparr` | Whisparr provider                      |
 | `@logarr/provider-lidarr`   | Lidarr provider                        |
 | `@logarr/provider-seerr`    | Seerr provider and log parser          |
+| `@logarr/provider-bazarr`   | Bazarr provider                        |
 
 > Coverage thresholds are enforced at 80% for statements, branches, functions, and lines.
 

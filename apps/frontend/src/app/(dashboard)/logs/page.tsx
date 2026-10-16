@@ -164,6 +164,9 @@ function LogDetailModal({
       case 'seerr':
         // Seerr/Overseerr/Jellyseerr: Settings > Logs
         return `${baseUrl}/settings/logs`;
+      case 'bazarr':
+        // Bazarr: system/logs shows the application log
+        return `${baseUrl}/system/logs`;
       default:
         return null;
     }

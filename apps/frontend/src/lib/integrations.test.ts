@@ -233,6 +233,49 @@ describe('Integrations Registry', () => {
     });
   });
 
+  describe('Bazarr integration', () => {
+    it('should be available in the arr_stack category', () => {
+      const bazarr = getIntegrationById('bazarr');
+      expect(bazarr).toBeDefined();
+      expect(bazarr?.name).toBe('Bazarr');
+      expect(bazarr?.category).toBe('arr_stack');
+      expect(bazarr?.status).toBe('available');
+      expect(bazarr?.connectionType).toBe('api');
+    });
+
+    it('should use the bazarr icon, brand color and default port', () => {
+      const bazarr = getIntegrationById('bazarr');
+      expect(bazarr?.icon).toBe('bazarr');
+      expect(bazarr?.color).toBe('#7B68EE');
+      expect(bazarr?.defaultPort).toBe(6767);
+    });
+
+    it('should declare log-file tailing but no webhooks or metrics', () => {
+      const bazarr = getIntegrationById('bazarr');
+      expect(bazarr?.capabilities).toEqual({
+        realTimeLogs: true,
+        activityLog: true,
+        sessions: false,
+        webhooks: false,
+        metrics: false,
+      });
+    });
+
+    it('should have API key and log path config fields', () => {
+      const fieldNames = getIntegrationById('bazarr')?.configFields.map((f) => f.name);
+      expect(fieldNames).toContain('name');
+      expect(fieldNames).toContain('url');
+      expect(fieldNames).toContain('apiKey');
+      expect(fieldNames).toContain('logPath');
+    });
+
+    it('should have documentation URLs', () => {
+      const bazarr = getIntegrationById('bazarr');
+      expect(bazarr?.website).toBe('https://bazarr.media');
+      expect(bazarr?.docsUrl).toBe('https://wiki.bazarr.media');
+    });
+  });
+
   describe('getIntegrationsByCategory', () => {
     it('should include Whisparr in arr_stack category', () => {
       const arrIntegrations = getIntegrationsByCategory('arr_stack');
