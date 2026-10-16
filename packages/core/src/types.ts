@@ -239,6 +239,13 @@ export interface NormalizedActivity {
   readonly itemId?: string | undefined;
   readonly timestamp: Date;
   readonly metadata?: Record<string, unknown> | undefined;
+  /**
+   * Whether this activity's timestamp may move the provider's `since` sync cursor.
+   * Defaults to true. Set to false for synthetic rows whose timestamp is the
+   * detection time rather than the event time (health checks, connection status,
+   * queue warnings), so they don't skip history that wasn't returned this poll.
+   */
+  readonly advancesSyncCursor?: boolean | undefined;
 }
 
 // =============================================================================

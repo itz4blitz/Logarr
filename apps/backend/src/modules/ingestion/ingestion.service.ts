@@ -19,6 +19,8 @@ import { IssuesService } from '../issues/issues.service';
 import { LogsGateway } from '../logs/logs.gateway';
 import { SessionsGateway } from '../sessions/sessions.gateway';
 
+import { computeSyncCursor } from './sync-cursor';
+
 import type { MediaServerProvider, NormalizedSession, NormalizedActivity } from '@logarr/core';
 import type {
   EmbySession,
@@ -241,18 +243,19 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
 
         // Update last sync timestamp in database (persistence!)
         if (insertedCount > 0) {
-          const maxTimestamp = activities.reduce(
-            (max, a) => (a.timestamp > max ? a.timestamp : max),
-            activities[0]!.timestamp
-          );
+          // Synthetic rows (detection-time stamps) must not move the cursor;
+          // if nothing qualifies, leave it unchanged.
+          const nextCursor = computeSyncCursor(activities);
 
-          await this.db
-            .update(schema.servers)
-            .set({
-              lastActivitySync: maxTimestamp,
-              updatedAt: new Date(),
-            })
-            .where(eq(schema.servers.id, server.id));
+          if (nextCursor) {
+            await this.db
+              .update(schema.servers)
+              .set({
+                lastActivitySync: nextCursor,
+                updatedAt: new Date(),
+              })
+              .where(eq(schema.servers.id, server.id));
+          }
         }
       }
 
