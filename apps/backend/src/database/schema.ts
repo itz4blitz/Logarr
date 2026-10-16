@@ -60,7 +60,10 @@ export const servers = pgTable(
     name: text('name').notNull(),
     providerId: text('provider_id').notNull(),
     url: text('url').notNull(),
+    // API key / token / password. May be '' for providers without auth (e.g. qBittorrent bypass)
     apiKey: text('api_key').notNull(),
+    // Optional login username (e.g. qBittorrent). The password lives in api_key.
+    username: text('username'),
     logPath: text('log_path'),
     isEnabled: boolean('is_enabled').notNull().default(true),
     isConnected: boolean('is_connected').notNull().default(false),

@@ -71,6 +71,13 @@
       "when": 1768151860740,
       "tag": "0009_high_venus",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791589999831,
+      "tag": "0010_add-server-username",
+      "breakpoints": true
     }
   ]
 }

@@ -10,8 +10,16 @@ export class CreateServerDto {
   @ApiProperty({ description: 'Server URL' })
   url: string;
 
-  @ApiProperty({ description: 'API key for authentication' })
+  @ApiProperty({
+    description:
+      'API key / token / password for authentication (may be empty for qBittorrent with authentication bypass)',
+  })
   apiKey: string;
+
+  @ApiPropertyOptional({
+    description: 'Login username (qBittorrent). Leave empty for API-key or no-auth setups.',
+  })
+  username?: string;
 
   @ApiPropertyOptional({ description: 'Path to log files' })
   logPath?: string;
@@ -36,8 +44,18 @@ export class UpdateServerDto {
   @ApiPropertyOptional({ description: 'Server URL' })
   url?: string;
 
-  @ApiPropertyOptional({ description: 'API key for authentication' })
-  apiKey?: string;
+  @ApiPropertyOptional({
+    description:
+      'API key / token / password for authentication. Omit or send an empty string to keep the stored value. Send null to clear it (only for providers whose credentials are optional, e.g. qBittorrent with authentication bypass).',
+    type: String,
+    nullable: true,
+  })
+  apiKey?: string | null;
+
+  @ApiPropertyOptional({
+    description: 'Login username (qBittorrent). An empty string clears it.',
+  })
+  username?: string;
 
   @ApiPropertyOptional({ description: 'Path to log files' })
   logPath?: string;
@@ -70,6 +88,15 @@ export class ServerResponseDto {
 
   @ApiProperty()
   url: string;
+
+  @ApiPropertyOptional({ description: 'Login username (qBittorrent)' })
+  username?: string | null;
+
+  @ApiProperty({
+    description:
+      'Whether a secret (API key, token or password) is stored. The secret is never returned.',
+  })
+  hasApiKey: boolean;
 
   @ApiPropertyOptional()
   logPath?: string | null;

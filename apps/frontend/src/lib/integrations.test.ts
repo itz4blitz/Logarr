@@ -10,6 +10,42 @@ import {
 } from './integrations';
 
 describe('Integrations Registry', () => {
+  describe('qBittorrent integration', () => {
+    it('should be available in the download clients category', () => {
+      const qbit = getIntegrationById('qbittorrent');
+      expect(qbit?.name).toBe('qBittorrent');
+      expect(qbit?.status).toBe('available');
+      expect(qbit?.category).toBe('download_clients');
+      expect(qbit?.connectionType).toBe('api_basic');
+      expect(getAvailableIntegrations().some((i) => i.id === 'qbittorrent')).toBe(true);
+    });
+
+    it('should have username and password optional and name/url required', () => {
+      const fields = getIntegrationById('qbittorrent')?.configFields ?? [];
+      expect(fields.map((f) => f.name)).toEqual(['name', 'url', 'username', 'password', 'logPath']);
+      const byName = Object.fromEntries(fields.map((f) => [f.name, f]));
+      expect(byName['name']?.required).toBe(true);
+      expect(byName['url']?.required).toBe(true);
+      expect(byName['username']?.required).toBe(false);
+      expect(byName['password']?.required).toBe(false);
+      expect(byName['password']?.type).toBe('password');
+    });
+
+    it('should declare credential capabilities and no sessions', () => {
+      const caps = getIntegrationById('qbittorrent')?.capabilities;
+      expect(caps?.sessions).toBe(false);
+      // log-file tailing, like the *arr entries
+      expect(caps?.realTimeLogs).toBe(true);
+      expect(caps?.supportsUsername).toBe(true);
+      expect(caps?.apiKeyOptional).toBe(true);
+    });
+
+    it('should be found by search', () => {
+      expect(searchIntegrations('qbittorrent').some((i) => i.id === 'qbittorrent')).toBe(true);
+      expect(searchIntegrations('torrent').some((i) => i.id === 'qbittorrent')).toBe(true);
+    });
+  });
+
   describe('Whisparr integration', () => {
     it('should be included in integrations array', () => {
       const whisparr = integrations.find((i) => i.id === 'whisparr');

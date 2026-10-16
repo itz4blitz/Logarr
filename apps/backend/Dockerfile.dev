@@ -16,7 +16,7 @@ COPY apps/backend/ ./apps/backend/
 RUN pnpm install
 
 # Build only the packages (not backend itself - that will be done in watch mode)
-RUN pnpm build --filter @logarr/core --filter @logarr/provider-arr --filter @logarr/provider-jellyfin --filter @logarr/provider-sonarr --filter @logarr/provider-radarr --filter @logarr/provider-prowlarr --filter @logarr/provider-plex --filter @logarr/provider-emby --filter @logarr/provider-whisparr --filter @logarr/provider-lidarr --filter @logarr/provider-bazarr --filter @logarr/provider-readarr --filter @logarr/provider-seerr
+RUN pnpm build --filter @logarr/core --filter @logarr/provider-arr --filter @logarr/provider-jellyfin --filter @logarr/provider-sonarr --filter @logarr/provider-radarr --filter @logarr/provider-prowlarr --filter @logarr/provider-plex --filter @logarr/provider-emby --filter @logarr/provider-whisparr --filter @logarr/provider-lidarr --filter @logarr/provider-bazarr --filter @logarr/provider-qbittorrent --filter @logarr/provider-readarr --filter @logarr/provider-seerr
 
 EXPOSE 4002
 

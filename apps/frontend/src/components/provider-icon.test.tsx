@@ -50,6 +50,23 @@ describe('ProviderIcon', () => {
     });
   });
 
+  describe('qBittorrent provider', () => {
+    it('should render the dashboard-icons image instead of the default icon', () => {
+      const { container } = render(<ProviderIcon providerId="qbittorrent" size="lg" />);
+      const img = container.querySelector('img');
+      expect(img).not.toBeNull();
+      expect(img?.getAttribute('src')).toBe(
+        'https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/qbittorrent.svg'
+      );
+      expect(img?.classList.contains('h-8')).toBe(true);
+      expect(container.querySelector('svg')).toBeNull();
+    });
+
+    it('should have provider metadata', () => {
+      expect(providerMeta.qbittorrent?.name).toBe('qBittorrent');
+    });
+  });
+
   describe('Default icon fallback', () => {
     it('should render default icon for unknown provider', () => {
       const { container } = render(<ProviderIcon providerId="unknown-provider" />);

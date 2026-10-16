@@ -8,7 +8,9 @@ export interface Server {
   name: string;
   providerId: string;
   url: string;
-  apiKey: string;
+  /** Whether a secret (API key / token / password) is stored. The value is never returned. */
+  hasApiKey: boolean;
+  username: string | null;
   logPath: string | null;
   isConnected: boolean;
   lastSeen: string | null;
@@ -31,6 +33,7 @@ export interface CreateServerDto {
   providerId: string;
   url: string;
   apiKey: string;
+  username?: string;
   logPath?: string;
   fileIngestionEnabled?: boolean;
   logPaths?: string[];
@@ -40,7 +43,9 @@ export interface CreateServerDto {
 export interface UpdateServerDto {
   name?: string;
   url?: string;
-  apiKey?: string;
+  /** Omit or send '' to keep the stored secret; null clears it (providers with optional credentials) */
+  apiKey?: string | null;
+  username?: string;
   logPath?: string;
   fileIngestionEnabled?: boolean;
   logPaths?: string[];

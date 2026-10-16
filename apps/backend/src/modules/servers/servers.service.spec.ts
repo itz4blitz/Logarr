@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -10,6 +10,12 @@ import { IngestionService } from '../ingestion/ingestion.service';
 import { ServersService } from './servers.service';
 
 import type { TestingModule } from '@nestjs/testing';
+
+/** Expected API shape: the stored secret is replaced by hasApiKey */
+const withoutSecret = <T extends { apiKey: string }>(row: T) => {
+  const { apiKey, ...rest } = row;
+  return { ...rest, hasApiKey: apiKey !== '' };
+};
 
 describe('ServersService', () => {
   let service: ServersService;
@@ -66,7 +72,7 @@ describe('ServersService', () => {
 
       const result = await service.findAll();
 
-      expect(result).toEqual(servers);
+      expect(result).toEqual(servers.map(withoutSecret));
     });
 
     it('should return empty array when no servers', async () => {
@@ -84,7 +90,7 @@ describe('ServersService', () => {
 
       const result = await service.findOne('server-1');
 
-      expect(result).toEqual(mockServer);
+      expect(result).toEqual(withoutSecret(mockServer));
     });
 
     it('should throw NotFoundException when server not found', async () => {
@@ -107,7 +113,7 @@ describe('ServersService', () => {
 
       const result = await service.create(dto);
 
-      expect(result).toEqual(mockServer);
+      expect(result).toEqual(withoutSecret(mockServer));
       expect(mockDb.insert).toHaveBeenCalled();
     });
 
@@ -139,7 +145,7 @@ describe('ServersService', () => {
         apiKey: 'test-key',
       });
 
-      expect(result).toEqual(lidarrServer);
+      expect(result).toEqual(withoutSecret(lidarrServer));
     });
 
     it('should start file ingestion if enabled', async () => {
@@ -194,7 +200,7 @@ describe('ServersService', () => {
       const result = await service.create(dto);
 
       // Should successfully create the second Radarr instance
-      expect(result).toEqual(newRadarr);
+      expect(result).toEqual(withoutSecret(newRadarr));
       expect(mockDb.insert).toHaveBeenCalled();
     });
 
@@ -1224,6 +1230,371 @@ describe('ServersService', () => {
 
       expect(result.success).toBe(false);
       expect(result.message).toBe('Restart failed');
+    });
+  });
+
+  describe('qBittorrent credentials', () => {
+    const qbitServer = {
+      ...mockServer,
+      id: 'server-qbit',
+      providerId: 'qbittorrent',
+      url: 'http://localhost:8080',
+      apiKey: 'pw',
+      username: 'admin',
+    };
+    const baseDto = {
+      name: 'qBittorrent',
+      providerId: 'qbittorrent',
+      url: 'http://localhost:8080',
+    };
+
+    const insertedValues = (): Record<string, unknown> => {
+      const query = mockDb.insert.mock.results[0]!.value as {
+        values: ReturnType<typeof vi.fn>;
+      };
+      return query.values.mock.calls[0]![0] as Record<string, unknown>;
+    };
+
+    const updatedValues = (): Record<string, unknown> => {
+      const query = mockDb.update.mock.results[0]!.value as { set: ReturnType<typeof vi.fn> };
+      return query.set.mock.calls[0]![0] as Record<string, unknown>;
+    };
+
+    it('does not store a username for providers without supportsUsername (create)', async () => {
+      configureMockDb(mockDb, { insert: [mockServer] });
+
+      await service.create({
+        name: 'Sonarr',
+        providerId: 'sonarr',
+        url: 'http://localhost:8989',
+        apiKey: 'key',
+        username: 'admin',
+      });
+
+      expect(insertedValues()['username']).toBeNull();
+    });
+
+    it('ignores a username update for providers without supportsUsername', async () => {
+      configureMockDb(mockDb, {
+        select: [{ ...mockServer, providerId: 'sonarr' }],
+        update: [mockServer],
+      });
+
+      await service.update('server-1', { username: 'admin', name: 'Renamed' });
+
+      expect(updatedValues()).not.toHaveProperty('username');
+      expect(updatedValues()['name']).toBe('Renamed');
+    });
+
+    it('trims whitespace and newlines from the API key on create', async () => {
+      configureMockDb(mockDb, { insert: [qbitServer] });
+
+      await service.create({ ...baseDto, apiKey: '  secret-key\n' });
+
+      expect(insertedValues()['apiKey']).toBe('secret-key');
+    });
+
+    it('rejects a whitespace-only API key on create when the provider requires one', async () => {
+      await expect(
+        service.create({
+          name: 'Sonarr',
+          providerId: 'sonarr',
+          url: 'http://localhost:8989',
+          apiKey: ' \n',
+        })
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('stores an empty key for whitespace-only input when the API key is optional', async () => {
+      configureMockDb(mockDb, { insert: [qbitServer] });
+
+      await service.create({ ...baseDto, apiKey: ' \n' });
+
+      expect(insertedValues()['apiKey']).toBe('');
+    });
+
+    it('trims the API key on update', async () => {
+      configureMockDb(mockDb, { select: [qbitServer], update: [qbitServer] });
+
+      await service.update('server-qbit', { apiKey: 'new-secret\r\n' });
+
+      expect(updatedValues()['apiKey']).toBe('new-secret');
+    });
+
+    it('keeps the stored API key when the update value is whitespace-only', async () => {
+      configureMockDb(mockDb, { select: [qbitServer], update: [qbitServer] });
+
+      await service.update('server-qbit', { apiKey: ' \n' });
+
+      expect(updatedValues()).not.toHaveProperty('apiKey');
+    });
+
+    it('registers the qbittorrent provider without session support', () => {
+      const qbit = service.getAvailableProviders().find((p) => p.id === 'qbittorrent');
+      expect(qbit?.capabilities.supportsUsername).toBe(true);
+      expect(qbit?.capabilities.apiKeyOptional).toBe(true);
+
+      expect(qbit).toBeDefined();
+      expect(qbit?.capabilities.supportsSessions).toBe(false);
+    });
+
+    it('stores a trimmed username on create', async () => {
+      configureMockDb(mockDb, { insert: [qbitServer] });
+
+      await service.create({ ...baseDto, apiKey: 'pw', username: ' admin ' });
+
+      expect(insertedValues()).toMatchObject({ username: 'admin', apiKey: 'pw' });
+    });
+
+    it.each([undefined, '', '   '])('stores NULL for username %j on create', async (username) => {
+      configureMockDb(mockDb, { insert: [qbitServer] });
+
+      await service.create({
+        ...baseDto,
+        apiKey: 'key',
+        ...(username !== undefined && { username }),
+      });
+
+      expect(insertedValues()['username']).toBeNull();
+    });
+
+    it('stores NULL when the username is sent as null on create', async () => {
+      configureMockDb(mockDb, { insert: [qbitServer] });
+
+      await service.create({ ...baseDto, apiKey: 'key', username: null } as any);
+
+      expect(insertedValues()['username']).toBeNull();
+    });
+
+    it('allows an omitted apiKey (auth bypass) and stores an empty string', async () => {
+      configureMockDb(mockDb, { insert: [qbitServer] });
+
+      await service.create({ ...baseDto } as any);
+
+      expect(insertedValues()['apiKey']).toBe('');
+    });
+
+    it('stores NULL for null or non-string usernames on create', async () => {
+      configureMockDb(mockDb, { insert: [qbitServer] });
+      await service.create({ ...baseDto, apiKey: 'k', username: null } as any);
+      expect(insertedValues()['username']).toBeNull();
+    });
+
+    it('derives the optional apiKey rule from the provider capability, not the provider id', async () => {
+      configureMockDb(mockDb, { insert: [mockServer] });
+      service['providers'].set('custom', {
+        id: 'custom',
+        name: 'Custom',
+        capabilities: { apiKeyOptional: true },
+      } as any);
+
+      await service.create({ name: 'c', providerId: 'custom', url: 'http://x' } as any);
+
+      expect(insertedValues()['apiKey']).toBe('');
+    });
+
+    it.each([undefined, ''])(
+      'rejects a missing or empty apiKey (%j) for other providers',
+      async (apiKey) => {
+        configureMockDb(mockDb, { insert: [mockServer] });
+
+        await expect(
+          service.create({
+            name: 'Sonarr',
+            providerId: 'sonarr',
+            url: 'http://localhost:8989',
+            ...(apiKey !== undefined && { apiKey }),
+          } as any)
+        ).rejects.toThrow(BadRequestException);
+        expect(mockDb.insert).not.toHaveBeenCalled();
+      }
+    );
+
+    it('allows an empty apiKey on create', async () => {
+      configureMockDb(mockDb, { insert: [qbitServer] });
+
+      await service.create({ ...baseDto, apiKey: '' });
+
+      expect(insertedValues()['apiKey']).toBe('');
+    });
+
+    describe('update', () => {
+      beforeEach(() => {
+        configureMockDb(mockDb, { select: [qbitServer], update: [qbitServer] });
+      });
+
+      it('clears the username when an empty string is sent', async () => {
+        await service.update('server-qbit', { username: '' });
+
+        expect(updatedValues()['username']).toBeNull();
+      });
+
+      it('trims and stores a new username', async () => {
+        await service.update('server-qbit', { username: ' bob ' });
+
+        expect(updatedValues()['username']).toBe('bob');
+      });
+
+      it('does not touch the username when it is not part of the update', async () => {
+        await service.update('server-qbit', { name: 'Renamed' });
+
+        expect(updatedValues()).not.toHaveProperty('username');
+        expect(updatedValues()['name']).toBe('Renamed');
+      });
+
+      it('clears the username when only whitespace is sent', async () => {
+        await service.update('server-qbit', { username: '   ' });
+
+        expect(updatedValues()['username']).toBeNull();
+      });
+
+      it('clears the username when null is sent explicitly', async () => {
+        await service.update('server-qbit', { username: null } as any);
+
+        expect(updatedValues()['username']).toBeNull();
+      });
+
+      it('ignores non-string usernames instead of crashing', async () => {
+        await service.update('server-qbit', { username: 42 } as any);
+
+        expect(updatedValues()).not.toHaveProperty('username');
+      });
+
+      it('keeps the stored secret when apiKey is empty or omitted', async () => {
+        await service.update('server-qbit', { apiKey: '' });
+
+        expect(updatedValues()).not.toHaveProperty('apiKey');
+      });
+
+      it('clears the stored secret when apiKey is null (credentials optional)', async () => {
+        await service.update('server-qbit', { apiKey: null });
+
+        expect(updatedValues()['apiKey']).toBe('');
+      });
+
+      it('rejects clearing the secret for providers that require one', async () => {
+        configureMockDb(mockDb, {
+          select: [{ ...mockServer, providerId: 'sonarr', apiKey: 'k' }],
+          update: [mockServer],
+        });
+
+        await expect(service.update('server-1', { apiKey: null })).rejects.toThrow(
+          BadRequestException
+        );
+        expect(mockDb.update).not.toHaveBeenCalled();
+      });
+
+      it('replaces the stored secret when a new apiKey is sent', async () => {
+        await service.update('server-qbit', { apiKey: 'new-secret' });
+
+        expect(updatedValues()['apiKey']).toBe('new-secret');
+      });
+    });
+
+    describe('testConnection', () => {
+      const mockProvider = {
+        id: 'qbittorrent',
+        name: 'qBittorrent',
+        connect: vi.fn().mockResolvedValue(undefined),
+        disconnect: vi.fn().mockResolvedValue(undefined),
+        testConnection: vi.fn().mockResolvedValue({ connected: true }),
+      };
+
+      beforeEach(() => {
+        mockProvider.connect.mockClear();
+        service['providers'].set('qbittorrent', mockProvider as any);
+      });
+
+      it('passes the username to the provider', async () => {
+        configureMockDb(mockDb, { select: [qbitServer], update: [qbitServer] });
+
+        await service.testConnection('server-qbit');
+
+        expect(mockProvider.connect).toHaveBeenCalledWith({
+          url: 'http://localhost:8080',
+          apiKey: 'pw',
+          username: 'admin',
+          logPath: '/var/log/jellyfin',
+        });
+      });
+
+      it('passes undefined when the stored username is NULL', async () => {
+        configureMockDb(mockDb, {
+          select: [{ ...qbitServer, username: null }],
+          update: [qbitServer],
+        });
+
+        await service.testConnection('server-qbit');
+
+        expect(mockProvider.connect).toHaveBeenCalledWith(
+          expect.objectContaining({ username: undefined })
+        );
+      });
+    });
+  });
+
+  describe('secret is never returned', () => {
+    const secretServer = { ...mockServer, apiKey: 'super-secret-token' };
+
+    it('findAll / findOne strip apiKey and expose hasApiKey', async () => {
+      configureMockDb(mockDb, { select: [secretServer] });
+
+      const [listed] = await service.findAll();
+      const single = await service.findOne('server-1');
+
+      for (const server of [listed, single]) {
+        expect(server).not.toHaveProperty('apiKey');
+        expect(server?.hasApiKey).toBe(true);
+        expect(JSON.stringify(server)).not.toContain('super-secret-token');
+      }
+    });
+
+    it('hasApiKey is false for an empty stored secret', async () => {
+      configureMockDb(mockDb, { select: [{ ...secretServer, apiKey: '' }] });
+
+      expect((await service.findOne('server-1')).hasApiKey).toBe(false);
+    });
+
+    it('create strips apiKey from the returned server', async () => {
+      configureMockDb(mockDb, { insert: [secretServer] });
+
+      const created = await service.create({
+        name: 'n',
+        providerId: 'jellyfin',
+        url: 'http://x',
+        apiKey: 'super-secret-token',
+      });
+
+      expect(created).not.toHaveProperty('apiKey');
+      expect(created?.hasApiKey).toBe(true);
+    });
+
+    it('update strips apiKey from the returned server', async () => {
+      configureMockDb(mockDb, { select: [secretServer], update: [secretServer] });
+
+      const updated = await service.update('server-1', { name: 'Renamed' });
+
+      expect(updated).not.toHaveProperty('apiKey');
+      expect(JSON.stringify(updated)).not.toContain('super-secret-token');
+    });
+
+    it('testConnection reads the secret from the database, not from the caller', async () => {
+      const connect = vi.fn().mockResolvedValue(undefined);
+      service['providers'].set('jellyfin', {
+        id: 'jellyfin',
+        name: 'Jellyfin',
+        connect,
+        disconnect: vi.fn().mockResolvedValue(undefined),
+        testConnection: vi.fn().mockResolvedValue({ connected: true }),
+        capabilities: {},
+      } as any);
+      configureMockDb(mockDb, { select: [secretServer], update: [secretServer] });
+
+      await service.testConnection('server-1');
+
+      expect(connect).toHaveBeenCalledWith(
+        expect.objectContaining({ apiKey: 'super-secret-token' })
+      );
     });
   });
 });

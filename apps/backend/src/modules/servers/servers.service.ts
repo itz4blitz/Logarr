@@ -4,12 +4,20 @@ import { JellyfinProvider } from '@logarr/provider-jellyfin';
 import { LidarrProvider } from '@logarr/provider-lidarr';
 import { PlexProvider } from '@logarr/provider-plex';
 import { ProwlarrProvider } from '@logarr/provider-prowlarr';
+import { QBittorrentProvider } from '@logarr/provider-qbittorrent';
 import { RadarrProvider } from '@logarr/provider-radarr';
 import { ReadarrProvider } from '@logarr/provider-readarr';
 import { SeerrProvider } from '@logarr/provider-seerr';
 import { SonarrProvider } from '@logarr/provider-sonarr';
 import { WhisparrProvider } from '@logarr/provider-whisparr';
-import { Injectable, Inject, NotFoundException, forwardRef, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  NotFoundException,
+  BadRequestException,
+  forwardRef,
+  Logger,
+} from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 
 import { DATABASE_CONNECTION } from '../../database';
@@ -17,9 +25,23 @@ import * as schema from '../../database/schema';
 import { FileIngestionService } from '../file-ingestion/file-ingestion.service';
 import { IngestionService } from '../ingestion/ingestion.service';
 
+import { toServerResponse } from './server-response.mapper';
+
+import type { ServerResponse, ServerRow } from './server-response.mapper';
 import type { CreateServerDto, UpdateServerDto } from './servers.dto';
 import type { MediaServerProvider } from '@logarr/core';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+
+/**
+ * Normalise a username from an API client: strings are trimmed (empty -> null), an explicit
+ * null clears it, anything else (missing or a non-string value) is left untouched (undefined).
+ */
+function normalizeUsername(username: unknown): string | null | undefined {
+  if (typeof username === 'string') {
+    return username.trim() || null;
+  }
+  return username === null ? null : undefined;
+}
 
 @Injectable()
 export class ServersService {
@@ -65,13 +87,23 @@ export class ServersService {
     this.providers.set(readarrProvider.id, readarrProvider);
     const bazarrProvider = new BazarrProvider();
     this.providers.set(bazarrProvider.id, bazarrProvider);
+    const qbittorrentProvider = new QBittorrentProvider();
+    this.providers.set(qbittorrentProvider.id, qbittorrentProvider);
   }
 
-  async findAll() {
-    return this.db.select().from(schema.servers).orderBy(schema.servers.createdAt);
+  /** All servers as returned by the API (without the stored secret) */
+  async findAll(): Promise<ServerResponse[]> {
+    const rows = await this.db.select().from(schema.servers).orderBy(schema.servers.createdAt);
+    return rows.map(toServerResponse);
   }
 
-  async findOne(id: string) {
+  /** One server as returned by the API (without the stored secret) */
+  async findOne(id: string): Promise<ServerResponse> {
+    return toServerResponse(await this.getServerRow(id));
+  }
+
+  /** Database row including the secret: for internal use only, never return it from the API */
+  private async getServerRow(id: string): Promise<ServerRow> {
     const result = await this.db
       .select()
       .from(schema.servers)
@@ -92,13 +124,27 @@ export class ServersService {
       throw new Error(`Unknown provider: ${dto.providerId}`);
     }
 
+    // A pasted trailing newline/space would make the Authorization header invalid
+    const apiKey = dto.apiKey?.trim() ?? '';
+
+    if (provider.capabilities.apiKeyOptional !== true && apiKey === '') {
+      throw new BadRequestException('API key is required');
+    }
+
     const result = await this.db
       .insert(schema.servers)
       .values({
         name: dto.name,
         providerId: dto.providerId,
         url: dto.url,
-        apiKey: dto.apiKey,
+        // apiKey may be empty only for providers with apiKeyOptional (e.g. qBittorrent auth bypass);
+        // the column is NOT NULL
+        apiKey,
+        // Only providers that authenticate with a username may store one
+        username:
+          provider.capabilities.supportsUsername === true
+            ? (normalizeUsername(dto.username) ?? null)
+            : null,
         logPath: dto.logPath,
         fileIngestionEnabled: dto.fileIngestionEnabled ?? false,
         logPaths: dto.logPaths,
@@ -106,7 +152,8 @@ export class ServersService {
       })
       .returning();
 
-    const server = result[0];
+    const created = result[0];
+    const server = created ? toServerResponse(created) : undefined;
 
     // If file ingestion is enabled, start it immediately
     if (server && dto.fileIngestionEnabled && dto.logPaths?.length) {
@@ -120,12 +167,30 @@ export class ServersService {
 
   async update(id: string, dto: UpdateServerDto) {
     // Get the current server state to detect changes
-    const currentServer = await this.findOne(id);
+    const currentServer = await this.getServerRow(id);
+
+    // An empty username clears it (stored as NULL)
+    const { username, apiKey: rawApiKey, ...rest } = dto;
+    const apiKey = typeof rawApiKey === 'string' ? rawApiKey.trim() : rawApiKey;
+    const provider = this.providers.get(currentServer.providerId);
+
+    // An explicit null clears the stored secret, but only where credentials are optional
+    if (apiKey === null && provider?.capabilities.apiKeyOptional !== true) {
+      throw new BadRequestException('API key is required and cannot be cleared');
+    }
+    // Ignored for providers that do not authenticate with a username
+    const normalizedUsername =
+      provider?.capabilities.supportsUsername === true ? normalizeUsername(username) : undefined;
 
     const result = await this.db
       .update(schema.servers)
       .set({
-        ...dto,
+        ...rest,
+        // An omitted or empty secret keeps the stored value (the API never returns it);
+        // null clears it
+        ...(typeof apiKey === 'string' && apiKey !== '' && { apiKey }),
+        ...(apiKey === null && { apiKey: '' }),
+        ...(normalizedUsername !== undefined && { username: normalizedUsername }),
         updatedAt: new Date(),
       })
       .where(eq(schema.servers.id, id))
@@ -218,7 +283,7 @@ export class ServersService {
   }
 
   async testConnection(id: string) {
-    const server = await this.findOne(id);
+    const server = await this.getServerRow(id);
     const provider = this.providers.get(server.providerId);
 
     if (!provider) {
@@ -238,6 +303,7 @@ export class ServersService {
       await provider.connect({
         url: server.url,
         apiKey: server.apiKey,
+        username: server.username ?? undefined,
         logPath: server.logPath ?? undefined,
       });
 
@@ -366,7 +432,7 @@ export class ServersService {
    * Start file ingestion for a specific server
    */
   private async startFileIngestionForServer(serverId: string) {
-    const server = await this.findOne(serverId);
+    const server = await this.getServerRow(serverId);
 
     if (!server.fileIngestionEnabled || !server.logPaths?.length) {
       return;
@@ -418,7 +484,7 @@ export class ServersService {
    * This clears all file states and restarts file ingestion
    */
   async resetFileIngestionState(id: string) {
-    const server = await this.findOne(id);
+    const server = await this.getServerRow(id);
 
     if (!server.fileIngestionEnabled) {
       return {

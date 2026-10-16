@@ -83,6 +83,10 @@ services:
       READARR_API_KEY: ${READARR_API_KEY:-}
       BAZARR_URL: ${BAZARR_URL:-}
       BAZARR_API_KEY: ${BAZARR_API_KEY:-}
+      # qBittorrent: username + password, or only a password/API key (5.2+), or neither (auth bypass)
+      QBITTORRENT_URL: ${QBITTORRENT_URL:-}
+      QBITTORRENT_USERNAME: ${QBITTORRENT_USERNAME:-}
+      QBITTORRENT_PASSWORD: ${QBITTORRENT_PASSWORD:-}
       # Log paths - set to non-empty to enable file ingestion for that server
       # The actual path inside container is fixed (e.g., /jellyfin-logs)
       JELLYFIN_LOGS_PATH: ${JELLYFIN_LOGS_PATH:-}
@@ -96,6 +100,7 @@ services:
       SEERR_LOGS_PATH: ${SEERR_LOGS_PATH:-}
       READARR_LOGS_PATH: ${READARR_LOGS_PATH:-}
       BAZARR_LOGS_PATH: ${BAZARR_LOGS_PATH:-}
+      QBITTORRENT_LOGS_PATH: ${QBITTORRENT_LOGS_PATH:-}
       # Multiple instance support - add numbered suffixes for additional instances
       # Example: RADARR_LOGS_PATH_1=/path/to/movies, RADARR_LOGS_PATH_2=/path/to/shorts
       JELLYFIN_LOGS_PATH_1: ${JELLYFIN_LOGS_PATH_1:-}
@@ -131,6 +136,9 @@ services:
       BAZARR_LOGS_PATH_1: ${BAZARR_LOGS_PATH_1:-}
       BAZARR_LOGS_PATH_2: ${BAZARR_LOGS_PATH_2:-}
       BAZARR_LOGS_PATH_3: ${BAZARR_LOGS_PATH_3:-}
+      QBITTORRENT_LOGS_PATH_1: ${QBITTORRENT_LOGS_PATH_1:-}
+      QBITTORRENT_LOGS_PATH_2: ${QBITTORRENT_LOGS_PATH_2:-}
+      QBITTORRENT_LOGS_PATH_3: ${QBITTORRENT_LOGS_PATH_3:-}
       # Admin password reset - set to 'true' to reset admin account on startup
       ADMIN_PASSWORD_RESET: ${ADMIN_PASSWORD_RESET:-}
     volumes:
@@ -147,6 +155,7 @@ services:
       - ${SEERR_LOGS_PATH:-/dev/null}:/seerr-logs:ro
       - ${READARR_LOGS_PATH:-/dev/null}:/readarr-logs:ro
       - ${BAZARR_LOGS_PATH:-/dev/null}:/bazarr-logs:ro
+      - ${QBITTORRENT_LOGS_PATH:-/dev/null}:/qbittorrent-logs:ro
       # Multiple instance mounts - numbered instances map to /<server>-logs-<n>
       - ${JELLYFIN_LOGS_PATH_1:-/dev/null}:/jellyfin-logs-1:ro
       - ${JELLYFIN_LOGS_PATH_2:-/dev/null}:/jellyfin-logs-2:ro
@@ -181,6 +190,9 @@ services:
       - ${BAZARR_LOGS_PATH_1:-/dev/null}:/bazarr-logs-1:ro
       - ${BAZARR_LOGS_PATH_2:-/dev/null}:/bazarr-logs-2:ro
       - ${BAZARR_LOGS_PATH_3:-/dev/null}:/bazarr-logs-3:ro
+      - ${QBITTORRENT_LOGS_PATH_1:-/dev/null}:/qbittorrent-logs-1:ro
+      - ${QBITTORRENT_LOGS_PATH_2:-/dev/null}:/qbittorrent-logs-2:ro
+      - ${QBITTORRENT_LOGS_PATH_3:-/dev/null}:/qbittorrent-logs-3:ro
     healthcheck:
       test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:4000/api']
       interval: 30s

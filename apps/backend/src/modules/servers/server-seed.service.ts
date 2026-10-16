@@ -4,6 +4,8 @@ import { eq } from 'drizzle-orm';
 import { DATABASE_CONNECTION } from '../../database';
 import * as schema from '../../database/schema';
 
+import { ServersService } from './servers.service';
+
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 /**
@@ -13,7 +15,10 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
  */
 interface EnvServerConfig {
   urlEnvKey: string;
+  /** Env var holding the API key (or the password when usernameEnvKey is used) */
   apiKeyEnvKey: string;
+  /** Optional env var holding a login username */
+  usernameEnvKey?: string;
   providerId: string;
   name: string;
   /** Container path for log files (used in Docker) */
@@ -98,7 +103,30 @@ const ENV_SERVER_CONFIGS: EnvServerConfig[] = [
     name: 'Bazarr',
     containerLogPath: '/bazarr-logs',
   },
+  {
+    urlEnvKey: 'QBITTORRENT_URL',
+    usernameEnvKey: 'QBITTORRENT_USERNAME',
+    apiKeyEnvKey: 'QBITTORRENT_PASSWORD',
+    providerId: 'qbittorrent',
+    name: 'qBittorrent',
+    containerLogPath: '/qbittorrent-logs',
+  },
 ];
+
+/**
+ * Describe a seeding error without its message: Drizzle query errors include the bound
+ * parameters, which would put credentials (e.g. QBITTORRENT_PASSWORD) into the logs.
+ */
+export function describeSeedError(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return 'Unknown error';
+  }
+  const withCode = error as Error & { code?: unknown; cause?: { code?: unknown } };
+  const code = withCode.code ?? withCode.cause?.code;
+  return typeof code === 'string' || typeof code === 'number'
+    ? `${error.name} (code ${code})`
+    : error.name;
+}
 
 @Injectable()
 export class ServerSeedService implements OnModuleInit {
@@ -106,7 +134,8 @@ export class ServerSeedService implements OnModuleInit {
 
   constructor(
     @Inject(DATABASE_CONNECTION)
-    private readonly db: PostgresJsDatabase<typeof schema>
+    private readonly db: PostgresJsDatabase<typeof schema>,
+    private readonly serversService: ServersService
   ) {}
 
   async onModuleInit() {
@@ -114,8 +143,11 @@ export class ServerSeedService implements OnModuleInit {
     try {
       await this.seedServersFromEnv();
     } catch (error) {
-      this.logger.error(`ServerSeedService failed: ${error}`);
-      throw error;
+      const description = describeSeedError(error);
+      this.logger.error(`ServerSeedService failed: ${description}`);
+      // Do not rethrow the original error: Drizzle errors embed the bound query parameters
+      // (including the stored credentials) in their message
+      throw new Error(`ServerSeedService failed: ${description}`);
     }
   }
 
@@ -128,13 +160,25 @@ export class ServerSeedService implements OnModuleInit {
     let seededCount = 0;
 
     for (const config of ENV_SERVER_CONFIGS) {
+      // Whether only the URL is required (credentials may be empty, e.g. auth bypass) comes from
+      // the provider's capabilities
+      const apiKeyOptional =
+        this.serversService.getAvailableProviders().find((p) => p.id === config.providerId)
+          ?.capabilities.apiKeyOptional === true;
       const url = process.env[config.urlEnvKey];
-      const apiKey = process.env[config.apiKeyEnvKey];
+      // Not trimmed for providers with a password: a leading/trailing space may be intentional,
+      // and the UI stores the value verbatim too. Only the emptiness check ignores whitespace.
+      const apiKey = config.usernameEnvKey
+        ? (process.env[config.apiKeyEnvKey] ?? '')
+        : (process.env[config.apiKeyEnvKey]?.trim() ?? '');
+      const username = config.usernameEnvKey
+        ? process.env[config.usernameEnvKey]?.trim() || null
+        : null;
 
       this.logger.log(`Checking ${config.providerId}: URL=${!!url}, API key=${!!apiKey}`);
 
-      // Skip if URL or API key not set
-      if (!url || url.trim() === '' || !apiKey || apiKey.trim() === '') {
+      // Skip if URL (or, unless credentials are optional, the API key) is not set
+      if (!url || url.trim() === '' || (!apiKeyOptional && apiKey.trim() === '')) {
         this.logger.log(`Skipping ${config.providerId}: missing URL or API key`);
         continue;
       }
@@ -166,7 +210,8 @@ export class ServerSeedService implements OnModuleInit {
           name: config.name,
           providerId: config.providerId,
           url: url.trim(),
-          apiKey: apiKey.trim(),
+          apiKey,
+          username,
           // Enable file ingestion if log path is configured
           fileIngestionEnabled: hasLogPath,
           logPaths: effectiveLogPath ? [effectiveLogPath] : null,
@@ -180,7 +225,9 @@ export class ServerSeedService implements OnModuleInit {
           `Auto-configured server from env: ${config.name} (${config.providerId})${logStatus}`
         );
       } catch (error) {
-        this.logger.warn(`Failed to auto-configure server ${config.name}: ${error}`);
+        this.logger.warn(
+          `Failed to auto-configure server ${config.name}: ${describeSeedError(error)}`
+        );
       }
     }
 

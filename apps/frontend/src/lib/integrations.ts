@@ -69,6 +69,10 @@ export interface Integration {
     sessions: boolean;
     webhooks: boolean;
     metrics: boolean;
+    /** Authenticates with a username plus password (stored as username + apiKey) */
+    supportsUsername?: boolean;
+    /** The API key / password may be empty (e.g. authentication bypass) */
+    apiKeyOptional?: boolean;
   };
   tags: string[]; // For search
 }
@@ -474,9 +478,10 @@ export const integrations: Integration[] = [
   {
     id: 'qbittorrent',
     name: 'qBittorrent',
-    description: 'Free and reliable P2P BitTorrent client',
+    description:
+      'Free and reliable P2P BitTorrent client (WebUI API v2). Supports username/password, authentication bypass and API keys (5.2+)',
     category: 'download_clients',
-    status: 'coming_soon',
+    status: 'available',
     connectionType: 'api_basic',
     icon: 'qbittorrent',
     iconType: 'dashboard-icons',
@@ -492,22 +497,32 @@ export const integrations: Integration[] = [
         label: 'Username',
         type: 'text',
         placeholder: 'admin',
-        required: true,
+        description: 'WebUI username. Leave empty for API-key or no-auth (bypass) setups',
+        required: false,
       },
       {
         name: 'password',
-        label: 'Password',
+        label: 'Password / API key',
         type: 'password',
-        placeholder: 'Enter password',
-        required: true,
+        placeholder: 'WebUI password, or API key (qBittorrent 5.2+)',
+        description:
+          "With a username: the WebUI password. Without a username: an API key. Leave both empty if authentication is bypassed for Logarr's IP",
+        required: false,
+      },
+      {
+        ...standardLogPathField,
+        placeholder: '/config/qBittorrent/logs',
       },
     ],
+    docsUrl: 'https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)',
     capabilities: {
       realTimeLogs: true,
       activityLog: true,
       sessions: false,
       webhooks: false,
-      metrics: true,
+      metrics: false,
+      supportsUsername: true,
+      apiKeyOptional: true,
     },
     tags: ['torrent', 'download', 'p2p', 'bittorrent', 'open-source'],
   },

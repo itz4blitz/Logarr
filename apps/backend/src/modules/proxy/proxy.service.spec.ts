@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import { NotFoundException, ForbiddenException } from '@nestjs/common';
+import { NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { of, throwError } from 'rxjs';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -419,6 +419,68 @@ describe('ProxyService', () => {
           url: 'http://localhost:8080/api/v2/torrents/info',
         })
       );
+    });
+
+    describe('qBittorrent authentication modes', () => {
+      const qbitServer = {
+        id: 'server-qbit',
+        name: 'My qBittorrent',
+        providerId: 'qbittorrent',
+        url: 'http://localhost:8080',
+        isEnabled: true,
+      };
+
+      it('should reject servers that use username/password login', async () => {
+        configureMockDb(mockDb, {
+          select: [{ ...qbitServer, apiKey: 'password', username: 'admin' }],
+        });
+
+        await expect(
+          service.proxyRequest('server-qbit', { endpoint: 'torrents/info', method: 'GET' })
+        ).rejects.toThrow(BadRequestException);
+        expect(mockHttpService.request).not.toHaveBeenCalled();
+      });
+
+      it('should reject any server with a stored username regardless of provider', async () => {
+        configureMockDb(mockDb, {
+          select: [{ ...qbitServer, providerId: 'other', apiKey: 'pw', username: 'bob' }],
+        });
+
+        await expect(
+          service.proxyRequest('server-qbit', { endpoint: 'x', method: 'GET' })
+        ).rejects.toThrow(/cookie session/);
+      });
+
+      it('should send Authorization: Bearer (and X-Api-Key) for API key setups without username', async () => {
+        configureMockDb(mockDb, {
+          select: [{ ...qbitServer, apiKey: 'qbt-key', username: null }],
+        });
+        vi.mocked(mockHttpService.request)!.mockReturnValue(of({ data: {}, status: 200 } as any));
+
+        await service.proxyRequest('server-qbit', { endpoint: 'torrents/info', method: 'GET' });
+
+        expect(mockHttpService.request).toHaveBeenCalledWith(
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              Authorization: 'Bearer qbt-key',
+              'X-Api-Key': 'qbt-key',
+            }),
+          })
+        );
+      });
+
+      it('should omit X-Api-Key when the key is empty (auth bypass)', async () => {
+        configureMockDb(mockDb, { select: [{ ...qbitServer, apiKey: '', username: null }] });
+        vi.mocked(mockHttpService.request)!.mockReturnValue(of({ data: {}, status: 200 } as any));
+
+        await service.proxyRequest('server-qbit', { endpoint: 'torrents/info', method: 'GET' });
+
+        const call = vi.mocked(mockHttpService.request)!.mock.calls[0]![0] as {
+          headers: Record<string, string>;
+        };
+        expect(call.headers).not.toHaveProperty('X-Api-Key');
+        expect(call.headers).not.toHaveProperty('Authorization');
+      });
     });
 
     it('should replace path parameters in URL', async () => {

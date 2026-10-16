@@ -14,7 +14,7 @@ import {
   FolderOpen,
   FileSearch,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod/v3';
@@ -50,19 +50,34 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useUpdateServer, useTestConnection } from '@/hooks/use-api';
+import {
+  areCredentialsOptional,
+  buildUpdateCredentials,
+  supportsUsername,
+} from '@/lib/server-payload';
 import { cn } from '@/lib/utils';
 
-const formSchema = z.object({
+// The stored secret is never sent to the browser: an empty field keeps the stored value, so it is
+// only required when nothing is stored yet (providers with optional credentials never need one).
+const buildFormSchema = (providerId: string, hasStoredSecret: boolean) =>
+  baseFormSchema.superRefine((data, ctx) => {
+    if (!areCredentialsOptional(providerId) && !hasStoredSecret && data.apiKey.trim() === '') {
+      ctx.addIssue({ code: 'custom', path: ['apiKey'], message: 'API key is required' });
+    }
+  });
+
+const baseFormSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
   url: z.string().url('Must be a valid URL'),
-  apiKey: z.string().min(1, 'API key is required'),
+  apiKey: z.string(),
+  username: z.string().optional(),
   logPath: z.string().optional(),
   fileIngestionEnabled: z.boolean(),
   logPaths: z.string().optional(),
   logFilePatterns: z.string().optional(),
 });
 
-type FormData = z.infer<typeof formSchema>;
+type FormData = z.infer<typeof baseFormSchema>;
 
 interface EditServerDialogProps {
   server: ServerType;
@@ -75,12 +90,24 @@ export function EditServerDialog({ server, open, onOpenChange }: EditServerDialo
   const testConnection = useTestConnection();
   const [isTesting, setIsTesting] = useState(false);
 
+  const formSchema = useMemo(
+    () => buildFormSchema(server.providerId, server.hasApiKey),
+    [server.providerId, server.hasApiKey]
+  );
+  const hasUsername = supportsUsername(server.providerId);
+  // Deliberate removal of the stored secret (only offered where credentials are optional)
+  const canClearSecret = server.hasApiKey && areCredentialsOptional(server.providerId);
+  const [clearSecret, setClearSecret] = useState(false);
+  // What to do with the stored secret when the username is removed: no silent mode change
+  const [usernameChoice, setUsernameChoice] = useState<'keep' | 'clear' | null>(null);
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: server.name,
       url: server.url,
-      apiKey: server.apiKey,
+      apiKey: '',
+      username: server.username ?? '',
       logPath: server.logPath || '',
       fileIngestionEnabled: server.fileIngestionEnabled || false,
       logPaths: server.logPaths?.join(', ') || '',
@@ -89,13 +116,25 @@ export function EditServerDialog({ server, open, onOpenChange }: EditServerDialo
   });
 
   const fileIngestionEnabled = form.watch('fileIngestionEnabled');
+  const watchedUsername = form.watch('username') ?? '';
+  const watchedSecret = form.watch('apiKey');
+  const usernameRemoved =
+    hasUsername &&
+    (server.username ?? '') !== '' &&
+    watchedUsername.trim() === '' &&
+    server.hasApiKey &&
+    watchedSecret.trim() === '' &&
+    !clearSecret;
 
   useEffect(() => {
     if (open) {
+      setClearSecret(false);
+      setUsernameChoice(null);
       form.reset({
         name: server.name,
         url: server.url,
-        apiKey: server.apiKey,
+        apiKey: '',
+        username: server.username ?? '',
         logPath: server.logPath || '',
         fileIngestionEnabled: server.fileIngestionEnabled || false,
         logPaths: server.logPaths?.join(', ') || '',
@@ -132,6 +171,10 @@ export function EditServerDialog({ server, open, onOpenChange }: EditServerDialo
   }
 
   async function onSubmit(data: FormData) {
+    if (usernameRemoved && usernameChoice === null) {
+      toast.error('Choose what happens to the stored password / API key before saving');
+      return;
+    }
     try {
       const logPaths = data.logPaths
         ? data.logPaths
@@ -156,7 +199,11 @@ export function EditServerDialog({ server, open, onOpenChange }: EditServerDialo
         data: {
           name: data.name,
           url: data.url,
-          apiKey: data.apiKey,
+          ...buildUpdateCredentials(
+            server.providerId,
+            data,
+            clearSecret || (usernameRemoved && usernameChoice === 'clear')
+          ),
           logPath: data.logPath || undefined,
           fileIngestionEnabled: data.fileIngestionEnabled,
           logPaths: logPaths?.length ? logPaths : undefined,
@@ -288,24 +335,133 @@ export function EditServerDialog({ server, open, onOpenChange }: EditServerDialo
                 />
               </div>
 
-              {/* API Key full width */}
-              <FormField
-                control={form.control}
-                name="apiKey"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-1.5">
-                      <Key className="h-3.5 w-3.5" />
-                      API Key
-                    </FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="Enter API key" {...field} />
-                    </FormControl>
-                    <FormDescription>Found in Dashboard → API Keys</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {hasUsername ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="username"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-1.5">
+                          <Tag className="h-3.5 w-3.5" />
+                          Username
+                        </FormLabel>
+                        <FormControl>
+                          <Input placeholder="admin" {...field} />
+                        </FormControl>
+                        <FormDescription>Leave empty for API-key or no-auth setups</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="apiKey"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-1.5">
+                          <Key className="h-3.5 w-3.5" />
+                          Password / API key
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="password"
+                            autoComplete="new-password"
+                            placeholder={
+                              server.hasApiKey
+                                ? 'Stored - leave empty to keep'
+                                : 'WebUI password, or API key (5.2+)'
+                            }
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          With a username: password. Without: API key. Leave empty to keep the
+                          stored value
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              ) : (
+                <FormField
+                  control={form.control}
+                  name="apiKey"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-1.5">
+                        <Key className="h-3.5 w-3.5" />
+                        API Key
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="password"
+                          autoComplete="new-password"
+                          placeholder={
+                            server.hasApiKey ? 'Stored - leave empty to keep' : 'Enter API key'
+                          }
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Found in Dashboard → API Keys. Leave empty to keep the stored key.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {canClearSecret && (
+                <div className="flex items-center gap-3 text-sm">
+                  <Button
+                    type="button"
+                    variant={clearSecret ? 'secondary' : 'outline'}
+                    size="sm"
+                    onClick={() => setClearSecret((value) => !value)}
+                  >
+                    {clearSecret
+                      ? 'Keep stored password / API key'
+                      : 'Clear stored password / API key'}
+                  </Button>
+                  {clearSecret && (
+                    <span className="text-muted-foreground">
+                      The stored value will be removed when you save.
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {usernameRemoved && (
+                <Alert variant="default" className="border-amber-500/50 bg-amber-500/5">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  <AlertDescription className="space-y-2 text-amber-600 dark:text-amber-400">
+                    <p>
+                      Without a username, the stored password would be used as an API key. Choose
+                      what to do with it:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={usernameChoice === 'keep' ? 'secondary' : 'outline'}
+                        onClick={() => setUsernameChoice('keep')}
+                      >
+                        Keep it as an API key
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={usernameChoice === 'clear' ? 'secondary' : 'outline'}
+                        onClick={() => setUsernameChoice('clear')}
+                      >
+                        Clear it (no authentication)
+                      </Button>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
 
             {/* File Ingestion Section */}

@@ -1,5 +1,12 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable, Inject, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { firstValueFrom } from 'rxjs';
@@ -15,6 +22,7 @@ interface ServerWithConfig {
   providerId: string;
   url: string;
   apiKey: string;
+  username?: string | null;
   status?: string;
   lastChecked?: Date;
 }
@@ -35,6 +43,12 @@ export class ProxyService {
     bazarr: '/api',
     qbittorrent: '/api/v2',
     sabnzbd: '/api',
+  };
+
+  // Per-provider API key auth headers (default: X-Api-Key). Released qBittorrent (>= 5.2) only
+  // accepts `Authorization: Bearer <key>`; X-API-Key exists on qBittorrent master only.
+  private readonly authHeaderMap: Record<string, (key: string) => Record<string, string>> = {
+    qbittorrent: (key) => ({ Authorization: `Bearer ${key}`, 'X-Api-Key': key }),
   };
 
   constructor(
@@ -79,6 +93,15 @@ export class ProxyService {
     return server;
   }
 
+  private buildAuthHeaders(server: ServerWithConfig): Record<string, string> {
+    if (server.apiKey === '') {
+      return {};
+    }
+    return (this.authHeaderMap[server.providerId] ?? ((key) => ({ 'X-Api-Key': key })))(
+      server.apiKey
+    );
+  }
+
   /**
    * Proxy request to target service with enhanced features
    */
@@ -90,6 +113,15 @@ export class ProxyService {
     // 1. Get server configuration
     const server = await this.findUserServer(serverId);
 
+    // Servers with a stored username authenticate with a cookie session (username/password
+    // login), which the proxy cannot do. API-key servers work (qBittorrent >= 5.2 takes the key as
+    // a Bearer token, see authHeaderMap); auth-bypass servers need no header.
+    if (server.username) {
+      throw new BadRequestException(
+        'The request proxy does not support servers that use username/password login (cookie session). Use an API key (qBittorrent 5.2+) or authentication bypass instead.'
+      );
+    }
+
     // 2. Build target URL with path parameters
     const targetUrl = this.buildTargetUrl(server, dto.endpoint, dto.params);
 
@@ -97,7 +129,8 @@ export class ProxyService {
 
     // 3. Merge headers
     const headers: Record<string, string> = {
-      'X-Api-Key': server.apiKey,
+      // Providers without credentials (e.g. qBittorrent auth bypass) store an empty key
+      ...this.buildAuthHeaders(server),
       'Content-Type': 'application/json',
       ...dto.headers,
     };
