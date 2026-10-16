@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { describeArrEvent, resolveArrEventName, toArrItemId } from './arr.events.js';
+import { describeArrEvent, resolveArrEventName, stableArrHash, toArrItemId } from './arr.events.js';
 
 import type { ArrEventTable } from './arr.events.js';
 
@@ -99,4 +99,16 @@ describe('toArrItemId', () => {
       expect(toArrItemId(input)).toBeUndefined();
     }
   );
+});
+
+describe('stableArrHash', () => {
+  it('is deterministic and 16 hex chars', () => {
+    expect(stableArrHash('a', 'b')).toBe(stableArrHash('a', 'b'));
+    expect(stableArrHash('a', 'b')).toMatch(/^[0-9a-f]{16}$/);
+  });
+
+  it('differs for different input and for different part boundaries', () => {
+    expect(stableArrHash('a', 'b')).not.toBe(stableArrHash('a', 'c'));
+    expect(stableArrHash('ab', 'c')).not.toBe(stableArrHash('a', 'bc'));
+  });
 });

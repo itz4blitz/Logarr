@@ -32,6 +32,8 @@
     "LIDARR_API_KEY",
     "SEERR_URL",
     "SEERR_API_KEY",
+    "READARR_URL",
+    "READARR_API_KEY",
     "JELLYFIN_LOGS_PATH",
     "PLEX_LOGS_PATH",
     "EMBY_LOGS_PATH",
@@ -40,7 +42,8 @@
     "PROWLARR_LOGS_PATH",
     "WHISPARR_LOGS_PATH",
     "LIDARR_LOGS_PATH",
-    "SEERR_LOGS_PATH"
+    "SEERR_LOGS_PATH",
+    "READARR_LOGS_PATH"
   ],
   "tasks": {
     "build": {

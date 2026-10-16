@@ -4,6 +4,7 @@
  */
 
 import { ArrClient } from './arr.client.js';
+import { stableArrHash } from './arr.events.js';
 import {
   parseArrLogLine,
   parseArrLogLineWithContext,
@@ -272,7 +273,7 @@ export abstract class ArrBaseProvider implements MediaServerProvider {
     return checks
       .filter((check) => check.type === 'warning' || check.type === 'error')
       .map((check) => ({
-        id: `health-${check.source}-${Date.now()}`,
+        id: `${this.id}-health-${stableArrHash(check.source, check.type, check.message)}`,
         type: check.type === 'error' ? 'health_error' : 'health_warning',
         name: `Health ${check.type}: ${check.source}`,
         overview: check.message,
@@ -288,16 +289,21 @@ export abstract class ArrBaseProvider implements MediaServerProvider {
   protected normalizeQueueItems(items: readonly ArrQueueItemBase[]): NormalizedActivity[] {
     return items
       .filter((item) => item.trackedDownloadStatus === 'warning' || item.errorMessage !== undefined)
-      .map((item) => ({
-        id: `queue-${item.downloadId}-${Date.now()}`,
-        type: 'queue_warning' as const,
-        name: `Queue issue: ${item.title}`,
-        overview:
-          item.errorMessage ?? item.statusMessages.map((m) => m.messages.join(', ')).join('; '),
-        severity: 'warn' as const,
-        timestamp: new Date(),
-        advancesSyncCursor: false,
-      }));
+      .map((item) => {
+        const overview =
+          item.errorMessage ?? item.statusMessages.map((m) => m.messages.join(', ')).join('; ');
+        return {
+          // Stable per queue entry + warning state, so a standing warning is not
+          // re-inserted on every poll (ingestion dedupes on the external id).
+          id: `${this.id}-queue-${item.id}-${item.trackedDownloadStatus}-${item.trackedDownloadState}-${stableArrHash(overview)}`,
+          type: 'queue_warning' as const,
+          name: `Queue issue: ${item.title}`,
+          overview,
+          severity: 'warn' as const,
+          timestamp: new Date(),
+          advancesSyncCursor: false,
+        };
+      });
   }
 
   /**

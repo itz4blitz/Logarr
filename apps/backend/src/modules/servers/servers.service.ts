@@ -4,6 +4,7 @@ import { LidarrProvider } from '@logarr/provider-lidarr';
 import { PlexProvider } from '@logarr/provider-plex';
 import { ProwlarrProvider } from '@logarr/provider-prowlarr';
 import { RadarrProvider } from '@logarr/provider-radarr';
+import { ReadarrProvider } from '@logarr/provider-readarr';
 import { SeerrProvider } from '@logarr/provider-seerr';
 import { SonarrProvider } from '@logarr/provider-sonarr';
 import { WhisparrProvider } from '@logarr/provider-whisparr';
@@ -58,6 +59,9 @@ export class ServersService {
     this.providers.set(lidarrProvider.id, lidarrProvider);
     const seerrProvider = new SeerrProvider();
     this.providers.set(seerrProvider.id, seerrProvider);
+
+    const readarrProvider = new ReadarrProvider();
+    this.providers.set(readarrProvider.id, readarrProvider);
   }
 
   async findAll() {

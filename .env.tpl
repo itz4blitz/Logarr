@@ -92,6 +92,9 @@ LIDARR_API_KEY={{ op://Development/Logarr-Dev/LIDARR_API_KEY }}
 # replace these with op:// references
 # SEERR_URL=
 # SEERR_API_KEY=
+# Readarr (retired upstream) - add matching items to the 1Password vault, then uncomment
+# READARR_URL={{ op://Development/Logarr-Dev/READARR_URL }}
+# READARR_API_KEY={{ op://Development/Logarr-Dev/READARR_API_KEY }}
 
 # =============================================================================
 # SECURITY & AUTHENTICATION
@@ -117,3 +120,4 @@ PROWLARR_LOGS_PATH={{ op://Development/Logarr-Dev/PROWLARR_LOGS_PATH }}
 WHISPARR_LOGS_PATH={{ op://Development/Logarr-Dev/WHISPARR_LOGS_PATH }}
 LIDARR_LOGS_PATH={{ op://Development/Logarr-Dev/LIDARR_LOGS_PATH }}
 # SEERR_LOGS_PATH=
+# READARR_LOGS_PATH={{ op://Development/Logarr-Dev/READARR_LOGS_PATH }}

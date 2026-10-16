@@ -79,6 +79,8 @@ services:
       LIDARR_API_KEY: ${LIDARR_API_KEY:-}
       SEERR_URL: ${SEERR_URL:-}
       SEERR_API_KEY: ${SEERR_API_KEY:-}
+      READARR_URL: ${READARR_URL:-}
+      READARR_API_KEY: ${READARR_API_KEY:-}
       # Log paths - set to non-empty to enable file ingestion for that server
       # The actual path inside container is fixed (e.g., /jellyfin-logs)
       JELLYFIN_LOGS_PATH: ${JELLYFIN_LOGS_PATH:-}
@@ -90,6 +92,7 @@ services:
       WHISPARR_LOGS_PATH: ${WHISPARR_LOGS_PATH:-}
       LIDARR_LOGS_PATH: ${LIDARR_LOGS_PATH:-}
       SEERR_LOGS_PATH: ${SEERR_LOGS_PATH:-}
+      READARR_LOGS_PATH: ${READARR_LOGS_PATH:-}
       # Multiple instance support - add numbered suffixes for additional instances
       # Example: RADARR_LOGS_PATH_1=/path/to/movies, RADARR_LOGS_PATH_2=/path/to/shorts
       JELLYFIN_LOGS_PATH_1: ${JELLYFIN_LOGS_PATH_1:-}
@@ -119,6 +122,9 @@ services:
       SEERR_LOGS_PATH_1: ${SEERR_LOGS_PATH_1:-}
       SEERR_LOGS_PATH_2: ${SEERR_LOGS_PATH_2:-}
       SEERR_LOGS_PATH_3: ${SEERR_LOGS_PATH_3:-}
+      READARR_LOGS_PATH_1: ${READARR_LOGS_PATH_1:-}
+      READARR_LOGS_PATH_2: ${READARR_LOGS_PATH_2:-}
+      READARR_LOGS_PATH_3: ${READARR_LOGS_PATH_3:-}
       # Admin password reset - set to 'true' to reset admin account on startup
       ADMIN_PASSWORD_RESET: ${ADMIN_PASSWORD_RESET:-}
     volumes:
@@ -133,6 +139,7 @@ services:
       - ${WHISPARR_LOGS_PATH:-/dev/null}:/whisp-logs:ro
       - ${LIDARR_LOGS_PATH:-/dev/null}:/lidarr-logs:ro
       - ${SEERR_LOGS_PATH:-/dev/null}:/seerr-logs:ro
+      - ${READARR_LOGS_PATH:-/dev/null}:/readarr-logs:ro
       # Multiple instance mounts - numbered instances map to /<server>-logs-<n>
       - ${JELLYFIN_LOGS_PATH_1:-/dev/null}:/jellyfin-logs-1:ro
       - ${JELLYFIN_LOGS_PATH_2:-/dev/null}:/jellyfin-logs-2:ro
@@ -161,6 +168,9 @@ services:
       - ${SEERR_LOGS_PATH_1:-/dev/null}:/seerr-logs-1:ro
       - ${SEERR_LOGS_PATH_2:-/dev/null}:/seerr-logs-2:ro
       - ${SEERR_LOGS_PATH_3:-/dev/null}:/seerr-logs-3:ro
+      - ${READARR_LOGS_PATH_1:-/dev/null}:/readarr-logs-1:ro
+      - ${READARR_LOGS_PATH_2:-/dev/null}:/readarr-logs-2:ro
+      - ${READARR_LOGS_PATH_3:-/dev/null}:/readarr-logs-3:ro
     healthcheck:
       test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:4000/api']
       interval: 30s

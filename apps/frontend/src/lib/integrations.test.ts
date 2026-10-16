@@ -195,6 +195,44 @@ describe('Integrations Registry', () => {
     });
   });
 
+  describe('Readarr integration', () => {
+    it('should be available and not coming soon', () => {
+      const readarr = getIntegrationById('readarr');
+      expect(readarr).toBeDefined();
+      expect(readarr?.name).toBe('Readarr');
+      expect(readarr?.status).toBe('available');
+      expect(readarr?.connectionType).toBe('api');
+      expect(readarr?.category).toBe('arr_stack');
+      expect(readarr?.defaultPort).toBe(8787);
+    });
+
+    it('should not be duplicated in the registry', () => {
+      expect(integrations.filter((i) => i.id === 'readarr')).toHaveLength(1);
+    });
+
+    it('should state that it is retired upstream', () => {
+      const readarr = getIntegrationById('readarr');
+      expect(readarr?.description).toMatch(/retired/i);
+      expect(readarr?.description).toMatch(/best-effort/i);
+    });
+
+    it('should have standard API config fields', () => {
+      const fieldNames = getIntegrationById('readarr')?.configFields.map((f) => f.name);
+      expect(fieldNames).toEqual(['name', 'url', 'apiKey', 'logPath']);
+    });
+
+    it('should use the dashboard-icons readarr icon', () => {
+      const readarr = getIntegrationById('readarr');
+      expect(readarr?.icon).toBe('readarr');
+      expect(readarr?.iconType).toBe('dashboard-icons');
+    });
+
+    it('should be findable by name and by the retired notice', () => {
+      expect(searchIntegrations('readarr').some((i) => i.id === 'readarr')).toBe(true);
+      expect(searchIntegrations('retired').some((i) => i.id === 'readarr')).toBe(true);
+    });
+  });
+
   describe('getIntegrationsByCategory', () => {
     it('should include Whisparr in arr_stack category', () => {
       const arrIntegrations = getIntegrationsByCategory('arr_stack');
@@ -230,6 +268,11 @@ describe('Integrations Registry', () => {
       expect(ids).toContain('prowlarr');
       expect(ids).toContain('whisparr');
       expect(ids).toContain('lidarr');
+    });
+
+    it('should include Readarr in available integrations', () => {
+      const ids = getAvailableIntegrations().map((i) => i.id);
+      expect(ids).toContain('readarr');
     });
   });
 

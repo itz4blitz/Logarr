@@ -421,9 +421,10 @@ export const integrations: Integration[] = [
   {
     id: 'readarr',
     name: 'Readarr',
-    description: 'Book, audiobook, and comic collection manager',
+    description:
+      'Book, audiobook, and comic collection manager (retired upstream - best-effort support)',
     category: 'arr_stack',
-    status: 'coming_soon',
+    status: 'available',
     connectionType: 'api',
     icon: 'readarr',
     iconType: 'dashboard-icons',

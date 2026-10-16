@@ -62,6 +62,8 @@ COPY --from=builder --chown=nestjs:nodejs /app/packages/provider-lidarr/package.
 COPY --from=builder --chown=nestjs:nodejs /app/packages/provider-lidarr/dist ./packages/provider-lidarr/dist
 COPY --from=builder --chown=nestjs:nodejs /app/packages/provider-seerr/package.json ./packages/provider-seerr/
 COPY --from=builder --chown=nestjs:nodejs /app/packages/provider-seerr/dist ./packages/provider-seerr/dist
+COPY --from=builder --chown=nestjs:nodejs /app/packages/provider-readarr/package.json ./packages/provider-readarr/
+COPY --from=builder --chown=nestjs:nodejs /app/packages/provider-readarr/dist ./packages/provider-readarr/dist
 
 # Copy backend
 COPY --from=builder --chown=nestjs:nodejs /app/apps/backend/package.json ./apps/backend/

@@ -36,7 +36,7 @@ This is a pnpm + Turborepo TypeScript monorepo.
 - `apps/backend`: NestJS 11 API with Drizzle/Postgres, Redis, Socket.IO, Swagger, auth/RBAC, audit logging, retention, ingestion, settings, and proxying.
 - `apps/frontend`: Next.js 16 App Router UI with React 19, Tailwind 4, Radix UI, React Query, and realtime socket hooks.
 - `packages/core`: shared provider interfaces and normalized cross-service types.
-- `packages/provider-*`: provider adapters for Plex, Jellyfin, Emby, Sonarr, Radarr, Prowlarr, Whisparr, Lidarr, Seerr, plus shared `provider-arr` base logic.
+- `packages/provider-*`: provider adapters for Plex, Jellyfin, Emby, Sonarr, Radarr, Prowlarr, Whisparr, Lidarr, Readarr, Seerr, plus shared `provider-arr` base logic.
 - `e2e`: Playwright coverage for key UI flows.
 - `.github/workflows/docker-publish.yml`: CI gates and container publishing.
 
