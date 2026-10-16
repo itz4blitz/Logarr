@@ -233,6 +233,17 @@ export class IssuesService {
    * Process a log entry and create/update an issue
    */
   async processLogEntry(logEntry: typeof schema.logEntries.$inferSelect): Promise<string | null> {
+    const result = await this.processLogEntryDetailed(logEntry);
+    return result === null ? null : result.issueId;
+  }
+
+  /**
+   * Like processLogEntry, but also reports whether this call created the issue
+   * (so callers can broadcast "new issue" without inferring it from counters).
+   */
+  async processLogEntryDetailed(
+    logEntry: typeof schema.logEntries.$inferSelect
+  ): Promise<{ issueId: string; created: boolean } | null> {
     // Only process errors and warnings
     if (!['error', 'warn'].includes(logEntry.level)) {
       return null;
@@ -252,65 +263,8 @@ export class IssuesService {
       .limit(1);
 
     if (existingIssue.length > 0) {
-      // Update existing issue
-      const issue = existingIssue[0]!;
-
-      // Get unique affected users and sessions
-      const affectedUsers = new Set<string>();
-      const affectedSessions = new Set<string>();
-
-      // Get all occurrences to count unique users/sessions
-      const occurrences = await this.db
-        .select({
-          userId: schema.issueOccurrences.userId,
-          sessionId: schema.issueOccurrences.sessionId,
-        })
-        .from(schema.issueOccurrences)
-        .where(eq(schema.issueOccurrences.issueId, issue.id));
-
-      occurrences.forEach((o) => {
-        if (o.userId) affectedUsers.add(o.userId);
-        if (o.sessionId) affectedSessions.add(o.sessionId);
-      });
-
-      if (logEntry.userId) affectedUsers.add(logEntry.userId);
-      if (logEntry.sessionId) affectedSessions.add(logEntry.sessionId);
-
-      const newImpactScore = this.calculateImpactScore(
-        issue.severity,
-        issue.occurrenceCount + 1,
-        affectedUsers.size,
-        affectedSessions.size,
-        0 // Just happened - recency is 0 hours
-      );
-
-      // Update issue
-      await this.db
-        .update(schema.issues)
-        .set({
-          lastSeen: logEntry.timestamp,
-          occurrenceCount: issue.occurrenceCount + 1,
-          affectedUsersCount: affectedUsers.size,
-          affectedSessionsCount: affectedSessions.size,
-          impactScore: newImpactScore,
-          updatedAt: new Date(),
-        })
-        .where(eq(schema.issues.id, issue.id));
-
-      // Create occurrence
-      await this.db
-        .insert(schema.issueOccurrences)
-        .values({
-          issueId: issue.id,
-          logEntryId: logEntry.id,
-          timestamp: logEntry.timestamp,
-          serverId: logEntry.serverId,
-          userId: logEntry.userId,
-          sessionId: logEntry.sessionId,
-        })
-        .onConflictDoNothing();
-
-      return issue.id;
+      const issueId = await this.recordOccurrence(existingIssue[0]!, logEntry);
+      return { issueId, created: false };
     } else {
       // Create new issue
       const { category, severity } = this.categorizeError(logEntry.message);
@@ -339,43 +293,145 @@ export class IssuesService {
         0
       );
 
-      const [newIssue] = await this.db
-        .insert(schema.issues)
-        .values({
-          fingerprint,
-          title,
-          source,
-          severity,
-          category,
-          serverId: logEntry.serverId,
-          errorPattern: this.generateFingerprint(logEntry.message, logEntry.source || 'unknown'),
-          sampleMessage: logEntry.message,
-          exceptionType: logEntry.exception,
-          firstSeen: logEntry.timestamp,
-          lastSeen: logEntry.timestamp,
-          occurrenceCount: 1,
-          affectedUsersCount: logEntry.userId ? 1 : 0,
-          affectedSessionsCount: logEntry.sessionId ? 1 : 0,
-          impactScore,
-        })
-        .returning();
+      // The issue and its first occurrence are created in one transaction. The issue starts
+      // with occurrence_count = 0 and goes through the same occurrence-first + atomic
+      // increment path as every later occurrence, so count == number of occurrence rows
+      // even if the same entry is processed concurrently.
+      const createdId = await this.db.transaction(async (tx) => {
+        const [newIssue] = await tx
+          .insert(schema.issues)
+          .values({
+            fingerprint,
+            title,
+            source,
+            severity,
+            category,
+            serverId: logEntry.serverId,
+            errorPattern: this.generateFingerprint(logEntry.message, logEntry.source || 'unknown'),
+            sampleMessage: logEntry.message,
+            exceptionType: logEntry.exception,
+            firstSeen: logEntry.timestamp,
+            lastSeen: logEntry.timestamp,
+            occurrenceCount: 0,
+            affectedUsersCount: 0,
+            affectedSessionsCount: 0,
+            impactScore,
+          })
+          .onConflictDoNothing({ target: schema.issues.fingerprint })
+          .returning();
 
-      if (!newIssue) {
-        return null;
+        if (!newIssue) {
+          return null;
+        }
+        await this.recordOccurrenceWith(tx, newIssue, logEntry);
+        return newIssue.id;
+      });
+
+      if (createdId !== null) {
+        return { issueId: createdId, created: true };
       }
 
-      // Create first occurrence
-      await this.db.insert(schema.issueOccurrences).values({
-        issueId: newIssue.id,
+      // Lost a race: a concurrent ingestion created the issue for this fingerprint
+      // between our SELECT and INSERT. Attach this entry to the winner instead.
+      const [raced] = await this.db
+        .select()
+        .from(schema.issues)
+        .where(eq(schema.issues.fingerprint, fingerprint))
+        .limit(1);
+      if (!raced) {
+        return null;
+      }
+      return { issueId: await this.recordOccurrence(raced, logEntry), created: false };
+    }
+  }
+
+  /**
+   * Attach a log entry to an existing issue in a transaction, so the occurrence row and
+   * the counter update commit together or not at all.
+   */
+  private async recordOccurrence(
+    issue: typeof schema.issues.$inferSelect,
+    logEntry: typeof schema.logEntries.$inferSelect
+  ): Promise<string> {
+    return this.db.transaction((tx) => this.recordOccurrenceWith(tx, issue, logEntry));
+  }
+
+  /**
+   * Record the occurrence, then bump the issue's counters. The occurrence row is inserted
+   * first (ON CONFLICT DO NOTHING) so an entry that is already recorded is not counted
+   * twice. Counters use atomic SQL expressions so concurrent updates cannot lose
+   * increments, and first/last seen only ever widen.
+   */
+  private async recordOccurrenceWith(
+    db: Pick<typeof this.db, 'select' | 'insert' | 'update'>,
+    issue: typeof schema.issues.$inferSelect,
+    logEntry: typeof schema.logEntries.$inferSelect
+  ): Promise<string> {
+    const inserted = await db
+      .insert(schema.issueOccurrences)
+      .values({
+        issueId: issue.id,
         logEntryId: logEntry.id,
         timestamp: logEntry.timestamp,
         serverId: logEntry.serverId,
         userId: logEntry.userId,
         sessionId: logEntry.sessionId,
-      });
+      })
+      .onConflictDoNothing()
+      .returning({ id: schema.issueOccurrences.id });
 
-      return newIssue.id;
+    if (inserted.length === 0) {
+      return issue.id;
     }
+
+    const affectedUsers = new Set<string>();
+    const affectedSessions = new Set<string>();
+
+    const occurrences = await db
+      .select({
+        userId: schema.issueOccurrences.userId,
+        sessionId: schema.issueOccurrences.sessionId,
+      })
+      .from(schema.issueOccurrences)
+      .where(eq(schema.issueOccurrences.issueId, issue.id));
+
+    occurrences.forEach((o) => {
+      if (o.userId) affectedUsers.add(o.userId);
+      if (o.sessionId) affectedSessions.add(o.sessionId);
+    });
+
+    if (logEntry.userId) affectedUsers.add(logEntry.userId);
+    if (logEntry.sessionId) affectedSessions.add(logEntry.sessionId);
+
+    const newImpactScore = this.calculateImpactScore(
+      issue.severity,
+      issue.occurrenceCount + 1,
+      affectedUsers.size,
+      affectedSessions.size,
+      0 // Just happened - recency is 0 hours
+    );
+
+    // Only widen first/last seen for a valid timestamp (an Invalid Date would make
+    // serialisation throw and abort the whole transaction).
+    const seenAt = logEntry.timestamp;
+    const validTs = seenAt instanceof Date && !Number.isNaN(seenAt.getTime());
+    const iso = validTs ? seenAt.toISOString() : '';
+    await db
+      .update(schema.issues)
+      .set({
+        ...(validTs && {
+          lastSeen: sql`GREATEST(${schema.issues.lastSeen}, ${iso}::timestamptz)`,
+          firstSeen: sql`LEAST(${schema.issues.firstSeen}, ${iso}::timestamptz)`,
+        }),
+        occurrenceCount: sql`${schema.issues.occurrenceCount} + 1`,
+        affectedUsersCount: affectedUsers.size,
+        affectedSessionsCount: affectedSessions.size,
+        impactScore: newImpactScore,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.issues.id, issue.id));
+
+    return issue.id;
   }
 
   /**

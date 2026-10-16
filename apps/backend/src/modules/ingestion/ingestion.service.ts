@@ -11,6 +11,7 @@ import { WhisparrProvider } from '@logarr/provider-whisparr';
 import { Injectable, Inject, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 
+import { describeError } from '../../common/db-errors';
 import { DATABASE_CONNECTION } from '../../database';
 import * as schema from '../../database/schema';
 import { FileIngestionService } from '../file-ingestion/file-ingestion.service';
@@ -95,7 +96,7 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
     // Start polling for logs every 30 seconds
     this.pollingInterval = setInterval(() => {
       this.pollAllServers().catch((err) => {
-        this.logger.error('Error polling servers:', err);
+        this.logger.error(`Error polling servers: ${describeError(err)}`);
       });
     }, 30000);
 
@@ -103,7 +104,7 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
     // Plex WebSocket only sends updates every ~10 seconds, so this provides better responsiveness
     this.sessionPollingInterval = setInterval(() => {
       this.pollAllSessions().catch((err) => {
-        this.logger.error('Error polling sessions:', err);
+        this.logger.error(`Error polling sessions: ${describeError(err)}`);
       });
     }, 5000);
 
@@ -205,7 +206,7 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
       try {
         await this.pollServer(server);
       } catch (error) {
-        this.logger.error(`Error polling server ${server.name}:`, error);
+        this.logger.error(`Error polling server ${server.name}: ${describeError(error)}`);
 
         // Update server status to disconnected
         await this.db
@@ -378,13 +379,12 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
         // Process for issue detection (errors and warnings)
         if (['error', 'warn'].includes(inserted.level)) {
           try {
-            const issueId = await this.issuesService.processLogEntry(inserted);
-            if (issueId) {
+            const result = await this.issuesService.processLogEntryDetailed(inserted);
+            if (result) {
               // Get the updated issue and broadcast
-              const issue = await this.issuesService.findOne(issueId);
+              const issue = await this.issuesService.findOne(result.issueId);
               if (issue) {
-                // Determine if this is a new issue or an update
-                if (issue.occurrenceCount === 1) {
+                if (result.created) {
                   this.issuesGateway.broadcastNewIssue(issue);
                 } else {
                   this.issuesGateway.broadcastIssueUpdate(issue);
@@ -392,7 +392,9 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
               }
             }
           } catch (err) {
-            this.logger.warn(`Failed to process issue for log entry ${inserted.id}:`, err);
+            this.logger.warn(
+              `Failed to process issue for log entry ${inserted.id}: ${describeError(err)}`
+            );
           }
         }
       }

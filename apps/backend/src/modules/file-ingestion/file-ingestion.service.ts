@@ -12,6 +12,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { eq, and } from 'drizzle-orm';
 
+import { describeError, isDeadlockError } from '../../common/db-errors';
 import { DATABASE_CONNECTION } from '../../database';
 import * as schema from '../../database/schema';
 import { IssuesGateway } from '../issues/issues.gateway';
@@ -25,6 +26,7 @@ import {
 
 import { FileDiscoveryService } from './file-discovery.service';
 import { FileStateService } from './file-state.service';
+import { chunkRows, dedupeAndSortBatch, maxRowsPerStatement } from './log-batch';
 import { LogFileProcessor } from './log-file-processor';
 import { LogFileTailer } from './log-file-tailer';
 
@@ -138,6 +140,18 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
   private readonly BATCH_SIZE = 100;
   /** Maximum time to wait before flushing batch (ms) */
   private readonly BATCH_TIMEOUT_MS = 500;
+  /** How many times a batch insert is retried after a Postgres deadlock (40P01) */
+  private readonly DEADLOCK_MAX_RETRIES = 3;
+  /** Base backoff between deadlock retries (ms); multiplied by attempt, plus jitter */
+  private readonly DEADLOCK_BACKOFF_MS = 25;
+  /** Serialises batch inserts so flushes of this process never overlap */
+  private batchInsertChain: Promise<unknown> = Promise.resolve();
+  /** Flushes currently running (never reject); awaited on shutdown */
+  private readonly inFlightFlushes = new Set<Promise<void>>();
+  /** Maximum concurrent flushes; further flushes wait so pending work stays bounded */
+  private readonly MAX_IN_FLIGHT_FLUSHES = 4;
+  /** Maximum entries taken from the buffer per flush; a larger backlog is drained in several flushes */
+  private readonly MAX_ENTRIES_PER_FLUSH = 500;
 
   constructor(
     @Inject(DATABASE_CONNECTION)
@@ -313,6 +327,7 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
   async onModuleDestroy(): Promise<void> {
     // Flush any pending batch entries before stopping
     await this.flushBatchBuffer();
+    await Promise.allSettled([...this.inFlightFlushes]);
     await this.stopAllTailers();
   }
 
@@ -954,7 +969,11 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
     }
 
     // Flush immediately if buffer is full
-    if (this.batchBuffer.length >= this.BATCH_SIZE) {
+    // (when too many flushes are in flight, the completion of one triggers the next)
+    if (
+      this.batchBuffer.length >= this.BATCH_SIZE &&
+      this.inFlightFlushes.size < this.MAX_IN_FLIGHT_FLUSHES
+    ) {
       void this.flushBatchBuffer();
     }
   }
@@ -963,6 +982,11 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
    * Flush the batch buffer - insert all queued entries
    */
   private async flushBatchBuffer(): Promise<void> {
+    // Backpressure: wait for a slot instead of piling up concurrent flushes
+    while (this.inFlightFlushes.size >= this.MAX_IN_FLIGHT_FLUSHES) {
+      await Promise.race(this.inFlightFlushes);
+    }
+
     // Clear timer
     if (this.batchFlushTimer !== null) {
       clearTimeout(this.batchFlushTimer);
@@ -970,11 +994,41 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
     }
 
     // Get and clear buffer
-    const entries = this.batchBuffer.splice(0, this.batchBuffer.length);
+    const entries = this.batchBuffer.splice(0, this.MAX_ENTRIES_PER_FLUSH);
     if (entries.length === 0) {
       return;
     }
 
+    // Anything left over still needs a flush trigger
+    if (this.batchBuffer.length > 0 && this.batchFlushTimer === null) {
+      this.batchFlushTimer = setTimeout(() => {
+        void this.flushBatchBuffer();
+      }, this.BATCH_TIMEOUT_MS);
+    }
+
+    const run = this.flushEntries(entries);
+    const tracked = run.then(
+      () => undefined,
+      () => undefined
+    );
+    this.inFlightFlushes.add(tracked);
+    try {
+      await run;
+    } finally {
+      this.inFlightFlushes.delete(tracked);
+      // Keep draining a backlog as bounded batches while slots are free
+      while (
+        this.batchBuffer.length >= this.BATCH_SIZE &&
+        this.inFlightFlushes.size < this.MAX_IN_FLIGHT_FLUSHES
+      ) {
+        void this.flushBatchBuffer();
+      }
+    }
+  }
+
+  private async flushEntries(
+    entries: Array<{ serverId: string; entry: ParsedLogEntry; filePath: string }>
+  ): Promise<void> {
     this.logger.debug(`Flushing batch of ${entries.length} log entries`);
 
     try {
@@ -1000,59 +1054,117 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
         deduplicationKey: this.generateDeduplicationKey(entry),
       }));
 
-      // Bulk insert with conflict handling
-      const inserted = await this.db
-        .insert(schema.logEntries)
-        .values(values)
-        .onConflictDoNothing({
-          target: [schema.logEntries.serverId, schema.logEntries.deduplicationKey],
-        })
-        .returning();
+      // Bulk insert with conflict handling. Rows are de-duplicated and sorted so concurrent
+      // inserts take unique-index locks in the same order (see log-batch.ts).
+      const inserted = await this.insertBatch(dedupeAndSortBatch(values));
 
       // Broadcast inserted entries and process issues
       for (const entry of inserted) {
-        // Broadcast to WebSocket clients
-        const logData: Parameters<typeof this.logsGateway.broadcastLog>[0] = {
-          id: entry.id,
-          serverId: entry.serverId,
-          timestamp: entry.timestamp,
-          level: entry.level,
-          message: entry.message,
-          logSource: 'file',
-        };
-        if (entry.source !== null && entry.source !== '') {
-          logData.source = entry.source;
-        }
-        this.logsGateway.broadcastLog(logData);
-
-        // Process for issue detection (errors and warnings)
-        if (['error', 'warn'].includes(entry.level)) {
-          try {
-            const issueId = await this.issuesService.processLogEntry(entry);
-            if (issueId !== null && issueId !== '') {
-              const issue = await this.issuesService.findOne(issueId);
-              if (issue !== null) {
-                if (issue.occurrenceCount === 1) {
-                  this.issuesGateway.broadcastNewIssue(issue);
-                } else {
-                  this.issuesGateway.broadcastIssueUpdate(issue);
-                }
-              }
-            }
-          } catch (err) {
-            this.logger.warn(`Failed to process issue for log entry ${entry.id}:`, err);
-          }
-        }
+        await this.publishInsertedEntry(entry);
       }
 
       this.logger.debug(
-        `Batch insert complete: ${inserted.length} of ${values.length} entries inserted`
+        `Batch insert complete: ${inserted.length} of ${entries.length} entries inserted`
       );
     } catch (error) {
-      this.logger.error('Batch insert failed, falling back to individual inserts:', error);
+      this.logger.error(
+        `Batch insert of ${entries.length} entries failed, falling back to individual inserts: ${describeError(error)}`
+      );
       // Fallback to individual inserts
       for (const { serverId, entry, filePath } of entries) {
         await this.processEntrySingle(serverId, entry, filePath);
+      }
+    }
+  }
+
+  /**
+   * Broadcast a newly inserted log entry and run issue detection for errors/warnings.
+   * Shared by the batch path and the single-insert fallback; only call it for rows that
+   * were actually inserted (not skipped by ON CONFLICT DO NOTHING) to avoid double counting.
+   */
+  private async publishInsertedEntry(entry: typeof schema.logEntries.$inferSelect): Promise<void> {
+    const logData: Parameters<typeof this.logsGateway.broadcastLog>[0] = {
+      id: entry.id,
+      serverId: entry.serverId,
+      timestamp: entry.timestamp,
+      level: entry.level,
+      message: entry.message,
+      logSource: 'file',
+    };
+    if (entry.source !== null && entry.source !== '') {
+      logData.source = entry.source;
+    }
+    this.logsGateway.broadcastLog(logData);
+
+    if (['error', 'warn'].includes(entry.level)) {
+      try {
+        const result = await this.issuesService.processLogEntryDetailed(entry);
+        if (result !== null) {
+          const issue = await this.issuesService.findOne(result.issueId);
+          if (issue !== null) {
+            if (result.created) {
+              this.issuesGateway.broadcastNewIssue(issue);
+            } else {
+              this.issuesGateway.broadcastIssueUpdate(issue);
+            }
+          }
+        }
+      } catch (err) {
+        this.logger.warn(
+          `Failed to process issue for log entry ${entry.id}: ${describeError(err)}`
+        );
+      }
+    }
+  }
+
+  /**
+   * Insert a prepared batch. Calls are chained so flushes within this process run one at
+   * a time; the insert itself is retried on deadlock (another process or a polling insert
+   * may still hold conflicting locks).
+   */
+  private insertBatch(
+    rows: Array<typeof schema.logEntries.$inferInsert>
+  ): Promise<Array<typeof schema.logEntries.$inferSelect>> {
+    const run = this.batchInsertChain.then(() => this.insertChunked(rows));
+    this.batchInsertChain = run.catch(() => undefined);
+    return run;
+  }
+
+  /**
+   * Insert rows (already sorted) in statements bounded by the Postgres parameter limit.
+   * Chunks are consecutive slices of the sorted rows, so lock order stays consistent.
+   */
+  private async insertChunked(
+    rows: Array<typeof schema.logEntries.$inferInsert>
+  ): Promise<Array<typeof schema.logEntries.$inferSelect>> {
+    const columns = rows.reduce((max, r) => Math.max(max, Object.keys(r).length), 0);
+    const result: Array<typeof schema.logEntries.$inferSelect> = [];
+    for (const chunk of chunkRows(rows, maxRowsPerStatement(columns))) {
+      result.push(...(await this.insertBatchWithRetry(chunk)));
+    }
+    return result;
+  }
+
+  private async insertBatchWithRetry(
+    rows: Array<typeof schema.logEntries.$inferInsert>
+  ): Promise<Array<typeof schema.logEntries.$inferSelect>> {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await this.db
+          .insert(schema.logEntries)
+          .values(rows)
+          .onConflictDoNothing({
+            target: [schema.logEntries.serverId, schema.logEntries.deduplicationKey],
+          })
+          .returning();
+      } catch (error) {
+        if (!isDeadlockError(error) || attempt > this.DEADLOCK_MAX_RETRIES) {
+          throw error;
+        }
+        this.logger.warn(
+          `Deadlock inserting batch of ${rows.length} log entries (attempt ${attempt}/${this.DEADLOCK_MAX_RETRIES + 1}), retrying`
+        );
+        await this.sleep(this.DEADLOCK_BACKOFF_MS * attempt + Math.random() * 50);
       }
     }
   }
@@ -1102,23 +1214,11 @@ export class FileIngestionService implements OnModuleInit, OnModuleDestroy {
         return null;
       }
 
-      // Broadcast to WebSocket clients
-      const logData: Parameters<typeof this.logsGateway.broadcastLog>[0] = {
-        id: inserted.id,
-        serverId,
-        timestamp: inserted.timestamp,
-        level: inserted.level,
-        message: inserted.message,
-        logSource: 'file',
-      };
-      if (inserted.source !== null && inserted.source !== '') {
-        logData.source = inserted.source;
-      }
-      this.logsGateway.broadcastLog(logData);
+      await this.publishInsertedEntry(inserted);
 
       return inserted;
     } catch (error) {
-      this.logger.warn(`Failed to insert log entry: ${error}`);
+      this.logger.warn(`Failed to insert log entry: ${describeError(error)}`);
       return null;
     }
   }

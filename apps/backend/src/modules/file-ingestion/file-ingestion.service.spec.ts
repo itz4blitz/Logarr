@@ -11,6 +11,7 @@ import { SettingsService } from '../settings/settings.service';
 import { FileDiscoveryService } from './file-discovery.service';
 import { FileIngestionService } from './file-ingestion.service';
 import { FileStateService } from './file-state.service';
+import { maxRowsPerStatement } from './log-batch';
 
 import type { TestingModule } from '@nestjs/testing';
 
@@ -54,6 +55,7 @@ describe('FileIngestionService', () => {
 
   const mockIssuesService = {
     processLogEntry: vi.fn(),
+    processLogEntryDetailed: vi.fn(),
     findOne: vi.fn(),
   };
 
@@ -694,6 +696,381 @@ describe('FileIngestionService', () => {
 
       expect(service['flushBatchBuffer']).toHaveBeenCalled();
       expect(service.stopAllTailers).toHaveBeenCalled();
+    });
+  });
+  describe('batch insert concurrency handling', () => {
+    const makeEntry = (message: string, second = 0) => ({
+      timestamp: new Date(Date.UTC(2024, 0, 1, 0, 0, second)),
+      level: 'info' as const,
+      message,
+      source: 'src',
+      raw: message,
+    });
+
+    /** Build a db.insert mock; each call to `.returning()` consumes the next behaviour. */
+    function mockInsert(behaviours: Array<unknown | Error>) {
+      const valuesSpy = vi.fn();
+      const returning = vi.fn().mockImplementation(() => {
+        const next = behaviours.shift();
+        return next instanceof Error ? Promise.reject(next) : Promise.resolve(next ?? []);
+      });
+      mockDb.insert.mockReturnValue({
+        values: valuesSpy.mockReturnValue({
+          onConflictDoNothing: vi.fn().mockReturnValue({ returning }),
+        }),
+      });
+      return { valuesSpy, returning };
+    }
+
+    const deadlock = () =>
+      Object.assign(new Error('deadlock detected'), { code: '40P01', name: 'PostgresError' });
+
+    beforeEach(() => {
+      vi.spyOn(service as any, 'sleep').mockResolvedValue(undefined);
+      vi.spyOn(Math, 'random').mockReturnValue(0);
+    });
+
+    it('de-duplicates and sorts rows by (serverId, deduplicationKey) before inserting', async () => {
+      const { valuesSpy } = mockInsert([[]]);
+      const a = makeEntry('alpha', 1);
+      const b = makeEntry('bravo', 2);
+
+      // Same entry twice (e.g. duplicated across debug/main log) plus reversed order
+      service['queueEntryForBatch']('s1', b, '/logs/a.txt');
+      service['queueEntryForBatch']('s1', a, '/logs/b.txt');
+      service['queueEntryForBatch']('s1', b, '/logs/b.txt');
+      await service['flushBatchBuffer']();
+
+      const rows = valuesSpy.mock.calls[0]![0] as Array<{ deduplicationKey: string }>;
+      expect(rows).toHaveLength(2);
+      const keys = rows.map((r) => r.deduplicationKey);
+      expect(keys).toEqual([...keys].sort());
+    });
+
+    it('inserts the same row order regardless of queue order', async () => {
+      const { valuesSpy } = mockInsert([[], []]);
+      const entries = [makeEntry('one', 1), makeEntry('two', 2), makeEntry('three', 3)];
+
+      for (const e of entries) service['queueEntryForBatch']('s1', e, '/f');
+      await service['flushBatchBuffer']();
+      for (const e of [...entries].reverse()) service['queueEntryForBatch']('s1', e, '/f');
+      await service['flushBatchBuffer']();
+
+      const order = (i: number) =>
+        (valuesSpy.mock.calls[i]![0] as Array<{ deduplicationKey: string }>).map(
+          (r) => r.deduplicationKey
+        );
+      expect(order(0)).toEqual(order(1));
+    });
+
+    it('retries the batch on deadlock (40P01) and then succeeds without falling back', async () => {
+      const { returning } = mockInsert([deadlock(), deadlock(), []]);
+      const errorSpy = vi.spyOn(service['logger'], 'error');
+
+      service['queueEntryForBatch']('s1', makeEntry('x'), '/f');
+      await service['flushBatchBuffer']();
+
+      expect(returning).toHaveBeenCalledTimes(3);
+      expect(service['sleep']).toHaveBeenCalledTimes(2);
+      // deterministic backoff (jitter pinned to 0): 25ms * attempt
+      expect((service['sleep'] as any).mock.calls.map((c: number[]) => c[0])).toEqual([25, 50]);
+      expect(errorSpy).not.toHaveBeenCalled();
+    });
+
+    it('falls back to individual inserts after exhausting deadlock retries and logs the cause', async () => {
+      // 1 initial + 3 retries fail, then the single-row fallback succeeds
+      const { returning } = mockInsert([deadlock(), deadlock(), deadlock(), deadlock(), []]);
+      const errorSpy = vi.spyOn(service['logger'], 'error');
+
+      service['queueEntryForBatch']('s1', makeEntry('x'), '/f');
+      await service['flushBatchBuffer']();
+
+      expect(returning).toHaveBeenCalledTimes(5);
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      const message = errorSpy.mock.calls[0]![0] as string;
+      expect(message).toContain('deadlock detected');
+      expect(message).toContain('code=40P01');
+    });
+
+    it('does not retry non-deadlock errors', async () => {
+      const err = Object.assign(new Error('connection reset'), { code: '08006' });
+      const { returning } = mockInsert([err, []]);
+      const errorSpy = vi.spyOn(service['logger'], 'error');
+
+      service['queueEntryForBatch']('s1', makeEntry('x'), '/f');
+      await service['flushBatchBuffer']();
+
+      expect(service['sleep']).not.toHaveBeenCalled();
+      expect(returning).toHaveBeenCalledTimes(2); // batch + single fallback
+      expect(errorSpy.mock.calls[0]![0]).toContain('connection reset');
+      expect(errorSpy.mock.calls[0]![0]).toContain('code=08006');
+    });
+
+    it('runs issue detection in the fallback only for rows the single insert actually inserted', async () => {
+      const errEntry = { ...makeEntry('boom', 1), level: 'error' as const };
+      const dupEntry = { ...makeEntry('dup', 2), level: 'error' as const };
+      const row = (e: typeof errEntry, id: string) => ({
+        id,
+        serverId: 's1',
+        timestamp: e.timestamp,
+        level: e.level,
+        message: e.message,
+        source: 'src',
+      });
+      // batch fails (non-deadlock), then single inserts: first inserted, second skipped by conflict
+      const { returning } = mockInsert([new Error('batch down'), [], []]);
+      returning
+        .mockReset()
+        .mockRejectedValueOnce(new Error('batch down'))
+        .mockResolvedValueOnce([row(errEntry, 'log-1')])
+        .mockResolvedValueOnce([]);
+      mockIssuesService.processLogEntryDetailed.mockResolvedValue({
+        issueId: 'issue-1',
+        created: true,
+      });
+      // occurrenceCount deliberately not 1: the broadcast must follow `created`, not the count
+      mockIssuesService.findOne.mockResolvedValue({ id: 'issue-1', occurrenceCount: 7 });
+
+      service['queueEntryForBatch']('s1', errEntry, '/f');
+      service['queueEntryForBatch']('s1', dupEntry, '/f');
+      await service['flushBatchBuffer']();
+
+      expect(mockIssuesService.processLogEntryDetailed).toHaveBeenCalledTimes(1);
+      expect(mockIssuesService.processLogEntryDetailed).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'log-1' })
+      );
+      expect(mockIssuesGateway.broadcastNewIssue).toHaveBeenCalledTimes(1);
+      expect(mockLogsGateway.broadcastLog).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not run issue detection in the fallback for info-level rows', async () => {
+      const e = makeEntry('fine', 1);
+      const returning = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('batch down'))
+        .mockResolvedValueOnce([
+          { id: 'l', serverId: 's1', timestamp: e.timestamp, level: 'info', message: 'fine' },
+        ]);
+      mockDb.insert.mockReturnValue({
+        values: vi
+          .fn()
+          .mockReturnValue({ onConflictDoNothing: vi.fn().mockReturnValue({ returning }) }),
+      });
+
+      service['queueEntryForBatch']('s1', e, '/f');
+      await service['flushBatchBuffer']();
+
+      expect(mockIssuesService.processLogEntryDetailed).not.toHaveBeenCalled();
+      expect(mockLogsGateway.broadcastLog).toHaveBeenCalledTimes(1);
+    });
+
+    it('a rejected flush does not poison the next one', async () => {
+      // Non-Error rejection from the chain's perspective: make the whole batch+fallback path throw
+      const returning = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('batch down'))
+        .mockResolvedValue([]);
+      mockDb.insert.mockReturnValue({
+        values: vi
+          .fn()
+          .mockReturnValue({ onConflictDoNothing: vi.fn().mockReturnValue({ returning }) }),
+      });
+      vi.spyOn(service as any, 'flushEntries').mockRejectedValueOnce(new Error('flush blew up'));
+
+      service['queueEntryForBatch']('s1', makeEntry('a', 1), '/f');
+      await expect(service['flushBatchBuffer']()).rejects.toThrow('flush blew up');
+
+      // the in-flight set is cleaned up and a subsequent flush still inserts
+      expect(service['inFlightFlushes'].size).toBe(0);
+      service['queueEntryForBatch']('s1', makeEntry('b', 2), '/f');
+      await service['flushBatchBuffer']();
+      expect(returning).toHaveBeenCalled();
+    });
+
+    it('a failed batch insert does not poison the insert chain', async () => {
+      const returning = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('batch down'))
+        .mockResolvedValue([]);
+      mockDb.insert.mockReturnValue({
+        values: vi
+          .fn()
+          .mockReturnValue({ onConflictDoNothing: vi.fn().mockReturnValue({ returning }) }),
+      });
+      service['queueEntryForBatch']('s1', makeEntry('a', 1), '/f');
+      await service['flushBatchBuffer']();
+      service['queueEntryForBatch']('s1', makeEntry('b', 2), '/f');
+      await service['flushBatchBuffer']();
+      // 1 failed batch + 1 fallback single + 1 later batch
+      expect(returning).toHaveBeenCalledTimes(3);
+    });
+
+    it('onModuleDestroy waits for in-flight flushes before stopping tailers', async () => {
+      let release!: () => void;
+      const gate = new Promise<void>((r) => (release = r));
+      const order: string[] = [];
+      vi.spyOn(service as any, 'flushEntries').mockImplementation(async () => {
+        await gate;
+        order.push('flush-done');
+      });
+      service.stopAllTailers = vi.fn().mockImplementation(async () => {
+        order.push('tailers-stopped');
+      });
+
+      service['queueEntryForBatch']('s1', makeEntry('a', 1), '/f');
+      void service['flushBatchBuffer'](); // in flight, blocked on gate
+      await Promise.resolve();
+      const destroyed = service.onModuleDestroy();
+      await new Promise((r) => setTimeout(r, 5));
+      expect(order).toEqual([]);
+
+      release();
+      await destroyed;
+      expect(order).toEqual(['flush-done', 'tailers-stopped']);
+    });
+
+    it('bounds concurrent flushes and drains the buffer as slots free up', async () => {
+      const max = service['MAX_IN_FLIGHT_FLUSHES'] as number;
+      let active = 0;
+      let peak = 0;
+      const releases: Array<() => void> = [];
+      const flushed: number[] = [];
+      vi.spyOn(service as any, 'flushEntries').mockImplementation(async (...args: unknown[]) => {
+        const e = args[0] as unknown[];
+        active++;
+        peak = Math.max(peak, active);
+        flushed.push(e.length);
+        await new Promise<void>((r) => releases.push(r));
+        active--;
+      });
+
+      // fill far beyond what the allowed slots can take at once
+      const batch = service['BATCH_SIZE'] as number;
+      for (let i = 0; i < batch * (max + 3); i++) {
+        service['queueEntryForBatch']('s1', makeEntry(`m${i}`, i % 50), '/f');
+        // let triggered flushes start; each flush takes everything buffered so far
+        if ((i + 1) % batch === 0) await Promise.resolve();
+      }
+      await new Promise((r) => setTimeout(r, 0));
+      expect(service['inFlightFlushes'].size).toBeLessThanOrEqual(max);
+      expect(peak).toBeLessThanOrEqual(max);
+
+      // release everything repeatedly until drained
+      for (let i = 0; i < 50 && (releases.length > 0 || service['batchBuffer'].length > 0); i++) {
+        releases.splice(0).forEach((r) => r());
+        await new Promise((r) => setTimeout(r, 0));
+        if (service['batchBuffer'].length > 0 && service['inFlightFlushes'].size === 0) {
+          void service['flushBatchBuffer']();
+          await new Promise((r) => setTimeout(r, 0));
+        }
+      }
+      expect(peak).toBeLessThanOrEqual(max);
+      expect(service['batchBuffer']).toHaveLength(0);
+      expect(flushed.reduce((a, b) => a + b, 0)).toBe(batch * (max + 3));
+    });
+
+    it('drains a 60,000 entry backlog as bounded batches without falling back', async () => {
+      const slots = service['MAX_IN_FLIGHT_FLUSHES'] as number;
+      const batch = service['BATCH_SIZE'] as number;
+      const perStatementCap = maxRowsPerStatement(18);
+      const errorSpy = vi.spyOn(service['logger'], 'error');
+
+      let release!: () => void;
+      const gate = new Promise<void>((r) => (release = r));
+      const sizes: number[] = [];
+      const keys = new Set<string>();
+      let totalRows = 0;
+      const returning = vi.fn().mockImplementation(async () => {
+        await gate;
+        return [];
+      });
+      mockDb.insert.mockReturnValue({
+        values: vi.fn().mockImplementation((rows: Array<{ deduplicationKey: string }>) => {
+          sizes.push(rows.length);
+          totalRows += rows.length;
+          rows.forEach((r) => keys.add(r.deduplicationKey));
+          return { onConflictDoNothing: vi.fn().mockReturnValue({ returning }) };
+        }),
+      });
+
+      let n = 0;
+      const queue = (count: number) => {
+        for (let i = 0; i < count; i++, n++) {
+          service['queueEntryForBatch']('s1', makeEntry(`msg-${n}`, n % 60), '/f');
+        }
+      };
+      // occupy every flush slot
+      for (let i = 0; i < slots; i++) {
+        queue(batch);
+        await Promise.resolve();
+      }
+      expect(service['inFlightFlushes'].size).toBe(slots);
+
+      // now buffer a huge backlog while all slots are busy
+      queue(60_000);
+      expect(service['batchBuffer'].length).toBe(60_000);
+
+      release();
+      for (let i = 0; i < 2000; i++) {
+        if (service['batchBuffer'].length === 0 && service['inFlightFlushes'].size === 0) break;
+        await new Promise((r) => setTimeout(r, 0));
+      }
+      if (service['batchFlushTimer'] !== null) clearTimeout(service['batchFlushTimer']);
+
+      const expected = slots * batch + 60_000;
+      expect(totalRows).toBe(expected);
+      expect(keys.size).toBe(expected); // every entry inserted exactly once
+      expect(Math.max(...sizes)).toBeLessThanOrEqual(perStatementCap);
+      expect(Math.max(...sizes)).toBeLessThanOrEqual(service['MAX_ENTRIES_PER_FLUSH'] as number);
+      expect(errorSpy).not.toHaveBeenCalled();
+    }, 60_000);
+
+    it('chunks an oversized insert so no statement exceeds the parameter limit', async () => {
+      const sizes: number[] = [];
+      const returning = vi.fn().mockResolvedValue([]);
+      mockDb.insert.mockReturnValue({
+        values: vi.fn().mockImplementation((rows: unknown[]) => {
+          sizes.push(rows.length);
+          return { onConflictDoNothing: vi.fn().mockReturnValue({ returning }) };
+        }),
+      });
+      const rows = Array.from({ length: 10_000 }, (_, i) => ({
+        serverId: 's1',
+        deduplicationKey: `k${String(i).padStart(5, '0')}`,
+        ...Object.fromEntries(Array.from({ length: 16 }, (_, c) => [`c${c}`, c])),
+      }));
+
+      await service['insertBatch'](rows as any);
+
+      expect(sizes.reduce((a, b) => a + b, 0)).toBe(10_000);
+      expect(sizes.length).toBeGreaterThan(1);
+      for (const size of sizes) expect(size * 18).toBeLessThanOrEqual(65534);
+    });
+
+    it('never runs two batch inserts at the same time', async () => {
+      let active = 0;
+      let maxActive = 0;
+      const returning = vi.fn().mockImplementation(async () => {
+        active++;
+        maxActive = Math.max(maxActive, active);
+        await new Promise((r) => setTimeout(r, 5));
+        active--;
+        return [];
+      });
+      mockDb.insert.mockReturnValue({
+        values: vi
+          .fn()
+          .mockReturnValue({ onConflictDoNothing: vi.fn().mockReturnValue({ returning }) }),
+      });
+
+      service['queueEntryForBatch']('s1', makeEntry('a', 1), '/f');
+      const first = service['flushBatchBuffer']();
+      service['queueEntryForBatch']('s1', makeEntry('b', 2), '/f');
+      const second = service['flushBatchBuffer']();
+      await Promise.all([first, second]);
+
+      expect(returning).toHaveBeenCalledTimes(2);
+      expect(maxActive).toBe(1);
     });
   });
 });
