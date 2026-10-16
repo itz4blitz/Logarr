@@ -90,6 +90,31 @@ describe('providerMeta', () => {
   });
 });
 
+describe('Seerr icon', () => {
+  it('renders the dashboard-icons image instead of the default icon', () => {
+    const { container } = render(<ProviderIcon providerId="seerr" className="custom-class" />);
+    const img = container.querySelector('img');
+    expect(img).not.toBeNull();
+    expect(img?.getAttribute('src')).toBe(
+      'https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/seerr.svg'
+    );
+    expect(img?.classList.contains('custom-class')).toBe(true);
+    expect(container.querySelector('svg')).toBeNull();
+  });
+});
+
+describe('Seerr metadata', () => {
+  it('should have Seerr entry', () => {
+    expect(providerMeta.seerr.name).toBe('Seerr');
+    expect(providerMeta.seerr.color).toBe('#8B5CF6');
+    expect(providerMeta.seerr.bgColor).toBe('bg-violet-500/10');
+  });
+
+  it('should resolve case-insensitively via getProviderMeta', () => {
+    expect(getProviderMeta('SEERR').name).toBe('Seerr');
+  });
+});
+
 describe('getProviderMeta', () => {
   it('should return Whisparr metadata', () => {
     const meta = getProviderMeta('whisparr');

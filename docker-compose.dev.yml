@@ -73,6 +73,7 @@ services:
       - ./packages/provider-emby/src:/app/packages/provider-emby/src
       - ./packages/provider-whisparr/src:/app/packages/provider-whisparr/src
       - ./packages/provider-lidarr/src:/app/packages/provider-lidarr/src
+      - ./packages/provider-seerr/src:/app/packages/provider-seerr/src
       - ./apps/backend/src:/app/apps/backend/src
       # Mount config files for changes
       - ./apps/backend/nest-cli.json:/app/apps/backend/nest-cli.json
@@ -92,6 +93,7 @@ services:
       - ${PROWLARR_LOGS_PATH:-./logs/prowlarr}:/prowlarr-logs:ro
       - ${WHISPARR_LOGS_PATH:-./logs/whisparr}:/whisparr-logs:ro
       - ${LIDARR_LOGS_PATH:-./logs/lidarr}:/lidarr-logs:ro
+      - ${SEERR_LOGS_PATH:-./logs/seerr}:/seerr-logs:ro
       # Multiple instance mounts for development
       - ${PLEX_LOGS_PATH_1:-./logs/plex-1}:/plex-logs-1:ro
       - ${JELLYFIN_LOGS_PATH_1:-./logs/jellyfin-1}:/jellyfin-logs-1:ro
@@ -101,6 +103,7 @@ services:
       - ${PROWLARR_LOGS_PATH_1:-./logs/prowlarr-1}:/prowlarr-logs-1:ro
       - ${WHISPARR_LOGS_PATH_1:-./logs/whisparr-1}:/whisparr-logs-1:ro
       - ${LIDARR_LOGS_PATH_1:-./logs/lidarr-1}:/lidarr-logs-1:ro
+      - ${SEERR_LOGS_PATH_1:-./logs/seerr-1}:/seerr-logs-1:ro
       - ${PLEX_LOGS_PATH_2:-./logs/plex-2}:/plex-logs-2:ro
       - ${JELLYFIN_LOGS_PATH_2:-./logs/jellyfin-2}:/jellyfin-logs-2:ro
       - ${EMBY_LOGS_PATH_2:-./logs/emby-2}:/emby-logs-2:ro
@@ -109,6 +112,7 @@ services:
       - ${PROWLARR_LOGS_PATH_2:-./logs/prowlarr-2}:/prowlarr-logs-2:ro
       - ${WHISPARR_LOGS_PATH_2:-./logs/whisparr-2}:/whisparr-logs-2:ro
       - ${LIDARR_LOGS_PATH_2:-./logs/lidarr-2}:/lidarr-logs-2:ro
+      - ${SEERR_LOGS_PATH_2:-./logs/seerr-2}:/seerr-logs-2:ro
     healthcheck:
       test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:4002/api']
       interval: 30s
