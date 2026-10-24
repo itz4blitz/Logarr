@@ -1,6 +1,6 @@
 {
   "name": "@logarr/backend",
-  "version": "0.6.5",
+  "version": "0.6.6",
   "private": true,
   "description": "Logarr NestJS backend API",
   "scripts": {

@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.6] - 2026-10-24
+
+### Added
+
+- Lidarr integration (#60)
+- Readarr integration (#61)
+- Bazarr integration: subtitle history, health, failed jobs, and `bazarr.log` (#58)
+- Seerr integration for Overseerr and Jellyseerr (#59)
+- qBittorrent integration with username/password, auth bypass, or API key auth (#62)
+
+### Changed
+
+- Frontend Next.js dependency bumped to 16.2.6 (#55)
+- *arr ingestion review follow-ups (#66)
+
+### Fixed
+
+- *arr log-file ingestion produced no log entries (#57, #63)
+- Concurrent file ingestion deadlocked on `log_entries` and dropped issue occurrences (#65)
+- Synthetic activity timestamps no longer advance the provider sync cursor (#67)
+- Server deletion, Ollama analysis, and stale or missing AI analysis state (#56)
+
 ## [0.6.5] - 2026-04-19
 
 ### Added
