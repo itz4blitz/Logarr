@@ -269,7 +269,7 @@ describe('SEERR_CORRELATION_PATTERNS', () => {
   });
 
   it('extracts ids', () => {
-    const find = (name: string, text: string) =>
+    const find = (name: string, text: string): string | undefined =>
       text.match(SEERR_CORRELATION_PATTERNS.find((p) => p.name === name)?.pattern as RegExp)?.[1];
     expect(find('requestId', 'Request #12 approved')).toBe('12');
     expect(find('tmdbId', 'lookup tmdbId=603 failed')).toBe('603');
@@ -277,7 +277,7 @@ describe('SEERR_CORRELATION_PATTERNS', () => {
   });
 
   it('extracts ids from JSON-style metadata', () => {
-    const find = (name: string, text: string) =>
+    const find = (name: string, text: string): string | undefined =>
       text.match(SEERR_CORRELATION_PATTERNS.find((p) => p.name === name)?.pattern as RegExp)?.[1];
     expect(find('tmdbId', '{"tmdbId":1396,"mediaType":"tv"}')).toBe('1396');
     expect(find('userId', '{"userId":42}')).toBe('42');

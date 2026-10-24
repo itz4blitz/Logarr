@@ -3,21 +3,45 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SEERR_LOG_FILE_CONFIG } from './seerr.parser.js';
 import { SeerrProvider } from './seerr.provider.js';
 
+import type { NormalizedActivity } from '@logarr/core';
+
 const mockFetch = vi.fn();
 
-const ok = (json: unknown) => ({ ok: true, status: 200, json: async () => json });
-const fail = (status: number, text = 'err') => ({
+interface JsonResponse {
+  ok: true;
+  status: number;
+  json: () => Promise<unknown>;
+}
+
+interface TextResponse {
+  ok: false;
+  status: number;
+  statusText: string;
+  text: () => Promise<string>;
+}
+
+interface SeerrPage {
+  pageInfo: { pages: number; pageSize: number; results: number; page: number };
+  results: unknown[];
+}
+
+const ok = (json: unknown): JsonResponse => ({
+  ok: true,
+  status: 200,
+  json: (): Promise<unknown> => Promise.resolve(json),
+});
+const fail = (status: number, text = 'err'): TextResponse => ({
   ok: false,
   status,
   statusText: 'x',
-  text: async () => text,
+  text: (): Promise<string> => Promise.resolve(text),
 });
 
-type Routes = Record<string, () => unknown>;
+type Routes = Record<string, () => JsonResponse | TextResponse>;
 
 /** Route-based fetch mock keyed on pathname (after /api/v1) */
 function route(routes: Routes): void {
-  mockFetch.mockImplementation(async (url: string) => {
+  mockFetch.mockImplementation((url: string): JsonResponse | TextResponse => {
     const path = new URL(url).pathname.replace('/api/v1', '');
     const handler = routes[path];
     return handler === undefined ? fail(404, 'not found') : handler();
@@ -69,7 +93,7 @@ const issues = [
   { id: 6, issueType: 1, status: 2, createdAt: '2026-10-10T12:04:00.000Z' },
 ];
 
-const paged = (results: unknown[]) => ({
+const paged = (results: unknown[]): SeerrPage => ({
   pageInfo: { pages: 1, pageSize: 50, results: results.length, page: 1 },
   results,
 });
@@ -349,7 +373,10 @@ describe('SeerrProvider', () => {
 
     it('pages while items are newer than since and takes only one page without since', async () => {
       const p = await connected();
-      const page = (start: number, iso: string) =>
+      const page = (
+        start: number,
+        iso: string
+      ): Array<{ id: number; status: number; updatedAt: string }> =>
         Array.from({ length: 50 }, (_, i) => ({
           id: start + i,
           status: 2,
@@ -436,13 +463,13 @@ describe('SeerrProvider', () => {
   });
 
   describe('edge cases', () => {
-    const one = async (request: unknown) => {
+    const one = async (request: unknown): Promise<NormalizedActivity | undefined> => {
       const p = await connected();
       route({ '/request': () => ok(paged([request])), '/issue': () => ok(paged([])) });
       const [act] = await p.getActivity();
       return act;
     };
-    const oneIssue = async (issue: unknown) => {
+    const oneIssue = async (issue: unknown): Promise<NormalizedActivity | undefined> => {
       const p = await connected();
       route({ '/request': () => ok(paged([])), '/issue': () => ok(paged([issue])) });
       const [act] = await p.getActivity();

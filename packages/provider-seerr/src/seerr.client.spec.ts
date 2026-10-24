@@ -4,12 +4,29 @@ import { SeerrClient } from './seerr.client.js';
 
 const mockFetch = vi.fn();
 
-const ok = (json: unknown) => ({ ok: true, status: 200, json: async () => json });
-const fail = (status: number, text = 'err') => ({
+interface JsonResponse {
+  ok: true;
+  status: number;
+  json: () => Promise<unknown>;
+}
+
+interface TextResponse {
+  ok: false;
+  status: number;
+  statusText: string;
+  text: () => Promise<string>;
+}
+
+const ok = (json: unknown): JsonResponse => ({
+  ok: true,
+  status: 200,
+  json: (): Promise<unknown> => Promise.resolve(json),
+});
+const fail = (status: number, text = 'err'): TextResponse => ({
   ok: false,
   status,
   statusText: 'x',
-  text: async () => text,
+  text: (): Promise<string> => Promise.resolve(text),
 });
 
 function calledUrl(index = 0): URL {

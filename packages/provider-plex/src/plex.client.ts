@@ -258,10 +258,6 @@ export class PlexClient extends EventEmitter {
         case 'playing':
           if (container.PlaySessionStateNotification) {
             for (const notification of container.PlaySessionStateNotification) {
-              // Log for debugging - Plex typically sends these every ~10 seconds
-              console.log(
-                `[Plex WS] Playing notification: state=${notification.state}, offset=${notification.viewOffset}ms`
-              );
               this.emit('playing', notification);
             }
           }

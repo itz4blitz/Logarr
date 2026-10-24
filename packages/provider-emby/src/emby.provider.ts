@@ -199,10 +199,11 @@ export class EmbyProvider implements MediaServerProvider {
     const hasNowPlaying = nowPlayingItem !== undefined && playState !== undefined;
 
     // Build thumbnail URL for now playing item
+    const primaryTag = nowPlayingItem?.ImageTags?.['Primary'];
     let thumbnailUrl: string | undefined;
-    if (hasNowPlaying && this.config !== null && nowPlayingItem.ImageTags?.['Primary']) {
+    if (hasNowPlaying && this.config !== null && primaryTag !== undefined && primaryTag !== '') {
       const baseUrl = this.config.url.replace(/\/$/, '');
-      thumbnailUrl = `${baseUrl}/Items/${nowPlayingItem.Id}/Images/Primary?maxWidth=300&tag=${nowPlayingItem.ImageTags['Primary']}&api_key=${this.config.apiKey}`;
+      thumbnailUrl = `${baseUrl}/Items/${nowPlayingItem.Id}/Images/Primary?maxWidth=300&tag=${primaryTag}&api_key=${this.config.apiKey}`;
     }
 
     return {
@@ -245,7 +246,7 @@ export class EmbyProvider implements MediaServerProvider {
    * Build display name for a now playing item
    */
   private buildItemName(item: { Name: string; SeriesName?: string; Type: string }): string {
-    if (item.Type === 'Episode' && item.SeriesName) {
+    if (item.Type === 'Episode' && item.SeriesName !== undefined && item.SeriesName !== '') {
       return `${item.SeriesName} - ${item.Name}`;
     }
     return item.Name;
